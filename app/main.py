@@ -4,16 +4,18 @@ from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
 
-load_dotenv() # Завантажує секретні ключі з файлу .env
+# Імпортуємо наш блок логіки
+from app.core.logic import calculate_duration
 
-app = FastAPI(title="UAV Cabinet NextGen API")
+load_dotenv()
 
-# Налаштування зв'язку з базою
-url = os.environ.get("SUPABASE_URL")
-key = os.environ.get("SUPABASE_KEY")
-supabase: Client = create_client(url, key)
+app = FastAPI(title="UAV Cabinet NextGen")
 
-# Модель даних (ваша валідація)
+supabase: Client = create_client(
+    os.environ.get("SUPABASE_URL"), 
+    os.environ.get("SUPABASE_KEY")
+)
+
 class FlightEntry(BaseModel):
     date: str
     operator: str
@@ -23,16 +25,17 @@ class FlightEntry(BaseModel):
     landing: str
     result: str = "Без ознак порушення"
 
-@app.get("/")
-async def root():
-    return {"message": "Система активована. Мозок працює!"}
-
 @app.post("/add_flight")
 async def add_flight(entry: FlightEntry):
-    # Тут ми пізніше додамо ваш розумний розрахунок тривалості
-    # Поки що просто відправляємо дані
+    flight_time = calculate_duration(entry.takeoff, entry.landing)
+    
+    new_record = {
+        **entry.dict(),
+        "duration": flight_time
+    }
+
     try:
-        data = supabase.table("flights").insert(entry.dict()).execute()
-        return {"status": "success", "data": data.data}
+        response = supabase.table("flights").insert(new_record).execute()
+        return {"status": "success", "duration": flight_time}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
