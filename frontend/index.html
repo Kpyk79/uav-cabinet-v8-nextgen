@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAV Cabinet NextGen</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans p-4">
+    <div class="max-w-md mx-auto bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700">
+        <h1 class="text-2xl font-bold text-center mb-6 text-green-500">🛡️ UAV NEXTGEN</h1>
+        
+        <form id="flightForm" class="space-y-4">
+            <input type="date" id="date" class="w-full bg-slate-700 p-3 rounded-lg border border-slate-600 focus:border-green-500 outline-none" required>
+            <input type="text" id="operator" placeholder="Прізвище пілота" class="w-full bg-slate-700 p-3 rounded-lg border border-slate-600 focus:border-green-500 outline-none" required>
+            <input type="text" id="drone" placeholder="Модель БпЛА" class="w-full bg-slate-700 p-3 rounded-lg border border-slate-600 focus:border-green-500 outline-none" required>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-slate-400">Зліт (HH:MM)</label>
+                    <input type="time" id="takeoff" class="w-full bg-slate-700 p-3 rounded-lg border border-slate-600 focus:border-green-500 outline-none" required>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400">Посадка (HH:MM)</label>
+                    <input type="time" id="landing" class="w-full bg-slate-700 p-3 rounded-lg border border-slate-600 focus:border-green-500 outline-none" required>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-green-600 hover:bg-green-500 transition-colors py-4 rounded-xl font-bold text-lg shadow-lg">
+                ВІДПРАВИТИ ДАНІ
+            </button>
+        </form>
+
+        <div id="status" class="mt-4 text-center text-sm hidden"></div>
+    </div>
+
+    <script>
+        const API_URL = "https://ominous-enigma-q7rq4675wg63x56x-8000.app.github.dev";
+
+        document.getElementById('flightForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const status = document.getElementById('status');
+            status.classList.remove('hidden');
+            status.innerText = "⏳ Відправка...";
+
+            const payload = {
+                date: document.getElementById('date').value,
+                operator: document.getElementById('operator').value,
+                unit: "Експериментальний підрозділ",
+                drone: document.getElementById('drone').value,
+                takeoff: document.getElementById('takeoff').value,
+                landing: document.getElementById('landing').value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/add_flight`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    status.innerHTML = `✅ Успішно! Наліт: ${result.duration} хв.`;
+                    status.className = "mt-4 text-center text-green-400 font-bold";
+                    document.getElementById('flightForm').reset();
+                } else {
+                    status.innerText = "❌ Помилка відправки";
+                    status.className = "mt-4 text-center text-red-400";
+                }
+            } catch (err) {
+                status.innerText = "❌ Немає зв'язку з сервером";
+            }
+        };
+    </script>
+</body>
+</html>
