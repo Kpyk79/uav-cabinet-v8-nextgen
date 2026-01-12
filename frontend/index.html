@@ -5,48 +5,81 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UAV Cabinet NextGen</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 </head>
-<body class="bg-slate-900 text-white font-sans p-4">
-    <div class="max-w-md mx-auto bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700">
-        <h1 class="text-2xl font-bold text-center mb-6 text-green-500">🛡️ UAV NEXTGEN</h1>
+<body class="bg-slate-900 text-white font-sans p-4 flex items-center justify-center min-h-screen">
+    
+    <div class="max-w-md w-full bg-slate-800 rounded-3xl p-8 shadow-2xl border border-slate-700 animate__animated animate__fadeIn">
+        <h1 class="text-3xl font-black text-center mb-2 text-green-500 tracking-tighter">🛡️ UAV NEXTGEN</h1>
+        <div id="prophecy" class="text-center text-slate-400 italic text-sm mb-8 min-h-[40px] flex items-center justify-center border-b border-slate-700 pb-4">
+            </div>
         
-        <form id="flightForm" class="space-y-4">
-            <input type="date" id="date" class="w-full bg-slate-700 p-3 rounded-lg border border-slate-600 focus:border-green-500 outline-none" required>
-            <input type="text" id="operator" placeholder="Прізвище пілота" class="w-full bg-slate-700 p-3 rounded-lg border border-slate-600 focus:border-green-500 outline-none" required>
-            <input type="text" id="drone" placeholder="Модель БпЛА" class="w-full bg-slate-700 p-3 rounded-lg border border-slate-600 focus:border-green-500 outline-none" required>
+        <form id="flightForm" class="space-y-5">
+            <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-500 uppercase ml-1">Дата та Пілот</label>
+                <input type="date" id="date" class="w-full bg-slate-900/50 p-4 rounded-xl border border-slate-700 focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all" required>
+                <input type="text" id="operator" placeholder="Прізвище пілота" class="w-full bg-slate-900/50 p-4 rounded-xl border border-slate-700 focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all" required>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-xs font-bold text-slate-500 uppercase ml-1">БпЛА</label>
+                <input type="text" id="drone" placeholder="Модель (напр. Mavic 3E)" class="w-full bg-slate-900/50 p-4 rounded-xl border border-slate-700 focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all" required>
+            </div>
             
             <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="text-xs text-slate-400">Зліт (HH:MM)</label>
-                    <input type="time" id="takeoff" class="w-full bg-slate-700 p-3 rounded-lg border border-slate-600 focus:border-green-500 outline-none" required>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Зліт</label>
+                    <input type="time" id="takeoff" class="w-full bg-slate-900/50 p-4 rounded-xl border border-slate-700 focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all" required>
                 </div>
-                <div>
-                    <label class="text-xs text-slate-400">Посадка (HH:MM)</label>
-                    <input type="time" id="landing" class="w-full bg-slate-700 p-3 rounded-lg border border-slate-600 focus:border-green-500 outline-none" required>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-slate-500 uppercase ml-1">Посадка</label>
+                    <input type="time" id="landing" class="w-full bg-slate-900/50 p-4 rounded-xl border border-slate-700 focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all" required>
                 </div>
             </div>
 
-            <button type="submit" class="w-full bg-green-600 hover:bg-green-500 transition-colors py-4 rounded-xl font-bold text-lg shadow-lg">
+            <button type="submit" id="submitBtn" class="w-full bg-green-600 hover:bg-green-500 active:scale-95 transition-all py-5 rounded-2xl font-black text-xl shadow-lg shadow-green-900/20">
                 ВІДПРАВИТИ ДАНІ
             </button>
         </form>
 
-        <div id="status" class="mt-4 text-center text-sm hidden"></div>
+        <div id="status" class="mt-6 text-center hidden p-4 rounded-xl font-bold"></div>
     </div>
 
     <script>
         const API_URL = "https://ominous-enigma-q7rq4675wg63x56x-8000.app.github.dev";
+        
+        const QUOTES = [
+            "Сьогодні твій сигнал буде чистим, як совість інструктора. 📡",
+            "Наліт сам себе не налітає, а ти — зможеш! 🚀",
+            "Пророцтво: АКБ триматиме на 2 хвилини довше. 🔋",
+            "Нехай вітер завжди буде в хвіст, а РЕБ — у відпустці. 💨",
+            "Твої очі бачать далі, ніж найтепліший тепловізор. 👀",
+            "Дрон — це птах, але з твоїми руками — це кара небесна. 🛡️",
+            "Пам'ятай: м'яка посадка — це не везіння, а твій скіл. 🛬",
+            "Стріми без лагів, АКБ без просадок! ⚡"
+        ];
+
+        function showRandomQuote() {
+            const prophecyBox = document.getElementById('prophecy');
+            prophecyBox.innerText = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+        }
+
+        // Показуємо цитату при завантаженні
+        showRandomQuote();
 
         document.getElementById('flightForm').onsubmit = async (e) => {
             e.preventDefault();
+            const btn = document.getElementById('submitBtn');
             const status = document.getElementById('status');
-            status.classList.remove('hidden');
-            status.innerText = "⏳ Відправка...";
+            
+            btn.disabled = true;
+            btn.innerText = "⏳ ПЕРЕДАЧА...";
+            status.classList.add('hidden');
 
             const payload = {
-                date: document.getElementById('date').value,
+                date: document.getElementById('date').value.split('-').reverse().join('.'), // Конвертуємо в DD.MM.YYYY
                 operator: document.getElementById('operator').value,
-                unit: "Експериментальний підрозділ",
+                unit: "NextGen Unit",
                 drone: document.getElementById('drone').value,
                 takeoff: document.getElementById('takeoff').value,
                 landing: document.getElementById('landing').value
@@ -62,14 +95,20 @@
                 if (response.ok) {
                     const result = await response.json();
                     status.innerHTML = `✅ Успішно! Наліт: ${result.duration} хв.`;
-                    status.className = "mt-4 text-center text-green-400 font-bold";
+                    status.className = "mt-6 text-center p-4 rounded-xl bg-green-900/30 text-green-400 font-bold animate__animated animate__bounceIn";
+                    status.classList.remove('hidden');
                     document.getElementById('flightForm').reset();
+                    showRandomQuote(); // Оновлюємо цитату після успіху
                 } else {
-                    status.innerText = "❌ Помилка відправки";
-                    status.className = "mt-4 text-center text-red-400";
+                    throw new Error();
                 }
             } catch (err) {
-                status.innerText = "❌ Немає зв'язку з сервером";
+                status.innerText = "❌ Помилка з'єднання з Блоком А";
+                status.className = "mt-6 text-center p-4 rounded-xl bg-red-900/30 text-red-400 font-bold";
+                status.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "ВІДПРАВИТИ ДАНІ";
             }
         };
     </script>
