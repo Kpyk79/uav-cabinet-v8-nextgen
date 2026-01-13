@@ -2,93 +2,73 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UAV Global Admin</title>
+    <title>Admin Panel | UAV Monitor</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { background: #020617; color: #f1f5f9; font-family: sans-serif; }
-        th { background: #1e293b; color: #94a3b8; font-size: 10px; text-transform: uppercase; padding: 12px; }
-        td { border-bottom: 1px solid #1e293b; padding: 10px; font-size: 12px; }
-        tr:hover { background: rgba(34, 197, 94, 0.05); }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { background: #0f172a; color: white; font-family: 'Inter', sans-serif; padding: 20px; }
+        .card { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; }
     </style>
 </head>
-<body class="p-4">
+<body>
     <div class="max-w-7xl mx-auto">
-        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-            <h1 class="text-xl font-black uppercase text-green-500 italic tracking-tighter">Загальний моніторинг польотів</h1>
-            <button onclick="exportAll()" class="bg-green-600 px-6 py-2 rounded-xl text-xs font-black uppercase">Експорт ВСІЄЇ БАЗИ</button>
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-black uppercase italic text-green-500">Глобальний моніторинг</h1>
+            <button onclick="location.reload()" class="bg-blue-600 px-4 py-2 rounded-lg font-bold"><i class="fa-solid fa-sync"></i> Оновити</button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6 bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
-            <input type="text" id="fUnit" onkeyup="globalFilter()" placeholder="Фільтр підрозділу" class="bg-slate-950 p-2 rounded-lg text-xs border border-slate-700">
-            <input type="text" id="fOp" onkeyup="globalFilter()" placeholder="Фільтр оператора" class="bg-slate-950 p-2 rounded-lg text-xs border border-slate-700">
-            <input type="date" id="fDate" onchange="globalFilter()" class="bg-slate-950 p-2 rounded-lg text-xs border border-slate-700">
-            <div class="text-[10px] text-slate-500 flex items-center justify-end">Усього польотів: <span id="totalCount" class="text-white ml-2 font-bold">0</span></div>
-        </div>
-
-        <div class="overflow-x-auto bg-slate-900/30 rounded-2xl border border-slate-800">
-            <table class="w-full text-left border-collapse" id="adminTable">
-                <thead>
+        <div class="card p-6 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="text-slate-400 uppercase text-[10px] border-b border-slate-700">
                     <tr>
-                        <th>Дата</th><th>Підрозділ</th><th>Оператор</th><th>БпЛА</th><th>Зліт-Посадка</th><th>Наліт</th><th>Дистанція</th><th>АКБ</th><th>Результат</th>
+                        <th class="p-3">Дата</th>
+                        <th class="p-3">Підрозділ</th>
+                        <th class="p-3">Оператор</th>
+                        <th class="p-3">БпЛА</th>
+                        <th class="p-3">Час</th>
+                        <th class="p-3">Маршрут</th>
+                        <th class="p-3">Результат</th>
                     </tr>
                 </thead>
-                <tbody id="adminBody"></tbody>
+                <tbody id="adminTable">
+                    <tr><td colspan="7" class="text-center p-10 text-slate-500 italic">Завантаження даних...</td></tr>
+                </tbody>
             </table>
         </div>
     </div>
 
     <script>
         const API = window.location.origin + "/api";
-        let allData = [];
 
-        async function loadAll() {
-            // Для адміна ми зробимо окремий маршрут або використаємо існуючий
-            // Але оскільки нам треба ВСІ дані, додамо в main.py новий ендпоінт
-            const res = await fetch(`${API}/get_all_flights`);
-            allData = await res.json();
-            renderTable(allData);
+        async function loadAllFlights() {
+            try {
+                const res = await fetch(API + "/get_all_flights");
+                const flights = await res.json();
+                const table = document.getElementById('adminTable');
+                
+                if (flights.length === 0) {
+                    table.innerHTML = '<tr><td colspan="7" class="text-center p-10">Даних поки немає</td></tr>';
+                    return;
+                }
+
+                table.innerHTML = flights.map(f => `
+                    <tr class="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                        <td class="p-3 font-mono">${f.date}</td>
+                        <td class="p-3 font-bold text-blue-400">${f.unit}</td>
+                        <td class="p-3 italic">${f.operator}</td>
+                        <td class="p-3 text-[10px] text-slate-400">${f.drone}</td>
+                        <td class="p-3 text-green-400 font-bold">${f.takeoff} - ${f.landing}</td>
+                        <td class="p-3 text-slate-300">${f.route}</td>
+                        <td class="p-3 text-orange-400 font-black">${f.result}</td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                document.getElementById('adminTable').innerHTML = '<tr><td colspan="7" class="text-center p-10 text-red-500">Помилка завантаження: ' + e.message + '</td></tr>';
+            }
         }
 
-        function renderTable(data) {
-            const body = document.getElementById('adminBody');
-            document.getElementById('totalCount').innerText = data.length;
-            body.innerHTML = data.map(f => `
-                <tr>
-                    <td class="font-mono text-green-500">${f.date}</td>
-                    <td class="font-bold">${f.unit}</td>
-                    <td>${f.operator}</td>
-                    <td class="text-blue-400">${f.drone.split(' (')[0]}</td>
-                    <td class="font-mono">${f.takeoff}-${f.landing}</td>
-                    <td>${f.duration} хв</td>
-                    <td>${f.distance} м</td>
-                    <td class="text-slate-500">${f.battery_id}</td>
-                    <td class="${f.result === 'Затримання' ? 'text-red-500 font-bold' : ''}">${f.result}</td>
-                </tr>
-            `).join('');
-        }
-
-        function globalFilter() {
-            const u = document.getElementById('fUnit').value.toLowerCase();
-            const o = document.getElementById('fOp').value.toLowerCase();
-            const d = document.getElementById('fDate').value;
-
-            const filtered = allData.filter(f => {
-                return (f.unit.toLowerCase().includes(u)) && 
-                       (f.operator.toLowerCase().includes(o)) && 
-                       (d === "" || f.date === d);
-            });
-            renderTable(filtered);
-        }
-
-        function exportAll() {
-            const ws = XLSX.utils.json_to_sheet(allData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Global_Log");
-            XLSX.writeFile(wb, "Global_UAV_Report.xlsx");
-        }
-        loadAll();
+        window.onload = loadAllFlights;
     </script>
 </body>
 </html>
