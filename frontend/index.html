@@ -52,8 +52,8 @@
                 <div><label class="label-style">Маршрут</label><input type="text" id="route" class="p-2"></div>
 
                 <div class="grid grid-cols-2 gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800 text-center">
-                    <div><label class="label-style text-green-500">Зліт</label><input type="text" id="t1" placeholder="0000" class="p-1 text-lg font-mono text-green-400 text-center bg-transparent border-none"></div>
-                    <div><label class="label-style text-red-500">Посадка</label><input type="text" id="t2" placeholder="0000" class="p-1 text-lg font-mono text-red-400 text-center bg-transparent border-none"></div>
+                    <div><label class="label-style text-green-500">Зліт</label><input type="text" id="t1" placeholder="930" class="p-1 text-lg font-mono text-green-400 text-center bg-transparent border-none"></div>
+                    <div><label class="label-style text-red-500">Посадка</label><input type="text" id="t2" placeholder="1015" class="p-1 text-lg font-mono text-red-400 text-center bg-transparent border-none"></div>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2">
@@ -83,15 +83,26 @@
         const API = window.location.origin + "/api";
         let draft = [];
 
-        // ЛОГІКА РОЗУМНОГО ВВОДУ ТА ENTER
+        // ОБРОБКА ENTER ТА TAB
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' || e.key === 'Tab') {
                 const active = document.activeElement;
-                if (['t1', 't2', 's1', 's2'].includes(active.id)) {
-                    e.preventDefault();
-                    formatAndNext(active);
-                } else if (active.tagName === 'INPUT' || active.tagName === 'SELECT') {
-                    if (active.id !== 'submitBtn') {
+                const timeFields = ['t1', 't2', 's1', 's2'];
+
+                if (timeFields.includes(active.id)) {
+                    // Форматуємо час перед переходом
+                    const oldVal = active.value;
+                    active.value = formatTimeInput(active.value);
+                    
+                    // Якщо натиснуто Enter, самі переводимо фокус
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        focusNext(active);
+                    }
+                    // Якщо Tab, браузер переведе фокус сам, ми просто змінили значення
+                } else if (e.key === 'Enter') {
+                    // Для інших полів Enter працює як перехід
+                    if (active.id !== 'submitBtn' && active.tagName !== 'BUTTON') {
                         e.preventDefault();
                         focusNext(active);
                     }
@@ -109,13 +120,8 @@
             return val;
         }
 
-        function formatAndNext(elem) {
-            elem.value = formatTimeInput(elem.value);
-            focusNext(elem);
-        }
-
         function focusNext(current) {
-            const inputs = Array.from(document.querySelectorAll('input, select, button'));
+            const inputs = Array.from(document.querySelectorAll('input:not([type="hidden"]), select, button:not([disabled])'));
             const index = inputs.indexOf(current);
             if (index > -1 && index < inputs.length - 1) inputs[index + 1].focus();
         }
@@ -179,12 +185,12 @@
                 conditions: `${document.getElementById('weather').value}, ${document.getElementById('mode').value}`,
                 result: document.getElementById('result').value, notes: ""
             };
-            if(!flight.takeoff.includes(':') || !flight.landing.includes(':')) return alert("Перевірте формат часу (напр. 09:30)");
+            if(!flight.takeoff.includes(':') || !flight.landing.includes(':')) return alert("Перевірте формат часу (напр. 930 -> 09:30)");
             draft.push(flight);
             localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
             renderDraft();
             document.getElementById('t1').value = ""; document.getElementById('t2').value = "";
-            document.getElementById('t1').focus(); // Повертаємо фокус на зліт для наступного польоту
+            document.getElementById('t1').focus();
         }
 
         function renderDraft() {
