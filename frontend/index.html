@@ -83,13 +83,11 @@
         const API = window.location.origin + "/api";
         let draft = [];
 
-        // УНІВЕРСАЛЬНА ОБРОБКА ДЛЯ МОБІЛЬНИХ ТА ПК
         const timeIds = ['t1', 't2', 's1', 's2'];
         
         timeIds.forEach(id => {
             const el = document.getElementById(id);
             if(el) {
-                // Спрацьовує, коли користувач просто переходить на інше поле
                 el.addEventListener('blur', function() {
                     this.value = formatTimeInput(this.value);
                 });
@@ -128,7 +126,6 @@
             const inputs = Array.from(document.querySelectorAll('input:not([type="hidden"]), select, button:not([disabled])'));
             const index = inputs.indexOf(current);
             if (index > -1 && index < inputs.length - 1) {
-                // Невелика затримка для стабільності на мобільних
                 setTimeout(() => {
                     inputs[index + 1].focus();
                 }, 20);
@@ -198,7 +195,15 @@
             draft.push(flight);
             localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
             renderDraft();
-            document.getElementById('t1').value = ""; document.getElementById('t2').value = "";
+            
+            // ОЧИЩЕННЯ ПОЛІВ ПІСЛЯ ДОДАВАННЯ
+            document.getElementById('t1').value = "";
+            document.getElementById('t2').value = "";
+            document.getElementById('dist').value = "";
+            document.getElementById('akb').value = "";
+            document.getElementById('cyc').value = "";
+            
+            // ПОВЕРНЕННЯ ФОКУСУ НА "ЗЛІТ"
             document.getElementById('t1').focus();
         }
 
