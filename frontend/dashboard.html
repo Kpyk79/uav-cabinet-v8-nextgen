@@ -14,6 +14,8 @@
         .tech-value { font-size: 10px; font-weight: 700; color: #cbd5e1; }
         textarea { scrollbar-width: none; }
         textarea::-webkit-scrollbar { display: none; }
+        /* Стиль для підсвічування при пошуку */
+        .hidden-flight { display: none !important; }
     </style>
 </head>
 <body class="max-w-2xl mx-auto">
@@ -23,6 +25,12 @@
             <i class="fa-solid fa-arrow-left mr-1"></i> Назад
         </button>
         <div id="uBadge" class="text-right text-[9px] font-bold text-green-500 uppercase leading-none italic"></div>
+    </div>
+
+    <div class="mb-3 relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
+        <input type="text" id="searchInput" onkeyup="filterFlights()" placeholder="Пошук (дата, дрон, АКБ, результат)..." 
+               class="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-2 pl-8 pr-3 text-[11px] outline-none focus:border-green-500 transition-all placeholder:text-slate-600">
     </div>
 
     <div class="grid grid-cols-2 gap-2 mb-4">
@@ -78,12 +86,12 @@
 
             container.innerHTML = Object.entries(groups).map(([session, items]) => `
                 <div class="session-block">
-                    <div class="text-[8px] font-black text-slate-500 uppercase mb-2 tracking-widest border-b border-slate-700/50 pb-1">
+                    <div class="session-title text-[8px] font-black text-slate-500 uppercase mb-2 tracking-widest border-b border-slate-700/50 pb-1">
                         ${session}
                     </div>
                     <div class="space-y-2">
                         ${items.map(f => `
-                            <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                            <div class="flight-card bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
                                 <div class="flex justify-between items-start mb-1.5">
                                     <div>
                                         <div class="text-base font-mono font-black text-white leading-none">${f.takeoff} <span class="text-slate-600 text-[10px]">→</span> ${f.landing}</div>
@@ -121,6 +129,32 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        // ФУНКЦІЯ ФІЛЬТРАЦІЇ (ПОШУКУ)
+        function filterFlights() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const sessionBlocks = document.querySelectorAll('.session-block');
+
+            sessionBlocks.forEach(block => {
+                let hasVisibleFlight = false;
+                const sessionTitle = block.querySelector('.session-title').innerText.toLowerCase();
+                const flightCards = block.querySelectorAll('.flight-card');
+
+                flightCards.forEach(card => {
+                    const cardText = card.innerText.toLowerCase();
+                    // Перевіряємо, чи є пошуковий запит у тексті картки АБО у заголовку сесії (даті)
+                    if (cardText.includes(query) || sessionTitle.includes(query)) {
+                        card.classList.remove('hidden-flight');
+                        hasVisibleFlight = true;
+                    } else {
+                        card.classList.add('hidden-flight');
+                    }
+                });
+
+                // Якщо в блоці немає жодного польоту, що підходить під пошук — ховаємо весь блок
+                block.style.display = hasVisibleFlight ? 'block' : 'none';
+            });
         }
 
         function generateCUS() {
