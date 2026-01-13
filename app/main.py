@@ -2,7 +2,7 @@ import os
 import httpx
 import json
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, Form, UploadFile, File, Query
+from fastapi import FastAPI, HTTPException, Form, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,7 +15,7 @@ load_dotenv()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
-app = FastAPI(title="UAV System v9.5 Final")
+app = FastAPI(title="UAV System v9.7 Fixed")
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,7 +25,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Telegram Config
 TELEGRAM_TOKEN = "8532620253:AAEY7ug33Ru6VS4EZeXQPqOPiMx3fB49y-Q"
 TELEGRAM_CHAT_ID = "627363301"
 
@@ -33,6 +32,7 @@ URL = os.environ.get("SUPABASE_URL")
 KEY = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(URL, KEY)
 
+# Список підрозділів (без змін)
 UNITS = ['впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"', 'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"', 'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"', 'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"', 'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"', 'віпс "Кучурган"', 'віпс "Лиманське"', "УПЗ"]
 
 class FlightEntry(BaseModel):
@@ -52,19 +52,8 @@ class FlightEntry(BaseModel):
     result: str
     notes: str = ""
 
-def calculate_duration(t1_str, t2_str):
-    try:
-        fmt = "%H:%M"
-        t1 = datetime.strptime(t1_str, fmt)
-        t2 = datetime.strptime(t2_str, fmt)
-        delta = t2 - t1
-        mins = int(delta.total_seconds() / 60)
-        return mins if mins > 0 else mins + 1440
-    except: return 0
-
 @app.post("/api/publish_with_telegram")
 async def publish_with_telegram(report_text: str = Form(...), images: list[UploadFile] = File(None)):
-    print(f"DEBUG: Спроба відправки в Telegram для ID: {TELEGRAM_CHAT_ID}")
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             if images and len(images) > 0:
@@ -74,8 +63,16 @@ async def publish_with_telegram(report_text: str = Form(...), images: list[Uploa
                     content = await img.read()
                     name = f"pic_{i}"
                     files[name] = (img.filename, content, img.content_type)
-                    media_item = {"type": "photo", "media": f"attach://{name}", "parse_mode": "HTML"}
-                    if i == 0: media_item["caption"] = report_text
+                    
+                    media_item = {
+                        "type": "photo",
+                        "media": f"attach://{name}",
+                        "parse_mode": "HTML"
+                    }
+                    # Текст донесення прикріплюємо ТІЛЬКИ до першого фото
+                    if i == 0:
+                        media_item["caption"] = report_text
+                    
                     media_list.append(media_item)
                 
                 res = await client.post(
@@ -88,16 +85,20 @@ async def publish_with_telegram(report_text: str = Form(...), images: list[Uploa
                     f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
                     data={"chat_id": TELEGRAM_CHAT_ID, "text": report_text, "parse_mode": "HTML"}
                 )
-            print(f"DEBUG: Відповідь Telegram: {res.text}")
             return {"status": "ok"}
     except Exception as e:
-        print(f"DEBUG: Помилка сервера: {str(e)}")
         return {"status": "error", "message": str(e)}
 
 @app.post("/api/add_flight")
 async def add_flight(entry: FlightEntry):
-    dur = calculate_duration(entry.takeoff, entry.landing)
-    data = {**entry.dict(), "duration": dur}
+    def calc_dur(t1, t2):
+        try:
+            fmt = "%H:%M"
+            d = datetime.strptime(t2, fmt) - datetime.strptime(t1, fmt)
+            m = int(d.total_seconds() / 60)
+            return m if m > 0 else m + 1440
+        except: return 0
+    data = {**entry.dict(), "duration": calc_dur(entry.takeoff, entry.landing)}
     supabase.table("flights").insert(data).execute()
     return {"status": "success"}
 
