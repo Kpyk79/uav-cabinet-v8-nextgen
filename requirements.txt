@@ -1,6 +1,5 @@
-fastapi[all]       # Наш новий "Мозок" (швидкий API)
-pydantic          # Контролер даних (щоб нічого не зламалося)
-gspread           # Просунута робота з Google Sheets
-pandas            # Для аналітики
-xlsxwriter        # Для гарних Excel-звітів
-python-dotenv     # Для безпечного зберігання паролів
+fastapi
+uvicorn
+supabase
+python-dotenv
+pydantic
