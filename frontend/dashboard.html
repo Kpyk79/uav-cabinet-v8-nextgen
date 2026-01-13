@@ -14,8 +14,6 @@
         .tech-value { font-size: 10px; font-weight: 700; color: #cbd5e1; }
         textarea { scrollbar-width: none; }
         textarea::-webkit-scrollbar { display: none; }
-        /* Стиль для підсвічування при пошуку */
-        .hidden-flight { display: none !important; }
     </style>
 </head>
 <body class="max-w-2xl mx-auto">
@@ -30,7 +28,7 @@
     <div class="mb-3 relative">
         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
         <input type="text" id="searchInput" onkeyup="filterFlights()" placeholder="Пошук (дата, дрон, АКБ, результат)..." 
-               class="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-2 pl-8 pr-3 text-[11px] outline-none focus:border-green-500 transition-all placeholder:text-slate-600">
+               class="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-[11px] outline-none focus:border-green-500 transition-all">
     </div>
 
     <div class="grid grid-cols-2 gap-2 mb-4">
@@ -67,12 +65,26 @@
             const u = localStorage.getItem('uav_unit'), o = localStorage.getItem('uav_op');
             if(!u || !o) return window.location.href="/";
             document.getElementById('uBadge').innerText = `${u} | ${o}`;
-
             const res = await fetch(`${API}/get_my_flights?unit=${encodeURIComponent(u)}&operator=${encodeURIComponent(o)}`);
             flights = await res.json();
-            
             renderBlocks();
             generateCUS();
+        }
+
+        // ШВИДКИЙ ФІЛЬТР
+        function filterFlights() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            const blocks = document.querySelectorAll('.session-block');
+            blocks.forEach(block => {
+                const cards = Array.from(block.querySelectorAll('.flight-card'));
+                let blockVisible = false;
+                cards.forEach(card => {
+                    const match = card.innerText.toLowerCase().includes(q) || block.dataset.session.toLowerCase().includes(q);
+                    card.style.display = match ? 'block' : 'none';
+                    if(match) blockVisible = true;
+                });
+                block.style.display = blockVisible ? 'block' : 'none';
+            });
         }
 
         function renderBlocks() {
@@ -85,8 +97,8 @@
             });
 
             container.innerHTML = Object.entries(groups).map(([session, items]) => `
-                <div class="session-block">
-                    <div class="session-title text-[8px] font-black text-slate-500 uppercase mb-2 tracking-widest border-b border-slate-700/50 pb-1">
+                <div class="session-block" data-session="${session}">
+                    <div class="text-[8px] font-black text-slate-500 uppercase mb-2 tracking-widest border-b border-slate-700/50 pb-1">
                         ${session}
                     </div>
                     <div class="space-y-2">
@@ -94,7 +106,7 @@
                             <div class="flight-card bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
                                 <div class="flex justify-between items-start mb-1.5">
                                     <div>
-                                        <div class="text-base font-mono font-black text-white leading-none">${f.takeoff} <span class="text-slate-600 text-[10px]">→</span> ${f.landing}</div>
+                                        <div class="text-base font-mono font-black text-white leading-none">${f.takeoff} → ${f.landing}</div>
                                         <div class="text-[8px] text-green-500 font-black uppercase mt-0.5">${f.drone.split(' (')[0]}</div>
                                     </div>
                                     <div class="text-right">
@@ -102,59 +114,20 @@
                                         <div class="text-[7px] ${f.result === 'Затримання' ? 'text-red-500' : 'text-slate-600'} font-bold uppercase">${f.result}</div>
                                     </div>
                                 </div>
-                                
                                 <div class="grid grid-cols-3 gap-1 py-1.5 border-t border-slate-800/40">
-                                    <div>
-                                        <div class="tech-label">Дистанція</div>
-                                        <div class="tech-value text-blue-400">${f.distance}м</div>
-                                    </div>
-                                    <div class="text-center">
-                                        <div class="tech-label">АКБ</div>
-                                        <div class="tech-value">${f.battery_id}</div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="tech-label">Цикли</div>
-                                        <div class="tech-value">${f.battery_cycles}</div>
-                                    </div>
+                                    <div><div class="tech-label">Дистанція</div><div class="tech-value text-blue-400">${f.distance}м</div></div>
+                                    <div class="text-center"><div class="tech-label">АКБ</div><div class="tech-value">${f.battery_id}</div></div>
+                                    <div class="text-right"><div class="tech-label">Цикли</div><div class="tech-value">${f.battery_cycles}</div></div>
                                 </div>
-
                                 <div class="flex justify-between items-center pt-1 mt-1 border-t border-slate-800/20">
                                     <div class="text-[7px] text-slate-600 italic truncate max-w-[80%]">${f.route}</div>
-                                    <button onclick="del(${f.id})" class="text-red-900/50 hover:text-red-500 transition-colors">
-                                        <i class="fa-solid fa-trash-can text-[8px]"></i>
-                                    </button>
+                                    <button onclick="del(${f.id})" class="text-red-900/50 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash-can text-[8px]"></i></button>
                                 </div>
                             </div>
                         `).join('')}
                     </div>
                 </div>
             `).join('');
-        }
-
-        // ФУНКЦІЯ ФІЛЬТРАЦІЇ (ПОШУКУ)
-        function filterFlights() {
-            const query = document.getElementById('searchInput').value.toLowerCase();
-            const sessionBlocks = document.querySelectorAll('.session-block');
-
-            sessionBlocks.forEach(block => {
-                let hasVisibleFlight = false;
-                const sessionTitle = block.querySelector('.session-title').innerText.toLowerCase();
-                const flightCards = block.querySelectorAll('.flight-card');
-
-                flightCards.forEach(card => {
-                    const cardText = card.innerText.toLowerCase();
-                    // Перевіряємо, чи є пошуковий запит у тексті картки АБО у заголовку сесії (даті)
-                    if (cardText.includes(query) || sessionTitle.includes(query)) {
-                        card.classList.remove('hidden-flight');
-                        hasVisibleFlight = true;
-                    } else {
-                        card.classList.add('hidden-flight');
-                    }
-                });
-
-                // Якщо в блоці немає жодного польоту, що підходить під пошук — ховаємо весь блок
-                block.style.display = hasVisibleFlight ? 'block' : 'none';
-            });
         }
 
         function generateCUS() {
@@ -169,14 +142,12 @@
         }
 
         async function del(id) { if(confirm("Видалити?")) { await fetch(`${API}/delete_flight/${id}`, {method:'DELETE'}); load(); } }
-
         function copyText(id) {
             const el = document.getElementById(id);
             if (el.value === "---") return;
             navigator.clipboard.writeText(el.value);
             alert("Скопійовано!");
         }
-
         function exportToExcel() {
             const ws = XLSX.utils.json_to_sheet(flights.map(f => ({
                 "Дата": f.date, "Зміна": f.shift_time, "Модель": f.drone, "Зліт": f.takeoff, "Посадка": f.landing, 
