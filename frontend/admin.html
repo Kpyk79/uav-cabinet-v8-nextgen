@@ -4,6 +4,7 @@
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel | UAV Monitor</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
@@ -18,9 +19,12 @@
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div>
                 <h1 class="text-3xl font-black uppercase italic text-green-500 leading-none">Глобальний моніторинг</h1>
-                <p class="text-slate-500 text-xs mt-2 uppercase font-bold tracking-widest">Усі вильоти підрозділів у реальному часі</p>
+                <p class="text-slate-500 text-xs mt-2 uppercase font-bold tracking-widest text-blue-400">Усі підрозділи системи</p>
             </div>
             <div class="flex gap-2 w-full md:w-auto">
+                <button onclick="exportAllToExcel()" class="bg-green-600 hover:bg-green-500 px-6 py-2.5 rounded-xl font-black uppercase text-xs tracking-wider transition-all flex items-center">
+                    <i class="fa-solid fa-file-excel mr-2"></i> Експорт XLSX
+                </button>
                 <button onclick="location.reload()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2.5 rounded-xl font-bold transition-all"><i class="fa-solid fa-sync"></i></button>
                 <button onclick="window.location.href='/'" class="bg-blue-600 hover:bg-blue-500 px-6 py-2.5 rounded-xl font-black uppercase text-xs tracking-wider transition-all">На головну</button>
             </div>
@@ -28,24 +32,24 @@
 
         <div class="mb-6 relative">
             <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
-            <input type="text" id="adminSearch" onkeyup="filterTable()" placeholder="Швидкий фільтр (Підрозділ, Оператор, Результат, Дата)..." class="search-input text-sm">
+            <input type="text" id="adminSearch" onkeyup="filterTable()" placeholder="Швидкий фільтр (Підрозділ, Оператор, Результат, Дата, Модель БпЛА)..." class="search-input text-sm">
         </div>
 
         <div class="card p-4 overflow-x-auto shadow-2xl">
-            <table class="w-full text-left text-sm border-separate border-spacing-y-2">
+            <table class="w-full text-left text-sm border-separate border-spacing-y-2" id="mainDataTable">
                 <thead class="text-slate-400 uppercase text-[10px] font-black tracking-widest">
                     <tr>
                         <th class="px-4 py-2">Дата</th>
                         <th class="px-4 py-2">Підрозділ</th>
                         <th class="px-4 py-2">Оператор</th>
                         <th class="px-4 py-2">БпЛА</th>
-                        <th class="px-4 py-2">Час вильоту</th>
+                        <th class="px-4 py-2">Час</th>
                         <th class="px-4 py-2">Маршрут</th>
                         <th class="px-4 py-2">Результат</th>
                     </tr>
                 </thead>
                 <tbody id="adminTableBody">
-                    <tr><td colspan="7" class="text-center p-20 text-slate-500 italic">Завантаження бази даних...</td></tr>
+                    <tr><td colspan="7" class="text-center p-20 text-slate-500 italic uppercase tracking-widest animate-pulse">Зчитування бази даних...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -61,27 +65,27 @@
                 allFlights = await res.json();
                 renderTable(allFlights);
             } catch (e) {
-                document.getElementById('adminTableBody').innerHTML = `<tr><td colspan="7" class="text-center p-10 text-red-500 font-bold">Помилка з'єднання: ${e.message}</td></tr>`;
+                document.getElementById('adminTableBody').innerHTML = `<tr><td colspan="7" class="text-center p-10 text-red-500 font-bold">Помилка API: ${e.message}</td></tr>`;
             }
         }
 
         function renderTable(data) {
             const tbody = document.getElementById('adminTableBody');
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-10 text-slate-500">Записів не знайдено</td></tr>';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-10 text-slate-500">Жодного запису не знайдено</td></tr>';
                 return;
             }
 
             tbody.innerHTML = data.map(f => `
-                <tr class="bg-slate-800/30 hover:bg-slate-800/80 transition-all rounded-lg overflow-hidden">
-                    <td class="px-4 py-4 font-mono text-xs text-slate-400 border-l-2 border-green-500">${f.date}</td>
+                <tr class="bg-slate-800/30 hover:bg-slate-800/80 transition-all rounded-lg overflow-hidden group">
+                    <td class="px-4 py-4 font-mono text-xs text-slate-400 border-l-2 border-green-500 group-hover:border-blue-500 transition-all">${f.date}</td>
                     <td class="px-4 py-4 font-black text-blue-400 uppercase text-[11px]">${f.unit}</td>
                     <td class="px-4 py-4 font-bold text-slate-200">${f.operator}</td>
                     <td class="px-4 py-4 text-[10px] text-slate-500 uppercase">${f.drone.split(' (')[0]}</td>
-                    <td class="px-4 py-4 font-black text-green-400">${f.takeoff} — ${f.landing}</td>
-                    <td class="px-4 py-4 text-xs text-slate-400 italic">${f.route}</td>
+                    <td class="px-4 py-4 font-black text-green-400 font-mono">${f.takeoff} — ${f.landing}</td>
+                    <td class="px-4 py-4 text-xs text-slate-400 italic">${f.route || '---'}</td>
                     <td class="px-4 py-4">
-                        <span class="px-2 py-1 rounded text-[9px] font-black uppercase ${f.result === 'Затримання' ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}">
+                        <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase ${f.result === 'Затримання' ? 'bg-red-500/20 text-red-500 border border-red-500/30' : 'bg-green-500/20 text-green-500 border border-green-500/30'}">
                             ${f.result}
                         </span>
                     </td>
@@ -89,17 +93,45 @@
             `).join('');
         }
 
-        // ФУНКЦІЯ ФІЛЬТРАЦІЇ
+        // ФУНКЦІЯ ФІЛЬТРАЦІЇ (ПОШУК)
         function filterTable() {
             const query = document.getElementById('adminSearch').value.toLowerCase();
             const filtered = allFlights.filter(f => {
-                return f.unit.toLowerCase().includes(query) || 
-                       f.operator.toLowerCase().includes(query) || 
-                       f.result.toLowerCase().includes(query) ||
-                       f.date.toLowerCase().includes(query) ||
-                       f.drone.toLowerCase().includes(query);
+                return (f.unit || "").toLowerCase().includes(query) || 
+                       (f.operator || "").toLowerCase().includes(query) || 
+                       (f.result || "").toLowerCase().includes(query) ||
+                       (f.date || "").toLowerCase().includes(query) ||
+                       (f.drone || "").toLowerCase().includes(query) ||
+                       (f.route || "").toLowerCase().includes(query);
             });
             renderTable(filtered);
+        }
+
+        // ФУНКЦІЯ ЕКСПОРТУ
+        function exportAllToExcel() {
+            if (allFlights.length === 0) return alert("Немає даних для експорту");
+            
+            // Створюємо масив для Excel
+            const dataToExport = allFlights.map(f => ({
+                "Дата": f.date,
+                "Підрозділ": f.unit,
+                "Оператор": f.operator,
+                "БпЛА": f.drone,
+                "Зліт": f.takeoff,
+                "Посадка": f.landing,
+                "Наліт (хв)": f.duration,
+                "Дистанція (м)": f.distance,
+                "АКБ": f.battery_id,
+                "Маршрут": f.route,
+                "Результат": f.result
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Усі Польоти");
+            
+            // Завантаження файлу
+            XLSX.writeFile(wb, `UAV_GLOBAL_REPORT_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         window.onload = loadData;
