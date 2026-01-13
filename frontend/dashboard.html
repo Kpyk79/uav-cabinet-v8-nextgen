@@ -12,47 +12,33 @@
         .session-block { background: rgba(30, 41, 59, 0.4); border-left: 3px solid #22c55e; margin-bottom: 1rem; border-radius: 1rem; padding: 0.75rem; }
         .tech-label { font-size: 7px; text-transform: uppercase; color: #64748b; font-weight: 800; letter-spacing: 0.02em; line-height: 1; }
         .tech-value { font-size: 10px; font-weight: 700; color: #cbd5e1; }
-        textarea { scrollbar-width: none; }
-        textarea::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="max-w-2xl mx-auto">
-
     <div class="flex justify-between items-center mb-3 bg-slate-800/80 p-3 rounded-xl border border-slate-700">
-        <button onclick="window.location.href='/'" class="text-[9px] font-black uppercase tracking-tighter bg-slate-700 px-3 py-1.5 rounded-lg">
-            <i class="fa-solid fa-arrow-left mr-1"></i> Назад
-        </button>
-        <div id="uBadge" class="text-right text-[9px] font-bold text-green-500 uppercase leading-none italic"></div>
+        <button onclick="window.location.href='/'" class="text-[9px] font-black uppercase tracking-tighter bg-slate-700 px-3 py-1.5 rounded-lg"><i class="fa-solid fa-arrow-left mr-1"></i> Назад</button>
+        <div id="uBadge" class="text-right text-[9px] font-bold text-green-500 uppercase italic leading-none"></div>
     </div>
 
     <div class="mb-3 relative">
         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[10px]"></i>
-        <input type="text" id="searchInput" onkeyup="filterFlights()" placeholder="Пошук (дата, дрон, АКБ, результат)..." 
-               class="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-[11px] outline-none focus:border-green-500 transition-all">
+        <input type="text" id="searchInput" onkeyup="filterFlights()" placeholder="Пошук (дата, дрон, АКБ)..." class="w-full bg-slate-800/50 border border-slate-700 rounded-xl py-2.5 pl-9 pr-3 text-[11px] outline-none focus:border-green-500">
     </div>
 
     <div class="grid grid-cols-2 gap-2 mb-4">
         <div class="bg-slate-800/50 p-2 rounded-xl border border-slate-700">
-            <div class="flex justify-between mb-1">
-                <span class="text-[8px] font-black uppercase text-green-600">До 00:00</span>
-                <button onclick="copyText('cusBefore')" class="text-[8px] text-blue-400 font-bold uppercase">Копіювати</button>
-            </div>
+            <div class="flex justify-between mb-1"><span class="text-[8px] font-black uppercase text-green-600">До 00:00</span><button onclick="copyText('cusBefore')" class="text-[8px] text-blue-400 font-bold uppercase">Копіювати</button></div>
             <textarea id="cusBefore" readonly class="w-full bg-slate-900/50 rounded-lg p-2 text-[10px] h-16 text-slate-400 font-mono outline-none"></textarea>
         </div>
         <div class="bg-slate-800/50 p-2 rounded-xl border border-slate-700">
-            <div class="flex justify-between mb-1">
-                <span class="text-[8px] font-black uppercase text-blue-600">Після 00:00</span>
-                <button onclick="copyText('cusAfter')" class="text-[8px] text-blue-400 font-bold uppercase">Копіювати</button>
-            </div>
+            <div class="flex justify-between mb-1"><span class="text-[8px] font-black uppercase text-blue-600">Після 00:00</span><button onclick="copyText('cusAfter')" class="text-[8px] text-blue-400 font-bold uppercase">Копіювати</button></div>
             <textarea id="cusAfter" readonly class="w-full bg-slate-900/50 rounded-lg p-2 text-[10px] h-16 text-slate-400 font-mono outline-none"></textarea>
         </div>
     </div>
 
     <div class="flex justify-between items-center mb-3 px-1">
         <h1 class="text-sm font-black italic uppercase text-white tracking-widest">Журнал</h1>
-        <button onclick="exportToExcel()" class="bg-blue-600 px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-tighter">
-            <i class="fa-solid fa-file-excel mr-1"></i> XLSX
-        </button>
+        <button onclick="exportToExcel()" class="bg-blue-600 px-3 py-1 rounded-lg text-[8px] font-black uppercase"><i class="fa-solid fa-file-excel mr-1"></i> XLSX</button>
     </div>
 
     <div id="logContent" class="space-y-2"></div>
@@ -71,7 +57,6 @@
             generateCUS();
         }
 
-        // ШВИДКИЙ ФІЛЬТР
         function filterFlights() {
             const q = document.getElementById('searchInput').value.toLowerCase();
             const blocks = document.querySelectorAll('.session-block');
@@ -95,24 +80,15 @@
                 if (!groups[key]) groups[key] = [];
                 groups[key].push(f);
             });
-
             container.innerHTML = Object.entries(groups).map(([session, items]) => `
                 <div class="session-block" data-session="${session}">
-                    <div class="text-[8px] font-black text-slate-500 uppercase mb-2 tracking-widest border-b border-slate-700/50 pb-1">
-                        ${session}
-                    </div>
+                    <div class="text-[8px] font-black text-slate-500 uppercase mb-2 tracking-widest border-b border-slate-700/50 pb-1">${session}</div>
                     <div class="space-y-2">
                         ${items.map(f => `
                             <div class="flight-card bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
                                 <div class="flex justify-between items-start mb-1.5">
-                                    <div>
-                                        <div class="text-base font-mono font-black text-white leading-none">${f.takeoff} → ${f.landing}</div>
-                                        <div class="text-[8px] text-green-500 font-black uppercase mt-0.5">${f.drone.split(' (')[0]}</div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="text-[10px] font-black text-white">${f.duration} <span class="text-[7px] text-slate-500">хв</span></div>
-                                        <div class="text-[7px] ${f.result === 'Затримання' ? 'text-red-500' : 'text-slate-600'} font-bold uppercase">${f.result}</div>
-                                    </div>
+                                    <div><div class="text-base font-mono font-black text-white leading-none">${f.takeoff} → ${f.landing}</div><div class="text-[8px] text-green-500 font-black uppercase mt-0.5">${f.drone.split(' (')[0]}</div></div>
+                                    <div class="text-right"><div class="text-[10px] font-black text-white">${f.duration} <span class="text-[7px] text-slate-500">хв</span></div><div class="text-[7px] font-bold uppercase">${f.result}</div></div>
                                 </div>
                                 <div class="grid grid-cols-3 gap-1 py-1.5 border-t border-slate-800/40">
                                     <div><div class="tech-label">Дистанція</div><div class="tech-value text-blue-400">${f.distance}м</div></div>
@@ -121,7 +97,7 @@
                                 </div>
                                 <div class="flex justify-between items-center pt-1 mt-1 border-t border-slate-800/20">
                                     <div class="text-[7px] text-slate-600 italic truncate max-w-[80%]">${f.route}</div>
-                                    <button onclick="del(${f.id})" class="text-red-900/50 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash-can text-[8px]"></i></button>
+                                    <button onclick="del(${f.id})" class="text-red-900/50 hover:text-red-500"><i class="fa-solid fa-trash-can text-[8px]"></i></button>
                                 </div>
                             </div>
                         `).join('')}
