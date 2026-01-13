@@ -1,6 +1,8 @@
 import os
+import httpx
+import json
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Form, UploadFile, File, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,13 +10,12 @@ from pydantic import BaseModel
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# Завантаження змінних оточення
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
-app = FastAPI(title="UAV Command System v8.9 Admin Edition")
+app = FastAPI(title="UAV System v9.5 Final")
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,20 +25,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Підключення до бази даних Supabase
+# Telegram Config
+TELEGRAM_TOKEN = "8532620253:AAEY7ug33Ru6VS4EZeXQPqOPiMx3fB49y-Q"
+TELEGRAM_CHAT_ID = "627363301"
+
 URL = os.environ.get("SUPABASE_URL")
 KEY = os.environ.get("SUPABASE_KEY")
 supabase: Client = create_client(URL, KEY)
 
-# СТРОЙОВА ЗАПИСКА
-UNITS = [
-    'впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"', 
-    'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"', 
-    'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"', 
-    'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"', 
-    'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"', 
-    'віпс "Кучурган"', 'віпс "Лиманське"', "УПЗ"
-]
+UNITS = ['впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"', 'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"', 'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"', 'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"', 'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"', 'віпс "Кучурган"', 'віпс "Лиманське"', "УПЗ"]
 
 class FlightEntry(BaseModel):
     date: str
@@ -64,19 +60,50 @@ def calculate_duration(t1_str, t2_str):
         delta = t2 - t1
         mins = int(delta.total_seconds() / 60)
         return mins if mins > 0 else mins + 1440
-    except:
-        return 0
+    except: return 0
 
-# --- API ENDPOINTS ---
+@app.post("/api/publish_with_telegram")
+async def publish_with_telegram(report_text: str = Form(...), images: list[UploadFile] = File(None)):
+    print(f"DEBUG: Спроба відправки в Telegram для ID: {TELEGRAM_CHAT_ID}")
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            if images and len(images) > 0:
+                files = {}
+                media_list = []
+                for i, img in enumerate(images):
+                    content = await img.read()
+                    name = f"pic_{i}"
+                    files[name] = (img.filename, content, img.content_type)
+                    media_item = {"type": "photo", "media": f"attach://{name}", "parse_mode": "HTML"}
+                    if i == 0: media_item["caption"] = report_text
+                    media_list.append(media_item)
+                
+                res = await client.post(
+                    f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMediaGroup",
+                    data={"chat_id": TELEGRAM_CHAT_ID, "media": json.dumps(media_list)},
+                    files=files
+                )
+            else:
+                res = await client.post(
+                    f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+                    data={"chat_id": TELEGRAM_CHAT_ID, "text": report_text, "parse_mode": "HTML"}
+                )
+            print(f"DEBUG: Відповідь Telegram: {res.text}")
+            return {"status": "ok"}
+    except Exception as e:
+        print(f"DEBUG: Помилка сервера: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/add_flight")
+async def add_flight(entry: FlightEntry):
+    dur = calculate_duration(entry.takeoff, entry.landing)
+    data = {**entry.dict(), "duration": dur}
+    supabase.table("flights").insert(data).execute()
+    return {"status": "success"}
 
 @app.get("/api/get_options")
 async def get_options():
-    return {
-        "units": UNITS,
-        "weather": ["Нормальні", "Складні погодні умови", "Несприятливі погодні умови"],
-        "flight_modes": ["Норма", "Політ в АТТІ"],
-        "results": ["Без ознак порушення", "Затримання"]
-    }
+    return {"units": UNITS, "weather": ["Нормальні", "Складні погодні умови", "Несприятливі погодні умови"], "flight_modes": ["Норма", "Політ в АТТІ"], "results": ["Без ознак порушення", "Затримання"]}
 
 @app.get("/api/get_unit_drones")
 async def get_unit_drones(unit: str):
@@ -88,42 +115,11 @@ async def get_my_flights(unit: str, operator: str):
     res = supabase.table("flights").select("*").eq("unit", unit).eq("operator", operator).order("id", desc=True).execute()
     return res.data
 
-# НОВИЙ МАРШРУТ ДЛЯ АДМІНІСТРАТОРА
-@app.get("/api/get_all_flights")
-async def get_all_flights():
-    """Отримує всі записи з бази для глобального моніторингу"""
-    try:
-        res = supabase.table("flights").select("*").order("id", desc=True).execute()
-        return res.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/add_flight")
-async def add_flight(entry: FlightEntry):
-    dur = calculate_duration(entry.takeoff, entry.landing)
-    data = {**entry.dict(), "duration": dur}
-    supabase.table("flights").insert(data).execute()
-    return {"status": "success", "duration": dur}
-
-@app.delete("/api/delete_flight/{f_id}")
-async def delete_f(f_id: int):
-    supabase.table("flights").delete().eq("id", f_id).execute()
-    return {"status": "ok"}
-
-# --- СТАТИЧНІ ФАЙЛИ ТА СТОРІНКИ ---
-
 if os.path.exists(FRONTEND_DIR):
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 @app.get("/")
-async def read_index():
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+async def read_index(): return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
 @app.get("/dashboard")
-async def read_dashboard():
-    return FileResponse(os.path.join(FRONTEND_DIR, "dashboard.html"))
-
-# СТОРІНКА АДМІНІСТРАТОРА
-@app.get("/admin")
-async def read_admin():
-    return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
+async def read_dashboard(): return FileResponse(os.path.join(FRONTEND_DIR, "dashboard.html"))
