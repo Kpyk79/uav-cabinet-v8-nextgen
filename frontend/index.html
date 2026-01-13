@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UAV Workstation | Mobile Optimized</title>
+    <title>UAV Workstation | Final Fixed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -43,39 +43,34 @@
                         <div class="flex gap-1"><input type="time" id="s1" value="08:00" class="p-2 text-center"><input type="time" id="s2" value="20:00" class="p-2 text-center"></div>
                     </div>
                 </div>
-
-                <div>
-                    <label class="label-style">Оберіть БпЛА</label>
-                    <select id="drone" class="p-2 text-green-400 font-bold"><option>Завантаження...</option></select>
-                </div>
-                
+                <div><label class="label-style">БпЛА</label><select id="drone" class="p-2 text-green-400 font-bold"><option>Завантаження...</option></select></div>
                 <div><label class="label-style">Маршрут</label><input type="text" id="route" class="p-2"></div>
-
                 <div class="grid grid-cols-2 gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800 text-center">
                     <div><label class="label-style text-green-500">Зліт</label><input type="tel" id="t1" placeholder="930" class="p-1 text-lg font-mono text-green-400 text-center bg-transparent border-none"></div>
                     <div><label class="label-style text-red-500">Посадка</label><input type="tel" id="t2" placeholder="1015" class="p-1 text-lg font-mono text-red-400 text-center bg-transparent border-none"></div>
                 </div>
-
                 <div class="grid grid-cols-3 gap-2">
                     <div><label class="label-style">Дист.(м)</label><input type="number" id="dist" inputmode="numeric" class="p-2"></div>
                     <div><label class="label-style">№ АКБ</label><input type="text" id="akb" class="p-2"></div>
                     <div><label class="label-style">Цикли</label><input type="number" id="cyc" inputmode="numeric" class="p-2"></div>
                 </div>
-
                 <div class="grid grid-cols-3 gap-2">
                     <div><label class="label-style">Погода</label><select id="weather" class="p-2 text-[10px]"></select></div>
                     <div><label class="label-style">Умови</label><select id="mode" class="p-2 text-[10px]"></select></div>
                     <div><label class="label-style text-orange-400">Результат</label><select id="result" class="p-2 text-[10px] text-orange-400 font-bold"></select></div>
                 </div>
-
-                <button type="button" id="submitBtn" onclick="addToDraft()" class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Додати в чернетку</button>
+                <div class="bg-slate-900/40 p-3 rounded-xl border border-dashed border-slate-700">
+                    <label class="label-style">Скріншоти / Фото донесення</label>
+                    <input type="file" id="photos" multiple accept="image/*" class="text-[10px] text-slate-500">
+                </div>
+                <button type="button" onclick="addToDraft()" class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Додати в чернетку</button>
             </form>
         </div>
 
         <div class="lg:w-1/2 glass p-4 rounded-[1.5rem] flex flex-col">
             <h2 class="text-[11px] font-black uppercase text-slate-500 mb-2 italic">Чернетка (<span id="draftCount">0</span>)</h2>
             <div id="draftList" class="flex-grow space-y-2 overflow-y-auto max-h-[350px]"></div>
-            <button id="publishBtn" onclick="publishAll()" disabled class="w-full btn-green py-4 rounded-xl text-slate-900 mt-4 shadow-xl">Опублікувати</button>
+            <button id="publishBtn" onclick="publishAll()" disabled class="w-full btn-green py-4 rounded-xl text-slate-900 mt-4 shadow-xl uppercase font-black">Опублікувати донесення</button>
         </div>
     </div>
 
@@ -83,15 +78,21 @@
         const API = window.location.origin + "/api";
         let draft = [];
 
+        // ФОРМАТУВАННЯ ЧАСУ
+        function formatTimeInput(val) {
+            let clean = val.replace(/\D/g, '');
+            if (clean.length === 3) clean = '0' + clean;
+            if (clean.length === 4) {
+                let h = clean.slice(0, 2), m = clean.slice(2, 4);
+                if (parseInt(h) < 24 && parseInt(m) < 60) return h + ":" + m;
+            }
+            return val;
+        }
+
         const timeIds = ['t1', 't2', 's1', 's2'];
-        
         timeIds.forEach(id => {
             const el = document.getElementById(id);
-            if(el) {
-                el.addEventListener('blur', function() {
-                    this.value = formatTimeInput(this.value);
-                });
-            }
+            if(el) el.addEventListener('blur', function() { this.value = formatTimeInput(this.value); });
         });
 
         document.addEventListener('keydown', function(e) {
@@ -99,124 +100,83 @@
                 const active = document.activeElement;
                 if (timeIds.includes(active.id)) {
                     active.value = formatTimeInput(active.value);
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        focusNext(active);
-                    }
-                } else if (e.key === 'Enter') {
-                    if (active.id !== 'submitBtn' && active.tagName !== 'BUTTON') {
-                        e.preventDefault();
-                        focusNext(active);
-                    }
+                    if (e.key === 'Enter') { e.preventDefault(); focusNext(active); }
+                } else if (e.key === 'Enter' && active.tagName !== 'BUTTON') {
+                    e.preventDefault(); focusNext(active);
                 }
             }
         });
 
-        function formatTimeInput(val) {
-            let clean = val.replace(/\D/g, '');
-            if (clean.length === 3) clean = '0' + clean;
-            if (clean.length === 4) {
-                let h = clean.slice(0, 2), m = clean.slice(2, 4);
-                if (parseInt(h) < 24 && parseInt(m) < 60) return `${h}:${m}`;
-            }
-            return val;
-        }
-
         function focusNext(current) {
             const inputs = Array.from(document.querySelectorAll('input:not([type="hidden"]), select, button:not([disabled])'));
             const index = inputs.indexOf(current);
-            if (index > -1 && index < inputs.length - 1) {
-                setTimeout(() => {
-                    inputs[index + 1].focus();
-                }, 20);
-            }
+            if (index > -1 && index < inputs.length - 1) setTimeout(() => inputs[index + 1].focus(), 20);
         }
 
         window.onload = async function() {
             const res = await fetch(API + "/get_options");
             const opt = await res.json();
-            document.getElementById('loginUnit').innerHTML = opt.units.map(u => `<option>${u}</option>`).join('');
-            document.getElementById('weather').innerHTML = opt.weather.map(w => `<option>${w}</option>`).join('');
-            document.getElementById('mode').innerHTML = opt.flight_modes.map(m => `<option>${m}</option>`).join('');
-            document.getElementById('result').innerHTML = opt.results.map(r => `<option>${r}</option>`).join('');
+            document.getElementById('loginUnit').innerHTML = opt.units.map(u => "<option>" + u + "</option>").join('');
+            document.getElementById('weather').innerHTML = opt.weather.map(w => "<option>" + w + "</option>").join('');
+            document.getElementById('mode').innerHTML = opt.flight_modes.map(m => "<option>" + m + "</option>").join('');
+            document.getElementById('result').innerHTML = opt.results.map(r => "<option>" + r + "</option>").join('');
 
             const u = localStorage.getItem('uav_unit'), o = localStorage.getItem('uav_op');
             if (u && o) {
                 document.getElementById('loginUnit').value = u; 
                 document.getElementById('loginOp').value = o;
-                document.getElementById('userBadge').innerText = `${u} | ${o}`;
+                document.getElementById('userBadge').innerText = u + " | " + o;
                 showMain(u);
-            } else { document.getElementById('loginScreen').classList.remove('hidden'); }
+            } else document.getElementById('loginScreen').classList.remove('hidden');
 
             const cached = localStorage.getItem('uav_draft_cache');
             if (cached) { draft = JSON.parse(cached); renderDraft(); }
-            const lr = localStorage.getItem('last_route');
-            if (lr) document.getElementById('route').value = lr;
+            if (localStorage.getItem('last_route')) document.getElementById('route').value = localStorage.getItem('last_route');
         };
 
         async function showMain(unit) {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('mainScreen').classList.remove('hidden');
-            try {
-                const resD = await fetch(`${API}/get_unit_drones?unit=${encodeURIComponent(unit)}`);
-                const drones = await resD.json();
-                const droneSelect = document.getElementById('drone');
-                if(drones && drones.length > 0) {
-                    droneSelect.innerHTML = drones.map(d => `<option value="${d.model} (${d.serial_number})">${d.model} [${d.serial_number}]</option>`).join('');
-                } else { droneSelect.innerHTML = '<option>БпЛА не знайдено</option>'; }
-            } catch (e) { document.getElementById('drone').innerHTML = '<option>Помилка завантаження</option>'; }
+            const resD = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(unit));
+            const drones = await resD.json();
+            document.getElementById('drone').innerHTML = drones.map(d => '<option value="' + d.model + ' (S/N: ' + d.serial_number + ')">' + d.model + ' [' + d.serial_number + ']</option>').join('');
             document.getElementById('date').valueAsDate = new Date();
         }
 
         function saveAuth() {
-            const u = document.getElementById('loginUnit').value, o = document.getElementById('loginOp').value;
-            if(!o) return alert("Введіть прізвище");
-            localStorage.setItem('uav_unit', u); localStorage.setItem('uav_op', o);
+            localStorage.setItem('uav_unit', document.getElementById('loginUnit').value);
+            localStorage.setItem('uav_op', document.getElementById('loginOp').value);
             location.reload();
         }
 
         function addToDraft() {
-            const route = document.getElementById('route').value;
-            localStorage.setItem('last_route', route);
             const flight = {
                 id: Date.now(),
                 date: document.getElementById('date').value,
-                shift_time: `${document.getElementById('s1').value}-${document.getElementById('s2').value}`,
+                shift_time: document.getElementById('s1').value + " - " + document.getElementById('s2').value,
                 operator: localStorage.getItem('uav_op'), unit: localStorage.getItem('uav_unit'),
-                drone: document.getElementById('drone').value, route: route,
+                drone: document.getElementById('drone').value, route: document.getElementById('route').value,
                 takeoff: document.getElementById('t1').value, landing: document.getElementById('t2').value,
                 distance: parseInt(document.getElementById('dist').value) || 0,
                 battery_id: document.getElementById('akb').value, battery_cycles: parseInt(document.getElementById('cyc').value) || 0,
-                mission_type: "Патрулювання",
-                conditions: `${document.getElementById('weather').value}, ${document.getElementById('mode').value}`,
+                mission_type: "Патрулювання", conditions: document.getElementById('weather').value + ", " + document.getElementById('mode').value,
                 result: document.getElementById('result').value, notes: ""
             };
             if(!flight.takeoff.includes(':') || !flight.landing.includes(':')) return alert("Перевірте час!");
             draft.push(flight);
             localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
+            localStorage.setItem('last_route', flight.route);
             renderDraft();
-            
-            // ОЧИЩЕННЯ ПОЛІВ ПІСЛЯ ДОДАВАННЯ
-            document.getElementById('t1').value = "";
-            document.getElementById('t2').value = "";
-            document.getElementById('dist').value = "";
-            document.getElementById('akb').value = "";
-            document.getElementById('cyc').value = "";
-            
-            // ПОВЕРНЕННЯ ФОКУСУ НА "ЗЛІТ"
+            ['t1', 't2', 'dist', 'akb', 'cyc'].forEach(id => document.getElementById(id).value = "");
             document.getElementById('t1').focus();
         }
 
         function renderDraft() {
-            const list = document.getElementById('draftList');
             document.getElementById('draftCount').innerText = draft.length;
             document.getElementById('publishBtn').disabled = draft.length === 0;
-            list.innerHTML = draft.map(f => `
+            document.getElementById('draftList').innerHTML = draft.map(f => `
                 <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700 flex justify-between items-center">
-                    <div class="text-[10px]">
-                        <div class="font-bold text-green-500">${f.takeoff} → ${f.landing}</div>
-                        <div class="text-slate-400 uppercase">${f.drone.split(' (')[0]}</div>
-                    </div>
+                    <div class="text-[10px]"><div class="font-bold text-green-500">${f.takeoff} → ${f.landing}</div><div class="text-slate-400 uppercase">${f.drone.split(' (')[0]}</div></div>
                     <button onclick="removeFromDraft(${f.id})" class="text-red-500 p-2"><i class="fa-solid fa-trash-can"></i></button>
                 </div>
             `).join('');
@@ -225,10 +185,50 @@
         function removeFromDraft(id) { draft = draft.filter(f => f.id !== id); localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); renderDraft(); }
 
         async function publishAll() {
-            const btn = document.getElementById('publishBtn'); btn.disabled = true;
-            for (const f of draft) { await fetch(API + "/add_flight", { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(f) }); }
-            draft = []; localStorage.removeItem('uav_draft_cache'); renderDraft();
-            alert("Польоти опубліковано!");
+            const btn = document.getElementById('publishBtn'); 
+            btn.disabled = true; 
+            btn.innerText = "НАДСИЛАННЯ...";
+            
+            const first = draft[0];
+            let report = "<b>Донесення:</b> " + first.unit + "\n<b>Пілот:</b> " + first.operator + "\n<b>Дата:</b> " + first.date + "\n<b>Час завдання:</b> " + first.shift_time + "\n<b>БпЛА:</b> " + first.drone + "\n<b>Маршрут:</b> " + first.route + "\n━━━━━━━━━━━━━━━\n<b>Вильоти:</b>\n";
+            
+            draft.forEach((f, i) => {
+                const [h1, m1] = f.takeoff.split(':').map(Number);
+                const [h2, m2] = f.landing.split(':').map(Number);
+                let d = (h2*60+m2)-(h1*60+m1); 
+                d = d > 0 ? d : d + 1440;
+                report += (i + 1) + ". " + f.takeoff + "-" + f.landing + " (" + d + " хв)\n   Результат: " + f.result + "\n";
+            });
+
+            try {
+                // 1. Зберігаємо всі польоти в базу
+                for (const f of draft) {
+                    await fetch(API + "/add_flight", { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(f) });
+                }
+
+                // 2. Надсилаємо звіт в Telegram
+                const fd = new FormData();
+                fd.append('report_text', report);
+                const ph = document.getElementById('photos');
+                for (let i = 0; i < ph.files.length; i++) fd.append('images', ph.files[i]);
+
+                const res = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
+                const json = await res.json();
+                
+                if (json.status === "ok") {
+                    alert("Успішно опубліковано!");
+                    draft = []; 
+                    localStorage.removeItem('uav_draft_cache'); 
+                    location.reload();
+                } else {
+                    alert("Помилка Telegram: " + json.message);
+                }
+            } catch (e) {
+                alert("Помилка зв'язку з сервером");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Опублікувати донесення";
+            }
         }
 
         function logout() { if(confirm("Вийти?")) { localStorage.clear(); location.reload(); } }
