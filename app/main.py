@@ -8,15 +8,14 @@ from pydantic import BaseModel
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# Завантаження змінних оточення (URL та KEY для Supabase)
+# Завантаження змінних оточення
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
-app = FastAPI(title="UAV Command System v8.8")
+app = FastAPI(title="UAV Command System v8.9 Admin Edition")
 
-# Налаштування CORS для доступу з різних пристроїв
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,12 +27,9 @@ app.add_middleware(
 # Підключення до бази даних Supabase
 URL = os.environ.get("SUPABASE_URL")
 KEY = os.environ.get("SUPABASE_KEY")
-if not URL or not KEY:
-    print("ПОМИЛКА: Перевірте наявність SUPABASE_URL та SUPABASE_KEY у файлі .env")
-
 supabase: Client = create_client(URL, KEY)
 
-# СТРОЙОВА ЗАПИСКА (Список підрозділів у вашій черзі)
+# СТРОЙОВА ЗАПИСКА
 UNITS = [
     'впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"', 
     'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"', 
@@ -43,7 +39,6 @@ UNITS = [
     'віпс "Кучурган"', 'віпс "Лиманське"', "УПЗ"
 ]
 
-# Модель даних для прийому польоту
 class FlightEntry(BaseModel):
     date: str
     shift_time: str
@@ -61,7 +56,6 @@ class FlightEntry(BaseModel):
     result: str
     notes: str = ""
 
-# Допоміжна функція розрахунку часу
 def calculate_duration(t1_str, t2_str):
     try:
         fmt = "%H:%M"
@@ -69,7 +63,6 @@ def calculate_duration(t1_str, t2_str):
         t2 = datetime.strptime(t2_str, fmt)
         delta = t2 - t1
         mins = int(delta.total_seconds() / 60)
-        # Якщо посадка на наступну добу (напр. 23:50 -> 00:20)
         return mins if mins > 0 else mins + 1440
     except:
         return 0
@@ -78,7 +71,6 @@ def calculate_duration(t1_str, t2_str):
 
 @app.get("/api/get_options")
 async def get_options():
-    """Повертає списки для випадаючих вікон форми"""
     return {
         "units": UNITS,
         "weather": ["Нормальні", "Складні погодні умови", "Несприятливі погодні умови"],
@@ -88,59 +80,50 @@ async def get_options():
 
 @app.get("/api/get_unit_drones")
 async def get_unit_drones(unit: str):
-    """Отримує список БпЛА, закріплених за конкретним підрозділом"""
-    try:
-        res = supabase.table("drones").select("model, serial_number").eq("unit", unit).execute()
-        return res.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    res = supabase.table("drones").select("model, serial_number").eq("unit", unit).execute()
+    return res.data
 
 @app.get("/api/get_my_flights")
 async def get_my_flights(unit: str, operator: str):
-    """Отримує польоти тільки для поточного оператора (для Журналу)"""
+    res = supabase.table("flights").select("*").eq("unit", unit).eq("operator", operator).order("id", desc=True).execute()
+    return res.data
+
+# НОВИЙ МАРШРУТ ДЛЯ АДМІНІСТРАТОРА
+@app.get("/api/get_all_flights")
+async def get_all_flights():
+    """Отримує всі записи з бази для глобального моніторингу"""
     try:
-        res = supabase.table("flights")\
-            .select("*")\
-            .eq("unit", unit)\
-            .eq("operator", operator)\
-            .order("id", desc=True)\
-            .execute()
+        res = supabase.table("flights").select("*").order("id", desc=True).execute()
         return res.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/add_flight")
 async def add_flight(entry: FlightEntry):
-    """Додає новий політ у базу даних"""
     dur = calculate_duration(entry.takeoff, entry.landing)
     data = {**entry.dict(), "duration": dur}
-    try:
-        supabase.table("flights").insert(data).execute()
-        return {"status": "success", "duration": dur}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Insert failed: {str(e)}")
+    supabase.table("flights").insert(data).execute()
+    return {"status": "success", "duration": dur}
 
 @app.delete("/api/delete_flight/{f_id}")
 async def delete_f(f_id: int):
-    """Видаляє конкретний запис із Журналу"""
-    try:
-        supabase.table("flights").delete().eq("id", f_id).execute()
-        return {"status": "ok"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    supabase.table("flights").delete().eq("id", f_id).execute()
+    return {"status": "ok"}
 
-# --- СТАТИЧНІ ФАЙЛИ ---
+# --- СТАТИЧНІ ФАЙЛИ ТА СТОРІНКИ ---
 
-# Монтуємо папку з фронтендом
 if os.path.exists(FRONTEND_DIR):
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 @app.get("/")
 async def read_index():
-    """Головна сторінка входу та форми"""
     return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
 @app.get("/dashboard")
 async def read_dashboard():
-    """Сторінка Журналу польотів"""
     return FileResponse(os.path.join(FRONTEND_DIR, "dashboard.html"))
+
+# СТОРІНКА АДМІНІСТРАТОРА
+@app.get("/admin")
+async def read_admin():
+    return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
