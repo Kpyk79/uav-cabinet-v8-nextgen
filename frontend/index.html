@@ -2,15 +2,16 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UAV Workstation | Fix</title>
+    <title>UAV Workstation | Smart Entry</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); min-height: 100vh; font-family: 'Inter', sans-serif; color: white; p-2; }
+        body { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); min-height: 100vh; font-family: 'Inter', sans-serif; color: white; padding: 8px; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .label-style { font-size: 9px; text-transform: uppercase; font-weight: 800; color: #94a3b8; margin-bottom: 0.1rem; display: block; }
-        input, select, textarea { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.5rem; font-size: 14px !important; width: 100%; outline: none; }
+        input, select, textarea { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.5rem; font-size: 14px !important; width: 100%; outline: none; transition: all 0.2s; }
+        input:focus { border-color: #22c55e !important; }
         .btn-green { background: #16a34a; font-weight: 900; text-transform: uppercase; }
     </style>
 </head>
@@ -35,7 +36,7 @@
                 </div>
             </div>
 
-            <form class="space-y-3">
+            <form id="flightForm" class="space-y-3">
                 <div class="grid grid-cols-2 gap-2">
                     <div><label class="label-style">Дата</label><input type="date" id="date" class="p-2"></div>
                     <div><label class="label-style">Зміна</label>
@@ -45,16 +46,14 @@
 
                 <div>
                     <label class="label-style">Оберіть БпЛА</label>
-                    <select id="drone" class="p-2 text-green-400 font-bold">
-                        <option>Завантаження...</option>
-                    </select>
+                    <select id="drone" class="p-2 text-green-400 font-bold"><option>Завантаження...</option></select>
                 </div>
                 
                 <div><label class="label-style">Маршрут</label><input type="text" id="route" class="p-2"></div>
 
                 <div class="grid grid-cols-2 gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800 text-center">
-                    <div><label class="label-style text-green-500">Зліт</label><input type="time" id="t1" class="p-1 text-lg font-mono text-green-400 text-center bg-transparent border-none"></div>
-                    <div><label class="label-style text-red-500">Посадка</label><input type="time" id="t2" class="p-1 text-lg font-mono text-red-400 text-center bg-transparent border-none"></div>
+                    <div><label class="label-style text-green-500">Зліт</label><input type="text" id="t1" placeholder="0000" class="p-1 text-lg font-mono text-green-400 text-center bg-transparent border-none"></div>
+                    <div><label class="label-style text-red-500">Посадка</label><input type="text" id="t2" placeholder="0000" class="p-1 text-lg font-mono text-red-400 text-center bg-transparent border-none"></div>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2">
@@ -69,7 +68,7 @@
                     <div><label class="label-style text-orange-400">Результат</label><select id="result" class="p-2 text-[10px] text-orange-400 font-bold"></select></div>
                 </div>
 
-                <button type="button" onclick="addToDraft()" class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Додати в чернетку</button>
+                <button type="button" id="submitBtn" onclick="addToDraft()" class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Додати в чернетку</button>
             </form>
         </div>
 
@@ -84,8 +83,44 @@
         const API = window.location.origin + "/api";
         let draft = [];
 
+        // ЛОГІКА РОЗУМНОГО ВВОДУ ТА ENTER
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const active = document.activeElement;
+                if (['t1', 't2', 's1', 's2'].includes(active.id)) {
+                    e.preventDefault();
+                    formatAndNext(active);
+                } else if (active.tagName === 'INPUT' || active.tagName === 'SELECT') {
+                    if (active.id !== 'submitBtn') {
+                        e.preventDefault();
+                        focusNext(active);
+                    }
+                }
+            }
+        });
+
+        function formatTimeInput(val) {
+            let clean = val.replace(/\D/g, '');
+            if (clean.length === 3) clean = '0' + clean;
+            if (clean.length === 4) {
+                let h = clean.slice(0, 2), m = clean.slice(2, 4);
+                if (parseInt(h) < 24 && parseInt(m) < 60) return `${h}:${m}`;
+            }
+            return val;
+        }
+
+        function formatAndNext(elem) {
+            elem.value = formatTimeInput(elem.value);
+            focusNext(elem);
+        }
+
+        function focusNext(current) {
+            const inputs = Array.from(document.querySelectorAll('input, select, button'));
+            const index = inputs.indexOf(current);
+            if (index > -1 && index < inputs.length - 1) inputs[index + 1].focus();
+        }
+
         window.onload = async function() {
-            // 1. Завантаження налаштувань
             const res = await fetch(API + "/get_options");
             const opt = await res.json();
             document.getElementById('loginUnit').innerHTML = opt.units.map(u => `<option>${u}</option>`).join('');
@@ -93,18 +128,14 @@
             document.getElementById('mode').innerHTML = opt.flight_modes.map(m => `<option>${m}</option>`).join('');
             document.getElementById('result').innerHTML = opt.results.map(r => `<option>${r}</option>`).join('');
 
-            // 2. Перевірка авторизації
             const u = localStorage.getItem('uav_unit'), o = localStorage.getItem('uav_op');
             if (u && o) {
                 document.getElementById('loginUnit').value = u; 
                 document.getElementById('loginOp').value = o;
                 document.getElementById('userBadge').innerText = `${u} | ${o}`;
                 showMain(u);
-            } else { 
-                document.getElementById('loginScreen').classList.remove('hidden'); 
-            }
+            } else { document.getElementById('loginScreen').classList.remove('hidden'); }
 
-            // 3. Відновлення чернетки та маршруту
             const cached = localStorage.getItem('uav_draft_cache');
             if (cached) { draft = JSON.parse(cached); renderDraft(); }
             const lr = localStorage.getItem('last_route');
@@ -114,32 +145,22 @@
         async function showMain(unit) {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('mainScreen').classList.remove('hidden');
-            
-            // КЛЮЧОВИЙ МОМЕНТ: Запит БпЛА
             try {
                 const resD = await fetch(`${API}/get_unit_drones?unit=${encodeURIComponent(unit)}`);
                 const drones = await resD.json();
                 const droneSelect = document.getElementById('drone');
-                
                 if(drones && drones.length > 0) {
                     droneSelect.innerHTML = drones.map(d => `<option value="${d.model} (${d.serial_number})">${d.model} [${d.serial_number}]</option>`).join('');
-                } else {
-                    droneSelect.innerHTML = '<option>БпЛА не знайдено в базі</option>';
-                }
-            } catch (e) {
-                console.error("Помилка БД БпЛА:", e);
-                document.getElementById('drone').innerHTML = '<option>Помилка завантаження</option>';
-            }
+                } else { droneSelect.innerHTML = '<option>БпЛА не знайдено</option>'; }
+            } catch (e) { document.getElementById('drone').innerHTML = '<option>Помилка завантаження</option>'; }
             document.getElementById('date').valueAsDate = new Date();
         }
 
         function saveAuth() {
-            const u = document.getElementById('loginUnit').value;
-            const o = document.getElementById('loginOp').value;
+            const u = document.getElementById('loginUnit').value, o = document.getElementById('loginOp').value;
             if(!o) return alert("Введіть прізвище");
-            localStorage.setItem('uav_unit', u); 
-            localStorage.setItem('uav_op', o);
-            location.reload(); // Перезавантаження для чистого старту
+            localStorage.setItem('uav_unit', u); localStorage.setItem('uav_op', o);
+            location.reload();
         }
 
         function addToDraft() {
@@ -158,11 +179,12 @@
                 conditions: `${document.getElementById('weather').value}, ${document.getElementById('mode').value}`,
                 result: document.getElementById('result').value, notes: ""
             };
-            if(!flight.takeoff || !flight.landing) return alert("Вкажіть час!");
+            if(!flight.takeoff.includes(':') || !flight.landing.includes(':')) return alert("Перевірте формат часу (напр. 09:30)");
             draft.push(flight);
             localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
             renderDraft();
             document.getElementById('t1').value = ""; document.getElementById('t2').value = "";
+            document.getElementById('t1').focus(); // Повертаємо фокус на зліт для наступного польоту
         }
 
         function renderDraft() {
