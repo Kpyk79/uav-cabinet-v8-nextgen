@@ -32,9 +32,13 @@
             <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
                 <div id="userBadge" class="text-[10px] font-black text-green-500 uppercase italic"></div>
                 <div class="flex gap-2">
-                    <button onclick="window.location.href='/dashboard'" class="p-2 bg-blue-500/20 text-blue-400 rounded-lg"><i class="fa-solid fa-journal-whills"></i></button>
-                    <button onclick="logout()" class="p-2 bg-red-500/20 text-red-400 rounded-lg"><i class="fa-solid fa-power-off"></i></button>
-                </div>
+    <button onclick="window.location.href='/request'" class="p-2 bg-purple-500/20 text-purple-400 rounded-lg border border-purple-500/30 hover:bg-purple-500/40 transition-all" title="Створити заявку">
+        <i class="fa-solid fa-file-signature"></i>
+    </button>
+    
+    <button onclick="window.location.href='/dashboard'" class="p-2 bg-blue-500/20 text-blue-400 rounded-lg"><i class="fa-solid fa-journal-whills"></i></button>
+    <button onclick="logout()" class="p-2 bg-red-500/20 text-red-400 rounded-lg"><i class="fa-solid fa-power-off"></i></button>
+</div>
             </div>
 
             <form id="flightForm" class="space-y-3">
@@ -162,26 +166,41 @@
         }
 
         function addToDraft() {
-            const flight = {
-                id: Date.now(),
-                date: document.getElementById('date').value,
-                shift_time: document.getElementById('s1').value + "-" + document.getElementById('s2').value,
-                operator: localStorage.getItem('uav_op'), unit: localStorage.getItem('uav_unit'),
-                drone: document.getElementById('drone').value, route: document.getElementById('route').value,
-                takeoff: document.getElementById('t1').value, landing: document.getElementById('t2').value,
-                distance: parseInt(document.getElementById('dist').value) || 0,
-                battery_id: document.getElementById('akb').value, battery_cycles: parseInt(document.getElementById('cyc').value) || 0,
-                mission_type: "Патрулювання", conditions: document.getElementById('weather').value + ", " + document.getElementById('mode').value,
-                result: document.getElementById('result').value, notes: ""
-            };
-            if(!flight.takeoff.includes(':') || !flight.landing.includes(':')) return alert("Перевірте час!");
-            draft.push(flight);
-            localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
-            localStorage.setItem('last_route', flight.route);
-            renderDraft();
-            ['t1', 't2', 'dist', 'akb', 'cyc'].forEach(id => document.getElementById(id).value = "");
-            document.getElementById('t1').focus();
-        }
+    // Конвертація дати з РРРР-ММ-ДД у ДД.ММ.РРРР
+    const rawDate = document.getElementById('date').value;
+    const formattedDate = rawDate.split('-').reverse().join('.');
+
+    const flight = {
+        id: Date.now(),
+        date: formattedDate, // ТЕПЕР ТУТ ДД.ММ.РРРР
+        shift_time: document.getElementById('s1').value + "-" + document.getElementById('s2').value,
+        operator: localStorage.getItem('uav_op'), 
+        unit: localStorage.getItem('uav_unit'),
+        drone: document.getElementById('drone').value, 
+        route: document.getElementById('route').value,
+        takeoff: document.getElementById('t1').value, 
+        landing: document.getElementById('t2').value,
+        distance: parseInt(document.getElementById('dist').value) || 0,
+        battery_id: document.getElementById('akb').value, 
+        battery_cycles: parseInt(document.getElementById('cyc').value) || 0,
+        mission_type: "Патрулювання", 
+        conditions: document.getElementById('weather').value + ", " + document.getElementById('mode').value,
+        result: document.getElementById('result').value, 
+        notes: ""
+    };
+
+    if(!flight.takeoff.includes(':') || !flight.landing.includes(':')) return alert("Перевірте час!");
+    
+    draft.push(flight);
+    localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
+    localStorage.setItem('last_route', flight.route);
+    
+    renderDraft();
+    
+    // Очищення полів
+    ['t1', 't2', 'dist', 'akb', 'cyc'].forEach(id => document.getElementById(id).value = "");
+    document.getElementById('t1').focus();
+}
 
         function renderDraft() {
             document.getElementById('draftCount').innerText = draft.length;

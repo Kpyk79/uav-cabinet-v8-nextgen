@@ -64,7 +64,8 @@
             const container = document.getElementById('logContent');
             const groups = {};
             flights.forEach(f => {
-                const key = f.date + " | " + f.shift_time;
+                const cleanDate = f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date;
+const key = cleanDate + " | " + f.shift_time;
                 if (!groups[key]) groups[key] = [];
                 groups[key].push(f);
             });
