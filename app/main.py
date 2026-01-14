@@ -55,14 +55,17 @@ class FlightEntry(BaseModel):
 
 def calculate_duration(t1: str, t2: str):
     try:
+        # Очищаємо вхідні дані від можливих пробілів
+        t1, t2 = t1.strip(), t2.strip()
         fmt = "%H:%M"
         start = datetime.strptime(t1, fmt)
         end = datetime.strptime(t2, fmt)
         diff = (end - start).total_seconds() / 60
-        if diff < 0: diff += 1440  # перехід через північ
+        if diff < 0: diff += 1440  # якщо політ через північ
         return int(diff)
-    except:
-        return 0
+    except Exception as e:
+        print(f"Duration calculation error: {e}")
+        return 0 # повертаємо 0 замість вильоту програми
 
 # --- API ROUTES ---
 
@@ -70,14 +73,17 @@ def calculate_duration(t1: str, t2: str):
 async def add_flight(entry: FlightEntry):
     try:
         data = entry.dict()
-        # Розраховуємо тривалість перед записом
-        data["duration"] = str(calculate_duration(entry.takeoff, entry.landing))
+        # Розраховуємо тривалість і перетворюємо в рядок для бази
+        duration_val = calculate_duration(entry.takeoff, entry.landing)
+        data["duration"] = str(duration_val)
         
-        # Supabase приймає дату як текст, тому дд.мм.рррр пройде успішно
+        # Видаляємо ID, щоб Supabase використав свій Identity
+        if "id" in data: del data["id"]
+        
         res = supabase.table("flights").insert(data).execute()
         return {"status": "success", "data": res.data}
     except Exception as e:
-        print(f"Error adding flight: {e}")
+        print(f"CRITICAL DATABASE ERROR: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/publish_with_telegram")
