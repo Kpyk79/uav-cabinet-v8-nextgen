@@ -27,7 +27,7 @@ app.add_middleware(
 )
 
 # Telegram Config
-TELEGRAM_TOKEN = TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+TELEGRAM_TOKEN = "8532620253:AAEY7ug33Ru6VS4EZeXQPqOPiMx3fB49y-Q"
 TELEGRAM_CHAT_ID = "627363301"
 
 # Supabase Config
@@ -120,3 +120,8 @@ async def read_admin():
 # Монтування статичних файлів (стилі, картинки) робимо В ОСТАННЮ ЧЕРГУ
 if os.path.exists(FRONTEND_DIR):
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+# --- НОВИЙ МАРШРУТ ДЛЯ ЗАЯВОК ---
+@app.get("/request")
+async def read_request():
+    return FileResponse(os.path.join(FRONTEND_DIR, "request.html"))
