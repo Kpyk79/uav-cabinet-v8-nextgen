@@ -207,58 +207,65 @@
         }
 
         async function publishAll() {
-            if (draft.length === 0) return;
-            const btn = document.getElementById('publishBtn'); btn.disabled = true; btn.innerText = "НАДСИЛАННЯ...";
-            const first = draft[0];
-            
-            // Отримуємо актуальні дані з форми для Telegram-звіту
-            const currentShift = document.getElementById('s1').value + "-" + document.getElementById('s2').value;
-            const currentRoute = document.getElementById('route').value || "Не вказано";
-            
-            // ФОРМУЄМО ЧИСТИЙ ТЕКСТ ДЛЯ TELEGRAM
-            let report = "Донесення: " + first.unit + "\n" +
-                         "Пілот: " + first.operator + "\n" +
-                         "Дата: " + first.date + "\n" +
-                         "Час завдання: " + currentShift + "\n" +
-                         "БпЛА: " + first.drone + "\n" +
-                         "Маршрут: " + currentRoute + "\n" +
-                         "━━━━━━━━━━━━━━━\n" +
-                         "Вильоти:\n";
-            
-            draft.forEach((f, i) => {
-                const [h1, m1] = f.takeoff.split(':').map(Number);
-                const [h2, m2] = f.landing.split(':').map(Number);
-                let d = (h2*60+m2)-(h1*60+m1); d = d > 0 ? d : d + 1440;
-                report += (i + 1) + ". " + f.takeoff + "-" + f.landing + " (" + d + " хв)\n" +
-                          "   Результат: " + f.result + "\n";
+    if (draft.length === 0) return;
+    const btn = document.getElementById('publishBtn'); btn.disabled = true; btn.innerText = "НАДСИЛАННЯ...";
+    
+    const first = draft[0];
+    const currentShift = document.getElementById('s1').value + "-" + document.getElementById('s2').value;
+    const currentRoute = document.getElementById('route').value || "Не вказано";
+
+    // ФОРМУЄМО ЧИСТИЙ ТЕКСТ (кожен тег чітко закрито)
+    let report = "<b>Донесення:</b> " + first.unit + "\n" +
+                 "<b>Пілот:</b> " + first.operator + "\n" +
+                 "<b>Дата:</b> " + first.date + "\n" +
+                 "<b>Час завдання:</b> " + currentShift + "\n" +
+                 "<b>БпЛА:</b> " + first.drone + "\n" +
+                 "<b>Маршрут:</b> " + currentRoute + "\n" +
+                 "━━━━━━━━━━━━━━━\n" +
+                 "<b>Вильоти:</b>\n";
+    
+    draft.forEach((f, i) => {
+        const [h1, m1] = f.takeoff.split(':').map(Number);
+        const [h2, m2] = f.landing.split(':').map(Number);
+        let d = (h2*60+m2)-(h1*60+m1); d = d > 0 ? d : d + 1440;
+        report += (i + 1) + ". " + f.takeoff + "-" + f.landing + " (" + d + " хв)\n   Результат: " + f.result + "\n";
+    });
+
+    try {
+        for (const f of draft) {
+            // Конвертація для бази: дд.мм.рррр -> рррр-мм-дд
+            let dbDate = f.date;
+            if (f.date.includes('.')) {
+                const parts = f.date.split('.');
+                dbDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            const flightToDb = { ...f, date: dbDate };
+            delete flightToDb.id; 
+
+            const res = await fetch(API + "/add_flight", { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(flightToDb) 
             });
-
-            try {
-                for (const f of draft) {
-                    let dbDate = f.date;
-                    if (f.date.includes('.')) {
-                        const [d, m, y] = f.date.split('.');
-                        dbDate = `${y}-${m}-${d}`;
-                    }
-                    const flightToDb = { ...f, date: dbDate };
-                    delete flightToDb.id; 
-                    await fetch(API + "/add_flight", { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(flightToDb) });
-                }
-                const fd = new FormData(); 
-                fd.append('report_text', report);
-                const ph = document.getElementById('photos');
-                Array.from(ph.files).forEach(file => fd.append('images', file));
-
-                const res = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
-                const json = await res.json();
-                if (json.status === "ok") { 
-                    alert("Успішно опубліковано!"); 
-                    draft = []; 
-                    localStorage.removeItem('uav_draft_cache'); 
-                    location.reload(); 
-                }
-            } catch (e) { alert("Помилка зв'язку!"); } finally { btn.disabled = false; btn.innerText = "Опублікувати донесення"; }
+            if (!res.ok) throw new Error("Сервер не прийняв дані");
         }
+
+        const fd = new FormData(); 
+        fd.append('report_text', report);
+        const ph = document.getElementById('photos');
+        Array.from(ph.files).forEach(file => fd.append('images', file));
+
+        const resT = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
+        if ((await resT.json()).status === "ok") {
+            alert("Успішно опубліковано!");
+            draft = []; localStorage.removeItem('uav_draft_cache'); location.reload();
+        }
+    } catch (e) { 
+        alert("Помилка: " + e.message); 
+    } finally { 
+        btn.disabled = false; btn.innerText = "Опублікувати донесення"; 
+    }
+}
 
         function logout() { if(confirm("Вийти?")) { localStorage.clear(); location.reload(); } }
     </script>
