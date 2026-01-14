@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Довідник | UAV Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; padding: 12px; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; }
+        .contact-card { background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: 1.25rem; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px; transition: transform 0.2s; }
+        .contact-card:active { transform: scale(0.98); }
+        .call-btn { background: rgba(45, 212, 191, 0.1); color: #2dd4bf; border: 1px solid rgba(45, 212, 191, 0.2); border-radius: 0.75rem; padding: 8px 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    </style>
+</head>
+<body class="max-w-2xl mx-auto pb-10">
+    
+    <div class="flex items-center gap-4 mb-6 pt-4 px-2">
+        <button onclick="window.location.href='/'" class="p-2 bg-slate-800 rounded-xl text-slate-400">
+            <i class="fa-solid fa-arrow-left text-sm"></i>
+        </button>
+        <div>
+            <h1 class="text-xl font-black uppercase italic text-teal-500 tracking-tighter leading-none">Контакти</h1>
+            <p class="text-[9px] text-slate-500 uppercase font-bold tracking-widest mt-1">Допомога та координація</p>
+        </div>
+    </div>
+
+    <div class="space-y-3">
+        
+        <div class="contact-card">
+            <div class="flex justify-between items-start mb-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
+                        <i class="fa-solid fa-user-tie"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-black uppercase text-blue-400 tracking-tighter">Старший офіцер</div>
+                        <div class="text-sm font-black">Ігор Степанович</div>
+                    </div>
+                </div>
+                <a href="tel:+380980817547" class="call-btn"><i class="fa-solid fa-phone mr-1"></i> Call</a>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed border-t border-white/5 pt-2 italic">
+                Питання по службовим розслідуванням, наказам
+            </p>
+        </div>
+
+        <div class="contact-card">
+            <div class="flex justify-between items-start mb-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-teal-500/20 rounded-xl flex items-center justify-center text-teal-400">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-black uppercase text-teal-400 tracking-tighter">Інструктор</div>
+                        <div class="text-sm font-black">Олександр</div>
+                    </div>
+                </div>
+                <a href="tel:+380502310609" class="call-btn"><i class="fa-solid fa-phone mr-1"></i> Call</a>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed border-t border-white/5 pt-2 italic">
+                Питання тактики застосування, налаштування системи та спеціалізованого ПЗ БпАС.
+            </p>
+        </div>
+
+        <div class="contact-card">
+            <div class="flex justify-between items-start mb-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-400">
+                        <i class="fa-solid fa-user-astronaut"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-black uppercase text-orange-400 tracking-tighter">Старший оператор</div>
+                        <div class="text-sm font-black">Микола</div>
+                    </div>
+                </div>
+                <a href="tel:+380967730036" class="call-btn"><i class="fa-solid fa-phone mr-1"></i> Call</a>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed border-t border-white/5 pt-2 italic">
+                Питання застосування БпЛА, налаштування.
+            </p>
+        </div>
+
+        <div class="contact-card">
+            <div class="flex justify-between items-start mb-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center text-purple-400">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-black uppercase text-purple-400 tracking-tighter">Технік-майстер</div>
+                        <div class="text-sm font-black">Сергій</div>
+                    </div>
+                </div>
+                <a href="tel:+380997517054" class="call-btn"><i class="fa-solid fa-phone mr-1"></i> Call</a>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed border-t border-white/5 pt-2 italic">
+                Механічні пошкодження майна, ремонт, збої апаратної частини.
+            </p>
+        </div>
+
+        <div class="contact-card">
+            <div class="flex justify-between items-start mb-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-yellow-500/20 rounded-xl flex items-center justify-center text-yellow-400">
+                        <i class="fa-solid fa-box-open"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-black uppercase text-yellow-400 tracking-tighter">Начальник складу</div>
+                        <div class="text-sm font-black">Ірина</div>
+                    </div>
+                </div>
+                <a href="tel:+380667869701" class="call-btn"><i class="fa-solid fa-phone mr-1"></i> Call</a>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed border-t border-white/5 pt-2 italic">
+                Облік майна, оформлення актів переміщення та передача обладнання.
+            </p>
+        </div>
+
+    </div>
+
+</body>
+</html>

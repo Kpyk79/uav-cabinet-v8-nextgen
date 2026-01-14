@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Моя Аналітика | UAV Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; padding: 12px; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; }
+        .stat-card { background: rgba(15, 23, 42, 0.6); padding: 15px; border-radius: 1rem; border: 1px solid rgba(255,255,255,0.05); }
+        select { background: #1e293b !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.5rem; padding: 4px 8px; font-size: 12px; outline: none; }
+        .user-highlight { color: #22c55e; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; }
+    </style>
+</head>
+<body class="max-w-4xl mx-auto">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pt-4 px-2">
+        <div class="flex items-center gap-4">
+            <button onclick="window.location.href='/'" class="p-2 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-all">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <div>
+                <h1 class="text-xl font-black uppercase italic text-orange-500 tracking-tighter leading-none">Особиста Аналітика</h1>
+                <p id="userDisplay" class="text-[10px] user-highlight mt-1">Завантаження профілю...</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 glass px-3 py-2">
+            <select id="monthSelect" onchange="updateAnalytics()">
+                <option value="01">Січень</option><option value="02">Лютий</option>
+                <option value="03">Березень</option><option value="04">Квітень</option>
+                <option value="05">Травень</option><option value="06">Червень</option>
+                <option value="07">Липень</option><option value="08">Серпень</option>
+                <option value="09">Вересень</option><option value="10">Жовтень</option>
+                <option value="11">Листопад</option><option value="12">Грудень</option>
+            </select>
+            <select id="yearSelect" onchange="updateAnalytics()">
+                <option value="2025">2025</option><option value="2026" selected>2026</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="stat-card">
+            <div class="text-[10px] text-slate-500 font-black uppercase italic">Мої вильоти</div>
+            <div id="totalFlights" class="text-2xl font-black text-green-500 mt-1">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="text-[10px] text-slate-500 font-black uppercase italic">Мій наліт</div>
+            <div id="totalDuration" class="text-2xl font-black text-blue-400 mt-1">0г 0хв</div>
+        </div>
+        <div class="stat-card">
+            <div class="text-[10px] text-slate-500 font-black uppercase italic">Затримання (особисто)</div>
+            <div id="totalResults" class="text-2xl font-black text-red-500 mt-1">0</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="glass p-6">
+            <h2 class="text-xs font-black uppercase mb-4 text-slate-400 italic flex items-center gap-2">
+                <i class="fa-solid fa-plane-up text-orange-500"></i> Моя інтенсивність по БпЛА
+            </h2>
+            <div class="space-y-5" id="droneRating"></div>
+        </div>
+
+        <div class="glass p-6">
+            <h2 class="text-xs font-black uppercase mb-4 text-slate-400 italic flex items-center gap-2">
+                <i class="fa-solid fa-battery-full text-teal-500"></i> АКБ, які я використовував
+            </h2>
+            <div class="space-y-3" id="batteryResource"></div>
+        </div>
+    </div>
+
+    <script>
+        let allFlights = [];
+        // Отримуємо дані поточного юзера
+        const currentOp = localStorage.getItem('uav_op');
+        const currentUnit = localStorage.getItem('uav_unit');
+
+        async function loadData() {
+            if (!currentOp || !currentUnit) {
+                alert("Помилка авторизації. Поверніться на головну.");
+                window.location.href = "/";
+                return;
+            }
+            
+            document.getElementById('userDisplay').innerText = `${currentUnit} | ${currentOp}`;
+
+            try {
+                const res = await fetch("/api/get_all_flights");
+                allFlights = await res.json();
+                
+                const now = new Date();
+                document.getElementById('monthSelect').value = String(now.getMonth() + 1).padStart(2, '0');
+                
+                updateAnalytics();
+            } catch (e) { console.error(e); }
+        }
+
+        function updateAnalytics() {
+            const selectedMonth = document.getElementById('monthSelect').value;
+            const selectedYear = document.getElementById('yearSelect').value;
+            const targetPeriod = `${selectedYear}-${selectedMonth}`;
+
+            // ГОЛОВНА ЗМІНА ТУТ: Фільтруємо за періодом ТА за конкретним оператором
+            const filtered = allFlights.filter(f => 
+                f.date && 
+                f.date.startsWith(targetPeriod) && 
+                f.operator === currentOp && 
+                f.unit === currentUnit
+            );
+
+            let totalMin = 0; let detentions = 0;
+            const droneStats = {}; const batteries = {};
+
+            filtered.forEach(f => {
+                totalMin += parseInt(f.duration) || 0;
+                if (f.result === "Затримання") detentions++;
+                
+                const model = f.drone ? f.drone.split(' (')[0] : "Інші";
+                droneStats[model] = (droneStats[model] || 0) + 1;
+
+                if (f.battery_id) {
+                    const cyc = parseInt(f.battery_cycles) || 0;
+                    if (!batteries[f.battery_id] || cyc > batteries[f.battery_id].cycles) {
+                        batteries[f.battery_id] = { cycles: cyc, drone: model };
+                    }
+                }
+            });
+
+            // Рендеринг результатів
+            document.getElementById('totalFlights').innerHTML = `${filtered.length} <span class="text-xs text-slate-400 font-normal">вильотів</span>`;
+            document.getElementById('totalDuration').innerText = `${Math.floor(totalMin/60)}г ${totalMin%60}хв`;
+            document.getElementById('totalResults').innerText = detentions;
+
+            // БпЛА
+            const droneCont = document.getElementById('droneRating');
+            const sortedDrones = Object.entries(droneStats).sort((a,b) => b[1]-a[1]);
+            const max = sortedDrones.length > 0 ? sortedDrones[0][1] : 1;
+            droneCont.innerHTML = sortedDrones.length ? sortedDrones.map(([name, count]) => `
+                <div>
+                    <div class="flex justify-between text-[10px] mb-1 font-bold uppercase"><span>${name}</span><span class="text-orange-400">${count}</span></div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full"><div class="bg-orange-500 h-full" style="width: ${(count/max)*100}%"></div></div>
+                </div>`).join('') : '<div class="text-center text-slate-600 text-xs">Немає вильотів за цей період</div>';
+
+            // АКБ
+            const batCont = document.getElementById('batteryResource');
+            const sortedBats = Object.entries(batteries).sort((a,b) => b[1].cycles - a[1].cycles);
+            batCont.innerHTML = sortedBats.length ? sortedBats.map(([id, data]) => `
+                <div class="flex justify-between items-center p-3 bg-slate-800/40 border border-slate-700/50 rounded-xl mb-2">
+                    <div>
+                        <div class="text-[10px] font-mono text-teal-400">${id}</div>
+                        <div class="text-[8px] text-slate-500 uppercase">${data.drone}</div>
+                    </div>
+                    <div class="text-xs font-black">${data.cycles} <span class="text-[8px] font-normal opacity-50 uppercase">цикл.</span></div>
+                </div>`).join('') : '<div class="text-center text-slate-600 text-xs">Дані АКБ відсутні</div>';
+        }
+
+        window.onload = loadData;
+    </script>
+</body>
+</html>
