@@ -165,7 +165,7 @@
             const drRes = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(u));
             const drones = await drRes.json();
             const dSel = document.getElementById('drone');
-            drones.forEach(d => dSel.innerHTML += `<option value="${d.model} s/n ${d.serial_number}">${d.model} [${d.serial_number}]</option>`);
+            drones.forEach(d => dSel.innerHTML += `<option value="${d.model} (S/N: ${d.serial_number})">${d.model} [${d.serial_number}]</option>`);
 
             const cached = localStorage.getItem('uav_draft_cache');
             if(cached) { draft = JSON.parse(cached); renderDraft(); }
@@ -175,7 +175,6 @@
             const rawDate = document.getElementById('date').value;
             if(!rawDate) return alert("Оберіть дату!");
             
-            // Формат для відображення та Telegram
             const formattedDate = rawDate.split('-').reverse().join('.');
 
             const flight = {
@@ -238,11 +237,11 @@
 
         async function publishAll() {
             if (draft.length === 0) return;
-            
             const btn = document.getElementById('publishBtn'); 
             btn.disabled = true; 
             btn.innerText = "НАДСИЛАННЯ...";
             
+            // Формуємо ТЕКСТ для Telegram (використовуємо дату як вона є в draft - дд.мм.рррр)
             const first = draft[0];
             let report = "<b>Донесення:</b> " + first.unit + "\n<b>Пілот:</b> " + first.operator + "\n<b>Дата:</b> " + first.date + "\n<b>Час завдання:</b> " + first.shift_time + "\n<b>БпЛА:</b> " + first.drone + "\n<b>Маршрут:</b> " + first.route + "\n━━━━━━━━━━━━━━━\n<b>Вильоти:</b>\n";
             
@@ -254,29 +253,24 @@
             });
 
             try {
-                // 1. Цикл відправки в базу з конвертацією дати
+                // Відправка в базу (з конвертацією ТІЛЬКИ для запиту)
                 for (const f of draft) {
-                    // КОНВЕРТАЦІЯ ДЛЯ БАЗИ: дд.мм.рррр -> рррр-мм-дд
                     let dbDate = f.date;
                     if (f.date.includes('.')) {
                         const parts = f.date.split('.');
                         if(parts.length === 3) dbDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
                     }
-
                     const flightToDb = { ...f, date: dbDate };
-                    // Видаляємо тимчасовий ID перед записом у Supabase
                     delete flightToDb.id; 
 
-                    const response = await fetch(API + "/add_flight", { 
+                    await fetch(API + "/add_flight", { 
                         method: 'POST', 
                         headers: {'Content-Type': 'application/json'}, 
                         body: JSON.stringify(flightToDb) 
                     });
-
-                    if (!response.ok) throw new Error("Помилка при збереженні польоту в базу");
                 }
 
-                // 2. Відправка в Telegram
+                // Відправка в Telegram
                 const fd = new FormData(); 
                 fd.append('report_text', report);
                 const ph = document.getElementById('photos');
@@ -287,16 +281,13 @@
                 const json = await res.json();
                 
                 if (json.status === "ok") {
-                    alert("Успішно опубліковано в базу та Telegram!");
+                    alert("Успішно опубліковано!");
                     draft = []; 
                     localStorage.removeItem('uav_draft_cache'); 
                     location.reload();
-                } else {
-                    alert("Помилка Telegram: " + json.message);
                 }
             } catch (e) { 
-                console.error(e);
-                alert("Помилка: " + e.message); 
+                alert("Помилка зв'язку"); 
             } finally { 
                 btn.disabled = false; 
                 btn.innerText = "Опублікувати донесення"; 
