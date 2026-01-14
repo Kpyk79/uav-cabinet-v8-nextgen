@@ -32,14 +32,10 @@
             <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
                 <div id="userBadge" class="text-[10px] font-black text-green-500 uppercase italic"></div>
                 <div class="flex gap-2">
-                    <button onclick="window.location.href='/analytics'" class="p-2 bg-orange-500/20 text-orange-400 rounded-lg border border-orange-500/30" title="Аналітика">
-                        <i class="fa-solid fa-chart-line"></i>
-                    </button>
-                    <button onclick="window.location.href='/handbook'" class="p-2 bg-teal-500/20 text-teal-400 rounded-lg border border-teal-500/30" title="Довідник">
-                        <i class="fa-solid fa-book-open"></i>
-                    </button>
-                    <button onclick="window.location.href='/request'" class="p-2 bg-purple-500/20 text-purple-400 rounded-lg border border-purple-500/30 hover:bg-purple-500/40 transition-all"><i class="fa-solid fa-file-signature"></i></button>
-                    <button onclick="window.location.href='/dashboard'" class="p-2 bg-blue-500/20 text-blue-400 rounded-lg"><i class="fa-solid fa-journal-whills"></i></button>
+                    <button onclick="nav('/request')" class="p-2 bg-purple-500/20 text-purple-400 rounded-lg border border-purple-500/30 hover:bg-purple-500/40 transition-all"><i class="fa-solid fa-file-signature"></i></button>
+                    <button onclick="nav('/dashboard')" class="p-2 bg-blue-500/20 text-blue-400 rounded-lg"><i class="fa-solid fa-journal-whills"></i></button>
+                    <button onclick="nav('/analytics')" class="p-2 bg-orange-500/20 text-orange-400 rounded-lg border border-orange-500/30" title="Аналітика"><i class="fa-solid fa-chart-line"></i></button>
+                    <button onclick="nav('/handbook')" class="p-2 bg-teal-500/20 text-teal-400 rounded-lg border border-teal-500/30" title="Довідник"><i class="fa-solid fa-book-open"></i></button>
                     <button onclick="logout()" class="p-2 bg-red-500/20 text-red-400 rounded-lg"><i class="fa-solid fa-power-off"></i></button>
                 </div>
             </div>
@@ -97,6 +93,11 @@
     <script>
         const API = window.location.origin + "/api";
         let draft = [];
+
+        function nav(path) {
+            const token = new URLSearchParams(window.location.search).get('token');
+            window.location.href = token ? `${path}?token=${token}` : path;
+        }
 
         function formatTimeInput(val) {
             let clean = val.replace(/\D/g, '');
@@ -242,4 +243,4 @@
         function logout() { if(confirm("Вийти?")) { localStorage.clear(); location.reload(); } }
     </script>
 </body>
-</html>
+</html>Ми оновлюємо Copilot. Усе знову буде готове до використання через деякий час.
