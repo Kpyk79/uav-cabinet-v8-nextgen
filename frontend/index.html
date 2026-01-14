@@ -32,7 +32,9 @@
             <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
                 <div id="userBadge" class="text-[10px] font-black text-green-500 uppercase italic"></div>
                 <div class="flex gap-2">
-                    <button onclick="window.location.href='/request'" class="p-2 bg-purple-500/20 text-purple-400 rounded-lg border border-purple-500/30 hover:bg-purple-500/40 transition-all"><i class="fa-solid fa-file-signature"></i></button>
+                    <button onclick="window.location.href='/request'" class="p-2 bg-purple-500/20 text-purple-400 rounded-lg border border-purple-500/30 hover:bg-purple-500/40 transition-all" title="Створити заявку">
+                        <i class="fa-solid fa-file-signature"></i>
+                    </button>
                     <button onclick="window.location.href='/dashboard'" class="p-2 bg-blue-500/20 text-blue-400 rounded-lg"><i class="fa-solid fa-journal-whills"></i></button>
                     <button onclick="logout()" class="p-2 bg-red-500/20 text-red-400 rounded-lg"><i class="fa-solid fa-power-off"></i></button>
                 </div>
@@ -52,20 +54,20 @@
                     <div><label class="label-style text-red-500">Посадка</label><input type="tel" id="t2" placeholder="1015" class="p-1 text-lg font-mono text-red-400 text-center bg-transparent border-none"></div>
                 </div>
                 <div class="grid grid-cols-3 gap-2">
-                    <div><label class="label-style">Дист.(м)</label><input type="number" id="dist" class="p-2"></div>
+                    <div><label class="label-style">Дист.(м)</label><input type="number" id="dist" inputmode="numeric" class="p-2"></div>
                     <div><label class="label-style">№ АКБ</label><input type="text" id="akb" class="p-2"></div>
-                    <div><label class="label-style">Цикли</label><input type="number" id="cyc" class="p-2"></div>
+                    <div><label class="label-style">Цикли</label><input type="number" id="cyc" inputmode="numeric" class="p-2"></div>
                 </div>
                 <div class="grid grid-cols-3 gap-2 border-b border-slate-800 pb-3">
-                    <div><label class="label-style">Погода</label><select id="weather" class="p-2"></select></div>
-                    <div><label class="label-style">Умови</label><select id="mode" class="p-2"></select></div>
-                    <div><label class="label-style text-orange-400">Результат</label><select id="result" class="p-2 text-orange-400 font-bold"></select></div>
+                    <div><label class="label-style">Погода</label><select id="weather" class="p-2 text-[10px]"></select></div>
+                    <div><label class="label-style">Умови</label><select id="mode" class="p-2 text-[10px]"></select></div>
+                    <div><label class="label-style text-orange-400">Результат</label><select id="result" class="p-2 text-[10px] text-orange-400 font-bold"></select></div>
                 </div>
                 <div class="bg-slate-900/40 p-3 rounded-xl border border-dashed border-slate-700">
-                    <label class="label-style">Скріншоти результатів</label>
+                    <label class="label-style">Скріншоти / Фото донесення</label>
                     <input type="file" id="photos" multiple accept="image/*" class="text-[10px] text-slate-500">
                 </div>
-                <button type="button" onclick="addToDraft()" class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm">Додати в чернетку</button>
+                <button type="button" onclick="addToDraft()" class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Додати в чернетку</button>
             </form>
         </div>
 
@@ -118,6 +120,8 @@
 
             const u = localStorage.getItem('uav_unit'), o = localStorage.getItem('uav_op');
             if (u && o) {
+                document.getElementById('loginUnit').value = u; 
+                document.getElementById('loginOp').value = o;
                 document.getElementById('userBadge').innerText = u + " | " + o;
                 showMain(u);
             } else document.getElementById('loginScreen').classList.remove('hidden');
@@ -144,23 +148,33 @@
 
         function addToDraft() {
             const rawDate = document.getElementById('date').value;
+            const formattedDate = rawDate.split('-').reverse().join('.');
+
             const flight = {
                 id: Date.now(),
-                date: rawDate.split('-').reverse().join('.'),
+                date: formattedDate,
                 shift_time: document.getElementById('s1').value + "-" + document.getElementById('s2').value,
-                operator: localStorage.getItem('uav_op'), unit: localStorage.getItem('uav_unit'),
-                drone: document.getElementById('drone').value, route: document.getElementById('route').value,
-                takeoff: document.getElementById('t1').value, landing: document.getElementById('t2').value,
+                operator: localStorage.getItem('uav_op'), 
+                unit: localStorage.getItem('uav_unit'),
+                drone: document.getElementById('drone').value, 
+                route: document.getElementById('route').value,
+                takeoff: document.getElementById('t1').value, 
+                landing: document.getElementById('t2').value,
                 distance: parseInt(document.getElementById('dist').value) || 0,
-                battery_id: document.getElementById('akb').value, battery_cycles: parseInt(document.getElementById('cyc').value) || 0,
-                mission_type: "Патрулювання", result: document.getElementById('result').value
+                battery_id: document.getElementById('akb').value, 
+                battery_cycles: parseInt(document.getElementById('cyc').value) || 0,
+                mission_type: "Патрулювання", 
+                result: document.getElementById('result').value
             };
+
             if(!flight.takeoff.includes(':') || !flight.landing.includes(':')) return alert("Перевірте час!");
+            
             draft.push(flight);
             localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
             localStorage.setItem('last_route', flight.route);
             renderDraft();
             ['t1', 't2', 'dist', 'akb', 'cyc'].forEach(id => document.getElementById(id).value = "");
+            document.getElementById('t1').focus();
         }
 
         function renderDraft() {
@@ -193,19 +207,30 @@
         }
 
         async function publishAll() {
+            if (draft.length === 0) return;
             const btn = document.getElementById('publishBtn'); btn.disabled = true; btn.innerText = "НАДСИЛАННЯ...";
             const first = draft[0];
-            // БЕРЕМО АКТУАЛЬНІ ЗНАЧЕННЯ З ФОРМИ ДЛЯ ЗВІТУ
-            const currentShift = document.getElementById('s1').value + "-" + document.getElementById('s2').value;
-            const currentRoute = document.getElementById('route').value;
             
-            let report = "<b>Донесення:</b> " + first.unit + "\n<b>Пілот:</b> " + first.operator + "\n<b>Дата:</b> " + first.date + "\n<b>Час завдання:</b> " + currentShift + "\n<b>БпЛА:</b> " + first.drone + "\n<b>Маршрут:</b> " + currentRoute + "\n━━━━━━━━━━━━━━━\n<b>Вильоти:</b>\n";
+            // Отримуємо актуальні дані з форми для Telegram-звіту
+            const currentShift = document.getElementById('s1').value + "-" + document.getElementById('s2').value;
+            const currentRoute = document.getElementById('route').value || "Не вказано";
+            
+            // ФОРМУЄМО ЧИСТИЙ ТЕКСТ ДЛЯ TELEGRAM
+            let report = "<b>Донесення:</b> " + first.unit + "\n" +
+                         "<b>Пілот:</b> " + first.operator + "\n" +
+                         "<b>Дата:</b> " + first.date + "\n" +
+                         "<b>Час завдання:</b> " + currentShift + "\n" +
+                         "<b>БпЛА:</b> " + first.drone + "\n" +
+                         "<b>Маршрут:</b> " + currentRoute + "\n" +
+                         "━━━━━━━━━━━━━━━\n" +
+                         "<b>Вильоти:</b>\n";
             
             draft.forEach((f, i) => {
                 const [h1, m1] = f.takeoff.split(':').map(Number);
                 const [h2, m2] = f.landing.split(':').map(Number);
                 let d = (h2*60+m2)-(h1*60+m1); d = d > 0 ? d : d + 1440;
-                report += (i + 1) + ". " + f.takeoff + "-" + f.landing + " (" + d + " хв)\n   Результат: " + f.result + "\n";
+                report += (i + 1) + ". " + f.takeoff + "-" + f.landing + " (" + d + " хв)\n" +
+                          "   Результат: " + f.result + "\n";
             });
 
             try {
@@ -219,13 +244,20 @@
                     delete flightToDb.id; 
                     await fetch(API + "/add_flight", { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(flightToDb) });
                 }
-                const fd = new FormData(); fd.append('report_text', report);
+                const fd = new FormData(); 
+                fd.append('report_text', report);
                 const ph = document.getElementById('photos');
                 Array.from(ph.files).forEach(file => fd.append('images', file));
 
                 const res = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
-                if ((await res.json()).status === "ok") { alert("Успішно!"); draft = []; localStorage.removeItem('uav_draft_cache'); location.reload(); }
-            } catch (e) { alert("Помилка!"); } finally { btn.disabled = false; btn.innerText = "Опублікувати донесення"; }
+                const json = await res.json();
+                if (json.status === "ok") { 
+                    alert("Успішно опубліковано!"); 
+                    draft = []; 
+                    localStorage.removeItem('uav_draft_cache'); 
+                    location.reload(); 
+                }
+            } catch (e) { alert("Помилка зв'язку!"); } finally { btn.disabled = false; btn.innerText = "Опублікувати донесення"; }
         }
 
         function logout() { if(confirm("Вийти?")) { localStorage.clear(); location.reload(); } }
