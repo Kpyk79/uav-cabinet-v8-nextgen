@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
-from typing import Optional
+from typing import Optional, List
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,7 +16,7 @@ load_dotenv()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
-app = FastAPI(title="UAV Command System v10.5")
+app = FastAPI(title="UAV Command System v10.6")
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,6 +36,7 @@ supabase: Client = create_client(URL, KEY)
 
 UNITS = ['впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"', 'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"', 'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"', 'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"', 'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"', 'віпс "Кучурган"', 'віпс "Лиманське"', "УПЗ"]
 
+# Модель даних з Optional полями, щоб уникнути помилок валідації
 class FlightEntry(BaseModel):
     date: str
     shift_time: str
@@ -64,34 +65,73 @@ def calculate_duration(t1: str, t2: str):
     except:
         return 0
 
+# --- API ROUTES ---
+
 @app.post("/api/add_flight")
 async def add_flight(entry: FlightEntry):
     try:
         data = entry.dict()
+        # Розрахунок тривалості польоту
         data["duration"] = str(calculate_duration(entry.takeoff, entry.landing))
+        
+        # Видаляємо ID, якщо він прийшов з фронтенду, щоб БД створила свій
         if "id" in data: del data["id"]
+        
         res = supabase.table("flights").insert(data).execute()
         return {"status": "success", "data": res.data}
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Database Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/publish_with_telegram")
-async def publish_report(report_text: str = Form(...), images: list[UploadFile] = File(None)):
+async def publish_report(report_text: str = Form(...), images: List[UploadFile] = File(None)):
     try:
         async with httpx.AsyncClient() as client:
-            await client.post(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage", data={"chat_id": TELEGRAM_CHAT_ID, "text": report_text, "parse_mode": "HTML"})
-            if images:
-                for img in images:
+            if not images:
+                # Відправка тільки тексту
+                await client.post(
+                    f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+                    data={"chat_id": TELEGRAM_CHAT_ID, "text": report_text, "parse_mode": "HTML"}
+                )
+            else:
+                # Відправка медіагрупи (альбом з підписом)
+                media = []
+                files = {}
+                
+                for i, img in enumerate(images):
+                    file_id = f"pic{i}"
                     img_content = await img.read()
-                    await client.post(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto", data={"chat_id": TELEGRAM_CHAT_ID}, files={"photo": (img.filename, img_content)})
+                    files[file_id] = (img.filename, img_content)
+                    
+                    media_item = {
+                        "type": "photo",
+                        "media": f"attach://{file_id}",
+                        "parse_mode": "HTML"
+                    }
+                    # Додаємо текст донесення як підпис ТІЛЬКИ до першого фото
+                    if i == 0:
+                        media_item["caption"] = report_text
+                        
+                    media.append(media_item)
+
+                await client.post(
+                    f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMediaGroup",
+                    data={"chat_id": TELEGRAM_CHAT_ID, "media": json.dumps(media)},
+                    files=files
+                )
         return {"status": "ok"}
     except Exception as e:
+        print(f"Telegram API Error: {e}")
         return {"status": "error", "message": str(e)}
 
 @app.get("/api/get_options")
 async def get_options():
-    return {"units": UNITS, "weather": ["Нормальні", "Складні умови"], "flight_modes": ["Норма", "АТТІ"], "results": ["Без ознак порушення", "Затримання"]}
+    return {
+        "units": UNITS, 
+        "weather": ["Нормальні", "Складні умови", "Несприятливі умови"], 
+        "flight_modes": ["Норма", "АТТІ"], 
+        "results": ["Без ознак порушення", "Затримання"]
+    }
 
 @app.get("/api/get_unit_drones")
 async def get_unit_drones(unit: str):
@@ -113,14 +153,23 @@ async def delete_flight(id: int):
     supabase.table("flights").delete().eq("id", id).execute()
     return {"status": "deleted"}
 
+# --- СТОРІНКИ ---
+
 @app.get("/")
-async def read_index(): return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+async def read_index():
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+
 @app.get("/dashboard")
-async def read_dashboard(): return FileResponse(os.path.join(FRONTEND_DIR, "dashboard.html"))
+async def read_dashboard():
+    return FileResponse(os.path.join(FRONTEND_DIR, "dashboard.html"))
+
 @app.get("/request")
-async def read_request(): return FileResponse(os.path.join(FRONTEND_DIR, "request.html"))
+async def read_request():
+    return FileResponse(os.path.join(FRONTEND_DIR, "request.html"))
+
 @app.get("/admin")
-async def read_admin(): return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
+async def read_admin():
+    return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
 
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
