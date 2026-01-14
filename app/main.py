@@ -1,246 +1,186 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UAV Workstation | Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); min-height: 100vh; font-family: 'Inter', sans-serif; color: white; padding: 8px; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .label-style { font-size: 9px; text-transform: uppercase; font-weight: 800; color: #94a3b8; margin-bottom: 0.1rem; display: block; }
-        input, select, textarea { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.5rem; font-size: 14px !important; width: 100%; outline: none; transition: all 0.2s; }
-        input:focus { border-color: #22c55e !important; }
-        .btn-green { background: #16a34a; font-weight: 900; text-transform: uppercase; }
-        .cus-box { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.75rem; padding: 8px; }
-    </style>
-</head>
-<body class="flex items-center justify-center">
+import os
+import httpx
+import json
+from datetime import datetime
+from fastapi import FastAPI, HTTPException, Form, UploadFile, File, Query
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from supabase import create_client, Client
+from typing import Optional, List
+from dotenv import load_dotenv
 
-    <div id="loginScreen" class="w-full max-w-md glass p-8 rounded-[2rem] hidden">
-        <h1 class="text-2xl font-black text-center text-green-500 mb-6 uppercase italic">Авторизація</h1>
-        <div class="space-y-3">
-            <div><label class="label-style italic">Підрозділ</label><select id="loginUnit" class="p-3"></select></div>
-            <div><label class="label-style italic">Прізвище</label><input type="text" id="loginOp" class="p-3"></div>
-            <button onclick="saveAuth()" class="w-full btn-green py-4 rounded-xl text-slate-900 mt-2">Увійти</button>
-        </div>
-    </div>
+load_dotenv()
 
-    <div id="mainScreen" class="w-full max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 hidden">
-        <div class="lg:w-1/2 glass p-4 rounded-[1.5rem] h-fit">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
-                <div id="userBadge" class="text-[10px] font-black text-green-500 uppercase italic"></div>
-                <div class="flex gap-2">
-                    <button onclick="nav('/request')" class="p-2 bg-purple-500/20 text-purple-400 rounded-lg border border-purple-500/30 hover:bg-purple-500/40 transition-all"><i class="fa-solid fa-file-signature"></i></button>
-                    <button onclick="nav('/dashboard')" class="p-2 bg-blue-500/20 text-blue-400 rounded-lg"><i class="fa-solid fa-journal-whills"></i></button>
-                    <button onclick="nav('/analytics')" class="p-2 bg-orange-500/20 text-orange-400 rounded-lg border border-orange-500/30" title="Аналітика"><i class="fa-solid fa-chart-line"></i></button>
-                    <button onclick="nav('/handbook')" class="p-2 bg-teal-500/20 text-teal-400 rounded-lg border border-teal-500/30" title="Довідник"><i class="fa-solid fa-book-open"></i></button>
-                    <button onclick="logout()" class="p-2 bg-red-500/20 text-red-400 rounded-lg"><i class="fa-solid fa-power-off"></i></button>
-                </div>
-            </div>
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
-            <form id="flightForm" class="space-y-3">
-                <div class="grid grid-cols-2 gap-2">
-                    <div><label class="label-style">Дата</label><input type="date" id="date" class="p-2"></div>
-                    <div><label class="label-style">Зміна</label>
-                        <div class="flex gap-1"><input type="time" id="s1" value="08:00" class="p-2 text-center"><input type="time" id="s2" value="20:00" class="p-2 text-center"></div>
-                    </div>
-                </div>
-                <div><label class="label-style">БпЛА</label><select id="drone" class="p-2 text-green-400 font-bold"><option>Завантаження...</option></select></div>
-                <div><label class="label-style">Маршрут</label><input type="text" id="route" class="p-2"></div>
-                <div class="grid grid-cols-2 gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800 text-center">
-                    <div><label class="label-style text-green-500">Зліт</label><input type="tel" id="t1" placeholder="930" class="p-1 text-lg font-mono text-green-400 text-center bg-transparent border-none"></div>
-                    <div><label class="label-style text-red-500">Посадка</label><input type="tel" id="t2" placeholder="1015" class="p-1 text-lg font-mono text-red-400 text-center bg-transparent border-none"></div>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                    <div><label class="label-style">Дист.(м)</label><input type="number" id="dist" inputmode="numeric" class="p-2"></div>
-                    <div><label class="label-style">№ АКБ</label><input type="text" id="akb" class="p-2"></div>
-                    <div><label class="label-style">Цикли</label><input type="number" id="cyc" inputmode="numeric" class="p-2"></div>
-                </div>
-                <div class="grid grid-cols-3 gap-2 border-b border-slate-800 pb-3">
-                    <div><label class="label-style">Погода</label><select id="weather" class="p-2 text-[10px]"></select></div>
-                    <div><label class="label-style">Умови</label><select id="mode" class="p-2 text-[10px]"></select></div>
-                    <div><label class="label-style text-orange-400">Результат</label><select id="result" class="p-2 text-[10px] text-orange-400 font-bold"></select></div>
-                </div>
-                <div class="bg-slate-900/40 p-3 rounded-xl border border-dashed border-slate-700">
-                    <label class="label-style">Скріншоти / Фото донесення</label>
-                    <input type="file" id="photos" multiple accept="image/*" class="text-[10px] text-slate-500">
-                </div>
-                <button type="button" onclick="addToDraft()" class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Додати в чернетку</button>
-            </form>
-        </div>
+app = FastAPI(title="UAV Command System v10.6")
 
-        <div class="lg:w-1/2 glass p-4 rounded-[1.5rem] flex flex-col">
-            <h2 class="text-[11px] font-black uppercase text-slate-500 mb-2 italic">Чернетка (<span id="draftCount">0</span>)</h2>
-            <div id="draftList" class="flex-grow space-y-2 overflow-y-auto max-h-[250px] mb-4"></div>
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-            <div class="grid grid-cols-2 gap-2 mb-4">
-                <div class="cus-box">
-                    <div class="flex justify-between mb-1"><span class="text-[8px] font-black uppercase text-green-500 tracking-tighter">До 00:00</span><button onclick="copyText('cusBefore')" class="text-[8px] text-blue-400 font-bold">COPY</button></div>
-                    <textarea id="cusBefore" readonly class="w-full bg-transparent p-1 text-[10px] h-14 text-slate-400 font-mono outline-none resize-none"></textarea>
-                </div>
-                <div class="cus-box">
-                    <div class="flex justify-between mb-1"><span class="text-[8px] font-black uppercase text-blue-500 tracking-tighter">Після 00:00</span><button onclick="copyText('cusAfter')" class="text-[8px] text-blue-400 font-bold">COPY</button></div>
-                    <textarea id="cusAfter" readonly class="w-full bg-transparent p-1 text-[10px] h-14 text-slate-400 font-mono outline-none resize-none"></textarea>
-                </div>
-            </div>
+# --- CONFIG ---
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8532620253:AAEY7ug33Ru6VS4EZeXQPqOPiMx3fB49y-Q")
+TELEGRAM_CHAT_ID = "627363301"
 
-            <button id="publishBtn" onclick="publishAll()" disabled class="w-full btn-green py-4 rounded-xl text-slate-900 mt-auto font-black uppercase shadow-xl">Опублікувати донесення</button>
-        </div>
-    </div>
+URL = os.environ.get("SUPABASE_URL")
+KEY = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(URL, KEY)
 
-    <script>
-        const API = window.location.origin + "/api";
-        let draft = [];
+UNITS = ['впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"', 'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"', 'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"', 'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"', 'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"', 'віпс "Кучурган"', 'віпс "Лиманське"', "УПЗ"]
 
-        function nav(path) {
-            const token = new URLSearchParams(window.location.search).get('token');
-            window.location.href = token ? `${path}?token=${token}` : path;
-        }
+# Модель даних з Optional полями, щоб уникнути помилок валідації
+class FlightEntry(BaseModel):
+    date: str
+    shift_time: str
+    operator: str
+    unit: str
+    drone: str
+    takeoff: str
+    landing: str
+    result: str
+    route: Optional[str] = "Не вказано"
+    distance: Optional[int] = 0
+    battery_id: Optional[str] = ""
+    battery_cycles: Optional[int] = 0
+    mission_type: Optional[str] = "Патрулювання"
+    conditions: Optional[str] = ""
+    notes: Optional[str] = ""
 
-        function formatTimeInput(val) {
-            let clean = val.replace(/\D/g, '');
-            if (clean.length === 3) clean = '0' + clean;
-            if (clean.length === 4) {
-                let h = clean.slice(0, 2), m = clean.slice(2, 4);
-                if (parseInt(h) < 24 && parseInt(m) < 60) return h + ":" + m;
-            }
-            return val;
-        }
+def calculate_duration(t1: str, t2: str):
+    try:
+        fmt = "%H:%M"
+        start = datetime.strptime(t1.strip(), fmt)
+        end = datetime.strptime(t2.strip(), fmt)
+        diff = (end - start).total_seconds() / 60
+        if diff < 0: diff += 1440
+        return int(diff)
+    except:
+        return 0
 
-        const timeIds = ['t1', 't2', 's1', 's2'];
-        timeIds.forEach(id => {
-            const el = document.getElementById(id);
-            if(el) el.addEventListener('blur', function() { this.value = formatTimeInput(this.value); });
-        });
+# --- API ROUTES ---
 
-        window.onload = async function() {
-            const res = await fetch(API + "/get_options");
-            const opt = await res.json();
-            document.getElementById('loginUnit').innerHTML = opt.units.map(u => "<option>" + u + "</option>").join('');
-            document.getElementById('weather').innerHTML = opt.weather.map(w => "<option>" + w + "</option>").join('');
-            document.getElementById('mode').innerHTML = opt.flight_modes.map(m => "<option>" + m + "</option>").join('');
-            document.getElementById('result').innerHTML = opt.results.map(r => "<option>" + r + "</option>").join('');
+@app.post("/api/add_flight")
+async def add_flight(entry: FlightEntry):
+    try:
+        data = entry.dict()
+        # Розрахунок тривалості польоту
+        data["duration"] = str(calculate_duration(entry.takeoff, entry.landing))
+        
+        # Видаляємо ID, якщо він прийшов з фронтенду, щоб БД створила свій
+        if "id" in data: del data["id"]
+        
+        res = supabase.table("flights").insert(data).execute()
+        return {"status": "success", "data": res.data}
+    except Exception as e:
+        print(f"Database Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-            const u = localStorage.getItem('uav_unit'), o = localStorage.getItem('uav_op');
-            if (u && o) {
-                document.getElementById('loginUnit').value = u; 
-                document.getElementById('loginOp').value = o;
-                document.getElementById('userBadge').innerText = u + " | " + o;
-                showMain(u);
-            } else document.getElementById('loginScreen').classList.remove('hidden');
+@app.post("/api/publish_with_telegram")
+async def publish_report(report_text: str = Form(...), images: List[UploadFile] = File(None)):
+    try:
+        async with httpx.AsyncClient() as client:
+            if not images:
+                # Відправка тільки тексту
+                await client.post(
+                    f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+                    data={"chat_id": TELEGRAM_CHAT_ID, "text": report_text, "parse_mode": "HTML"}
+                )
+            else:
+                # Відправка медіагрупи (альбом з підписом)
+                media = []
+                files = {}
+                
+                for i, img in enumerate(images):
+                    file_id = f"pic{i}"
+                    img_content = await img.read()
+                    files[file_id] = (img.filename, img_content)
+                    
+                    media_item = {
+                        "type": "photo",
+                        "media": f"attach://{file_id}",
+                        "parse_mode": "HTML"
+                    }
+                    # Додаємо текст донесення як підпис ТІЛЬКИ до першого фото
+                    if i == 0:
+                        media_item["caption"] = report_text
+                        
+                    media.append(media_item)
 
-            const cached = localStorage.getItem('uav_draft_cache');
-            if (cached) { draft = JSON.parse(cached); renderDraft(); }
-            if (localStorage.getItem('last_route')) document.getElementById('route').value = localStorage.getItem('last_route');
-        };
+                await client.post(
+                    f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMediaGroup",
+                    data={"chat_id": TELEGRAM_CHAT_ID, "media": json.dumps(media)},
+                    files=files
+                )
+        return {"status": "ok"}
+    except Exception as e:
+        print(f"Telegram API Error: {e}")
+        return {"status": "error", "message": str(e)}
 
-        async function showMain(unit) {
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('mainScreen').classList.remove('hidden');
-            const resD = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(unit));
-            const drones = await resD.json();
-            document.getElementById('drone').innerHTML = drones.map(d => '<option value="' + d.model + ' (S/N: ' + d.serial_number + ')">' + d.model + ' [' + d.serial_number + ']</option>').join('');
-            document.getElementById('date').valueAsDate = new Date();
-        }
+@app.get("/api/get_options")
+async def get_options():
+    return {
+        "units": UNITS, 
+        "weather": ["Нормальні", "Складні умови", "Несприятливі умови"], 
+        "flight_modes": ["Норма", "АТТІ"], 
+        "results": ["Без ознак порушення", "Затримання"]
+    }
 
-        function saveAuth() {
-            localStorage.setItem('uav_unit', document.getElementById('loginUnit').value);
-            localStorage.setItem('uav_op', document.getElementById('loginOp').value);
-            location.reload();
-        }
+@app.get("/api/get_unit_drones")
+async def get_unit_drones(unit: str):
+    res = supabase.table("drones").select("model, serial_number").eq("unit", unit).execute()
+    return res.data
 
-        function addToDraft() {
-            const rawDate = document.getElementById('date').value;
-            const flight = {
-                id: Date.now(),
-                date: rawDate.split('-').reverse().join('.'),
-                shift_time: document.getElementById('s1').value + "-" + document.getElementById('s2').value,
-                operator: localStorage.getItem('uav_op'), unit: localStorage.getItem('uav_unit'),
-                drone: document.getElementById('drone').value, route: document.getElementById('route').value || "Не вказано",
-                takeoff: document.getElementById('t1').value, landing: document.getElementById('t2').value,
-                distance: parseInt(document.getElementById('dist').value) || 0,
-                battery_id: document.getElementById('akb').value, battery_cycles: parseInt(document.getElementById('cyc').value) || 0,
-                mission_type: "Патрулювання", result: document.getElementById('result').value
-            };
-            if(!flight.takeoff.includes(':') || !flight.landing.includes(':')) return alert("Перевірте час!");
-            draft.push(flight);
-            localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
-            localStorage.setItem('last_route', flight.route);
-            renderDraft();
-            ['t1', 't2', 'dist', 'akb', 'cyc'].forEach(id => document.getElementById(id).value = "");
-        }
+@app.get("/api/get_my_flights")
+async def get_my_flights(unit: str, operator: str):
+    res = supabase.table("flights").select("*").eq("unit", unit).eq("operator", operator).order("id", desc=True).execute()
+    return res.data
 
-        function renderDraft() {
-            document.getElementById('draftCount').innerText = draft.length;
-            document.getElementById('publishBtn').disabled = draft.length === 0;
-            document.getElementById('draftList').innerHTML = draft.map(f => `
-                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700 flex justify-between items-center">
-                    <div class="text-[10px]"><div class="font-bold text-green-500">${f.takeoff} → ${f.landing}</div><div class="text-slate-400 uppercase">${f.drone.split(' (')[0]}</div></div>
-                    <button onclick="removeFromDraft(${f.id})" class="text-red-500 p-2"><i class="fa-solid fa-trash-can"></i></button>
-                </div>`).join('');
-            generateCUS();
-        }
+@app.get("/api/get_all_flights")
+async def get_all_flights():
+    res = supabase.table("flights").select("*").order("id", desc=True).execute()
+    return res.data
 
-        function generateCUS() {
-            let b = "", a = "";
-            draft.forEach(f => {
-                const [h1, m1] = f.takeoff.split(':').map(Number), [h2, m2] = f.landing.split(':').map(Number);
-                let d = (h2 * 60 + m2) - (h1 * 60 + m1); if (d <= 0) d += 1440;
-                const line = f.takeoff + "-" + f.landing + " - " + f.distance + "м (" + d + " хв)\n";
-                if (f.takeoff < "08:00" || f.takeoff > "20:00") a += line; else b += line;
-            });
-            document.getElementById('cusBefore').value = b || "---"; document.getElementById('cusAfter').value = a || "---";
-        }
+@app.delete("/api/delete_flight/{id}")
+async def delete_flight(id: int):
+    supabase.table("flights").delete().eq("id", id).execute()
+    return {"status": "deleted"}
 
-        function removeFromDraft(id) { draft = draft.filter(f => f.id !== id); localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); renderDraft(); }
+# --- СТОРІНКИ ---
 
-        function copyText(id) {
-            const el = document.getElementById(id); if (el.value === "---") return;
-            navigator.clipboard.writeText(el.value); alert("Скопійовано!");
-        }
+@app.get("/")
+async def read_index():
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
-        async function publishAll() {
-            if (draft.length === 0) return;
-            const btn = document.getElementById('publishBtn'); btn.disabled = true; btn.innerText = "НАДСИЛАННЯ...";
-            const first = draft[0];
-            const currentShift = document.getElementById('s1').value + "-" + document.getElementById('s2').value;
-            const currentRoute = document.getElementById('route').value || "Не вказано";
-            
-            let report = "<b>Донесення:</b> " + first.unit + "\n" +
-                         "<b>Пілот:</b> " + first.operator + "\n" +
-                         "<b>Дата:</b> " + first.date + "\n" +
-                         "<b>Час завдання:</b> " + currentShift + "\n" +
-                         "<b>БпЛА:</b> " + first.drone + "\n" +
-                         "<b>Маршрут:</b> " + currentRoute + "\n" +
-                         "━━━━━━━━━━━━━━━\n" +
-                         "<b>Вильоти:</b>\n";
-            
-            draft.forEach((f, i) => {
-                const [h1, m1] = f.takeoff.split(':').map(Number);
-                const [h2, m2] = f.landing.split(':').map(Number);
-                let d = (h2*60+m2)-(h1*60+m1); d = d > 0 ? d : d + 1440;
-                report += (i + 1) + ". " + f.takeoff + "-" + f.landing + " (" + d + " хв)\n   Результат: " + f.result + "\n";
-            });
+@app.get("/dashboard")
+async def read_dashboard():
+    return FileResponse(os.path.join(FRONTEND_DIR, "dashboard.html"))
 
-            try {
-                for (const f of draft) {
-                    let [d, m, y] = f.date.split('.');
-                    const dbDate = `${y}-${m}-${d}`;
-                    const toDb = { ...f, date: dbDate, shift_time: currentShift, route: currentRoute };
-                    delete toDb.id;
-                    await fetch(API + "/add_flight", { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(toDb) });
-                }
-                const fd = new FormData(); fd.append('report_text', report);
-                const ph = document.getElementById('photos');
-                Array.from(ph.files).forEach(file => fd.append('images', file));
-                const resT = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
-                if ((await resT.json()).status === "ok") { alert("Успішно!"); draft = []; localStorage.removeItem('uav_draft_cache'); location.reload(); }
-            } catch (e) { alert("Помилка зв'язку!"); } finally { btn.disabled = false; btn.innerText = "Опублікувати донесення"; }
-        }
+@app.get("/request")
+async def read_request():
+    return FileResponse(os.path.join(FRONTEND_DIR, "request.html"))
 
-        function logout() { if(confirm("Вийти?")) { localStorage.clear(); location.reload(); } }
-    </script>
-</body>
-</html>
+@app.get("/admin")
+async def read_admin():
+    return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
+
+@app.get("/analytics")
+async def read_analytics():
+    return FileResponse(os.path.join(FRONTEND_DIR, "analytics.html"))
+
+@app.get("/handbook")
+async def read_handbook():
+    return FileResponse(os.path.join(FRONTEND_DIR, "handbook.html"))
+
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8001)
