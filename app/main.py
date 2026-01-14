@@ -146,6 +146,12 @@ async def read_request():
 async def read_admin():
     return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
 
+@app.get("/api/get_all_flights")
+async def get_all_flights():
+    # Отримуємо ВСІ записи без фільтрації по оператору
+    res = supabase.table("flights").select("*").order("id", desc=True).execute()
+    return res.data
+
 # Підключення статики (CSS, JS)
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
