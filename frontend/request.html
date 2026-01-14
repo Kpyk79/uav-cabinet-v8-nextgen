@@ -146,10 +146,10 @@
             // Формуємо текст за вашим шаблоном
             const formatDate = (dateStr) => dateStr.split('-').reverse().join('.');
 
-const msg = `ЗАЯВКА:
-1. Заявник: впс ${document.getElementById('reqUnit').value}
+const msg = `
+1. Заявник: в/ч 2196 2 ПРИКЗ (ДПСУ) ${document.getElementById('reqUnit').value}
 2. Тип БпЛА: ${selectedDrones.join(', ')}
-3. Дата здійснення польоту: з ${formatDate(document.getElementById('dateStart').value)} по ${formatDate(document.getElementById('dateEnd').value)}
+3. Дата здійснення польоту: ${formatDate(document.getElementById('dateStart').value)} - ${formatDate(document.getElementById('dateEnd').value)}
 4. Час роботи: з ${document.getElementById('timeStart').value} по ${document.getElementById('timeEnd').value}
 5. Населений пункт (маршрут): ${document.getElementById('reqRoute').value}
 6. Висота роботи (м): до ${document.getElementById('height').value} м
