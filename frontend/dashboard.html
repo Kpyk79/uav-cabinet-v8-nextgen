@@ -26,8 +26,7 @@
     </div>
 
     <div id="sessionsContainer" class="space-y-4">
-        <div class="text-center py-10 text-slate-500 uppercase font-black italic text-[10px] animate-pulse">Завантаження...</div>
-    </div>
+        </div>
 
     <script>
         const API = window.location.origin + "/api";
@@ -38,15 +37,9 @@
             const op = localStorage.getItem('uav_op');
             if(!unit || !op) return window.location.href = '/';
 
-            try {
-                const res = await fetch(`${API}/get_my_flights?unit=${encodeURIComponent(unit)}&operator=${encodeURIComponent(op)}`);
-                const data = await res.json();
-                flights = Array.isArray(data) ? data : [];
-                renderBlocks();
-            } catch (e) {
-                console.error(e);
-                document.getElementById('sessionsContainer').innerHTML = '<div class="text-center text-red-500 py-10 font-bold uppercase text-[10px]">Помилка з\'єднання</div>';
-            }
+            const res = await fetch(`${API}/get_my_flights?unit=${encodeURIComponent(unit)}&operator=${encodeURIComponent(op)}`);
+            flights = await res.json();
+            renderBlocks();
         }
 
         function renderBlocks() {
@@ -58,15 +51,15 @@
 
             const groups = {};
             flights.forEach(f => {
-                // ПРИМУСОВА КОНВЕРТАЦІЯ ДЛЯ ЕКРАНУ
+                // ПРИМУСОВА КОНВЕРТАЦІЯ ДАТИ ДЛЯ ВІДОБРАЖЕННЯ
                 const cleanDate = f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date;
-                const key = cleanDate + " | " + (f.shift_time || "---");
+                const key = cleanDate + " | " + f.shift_time;
                 if (!groups[key]) groups[key] = [];
                 groups[key].push(f);
             });
 
             container.innerHTML = Object.keys(groups).map(key => `
-                <div class="session-block glass">
+                <div class="session-block">
                     <div class="flex justify-between items-end mb-2 pb-1 border-b border-slate-700/30">
                         <div>
                             <div class="tech-label">Сесія</div>
@@ -86,8 +79,8 @@
                         ${groups[key].map(f => `
                             <div class="bg-slate-900/40 p-2 rounded-lg border border-slate-800/50">
                                 <div class="flex justify-between items-start">
-                                    <div class="text-[9px] font-black text-purple-400 uppercase truncate pr-2">${f.drone}</div>
-                                    <div class="text-[9px] font-mono text-slate-400 whitespace-nowrap">${f.takeoff} - ${f.landing}</div>
+                                    <div class="text-[9px] font-black text-purple-400 uppercase">${f.drone}</div>
+                                    <div class="text-[9px] font-mono text-slate-400">${f.takeoff} - ${f.landing}</div>
                                 </div>
                                 <div class="grid grid-cols-3 gap-1 mt-1">
                                     <div><div class="tech-label">Наліт</div><div class="tech-value text-blue-400">${f.duration} хв</div></div>
@@ -115,11 +108,12 @@
         }
 
         function exportToExcel() {
-            if (flights.length === 0) return alert("Немає даних");
+            if (flights.length === 0) return alert("Немає даних для експорту");
 
+            // 1. Складна шапка згідно з Журналом
             const header = [
                 ["ЖУРНАЛ обліку польотів із застосуванням БпЛА відділом повітряної розвідки та протидії БпС"],
-                [],
+                [], // Відступ
                 [
                     "№", "Дата", "Вид БпЛА", "Ділянка", "Час зльоту", "Час посадки", 
                     "Тривалість польоту год., хв", "", "", "Підстава для польоту", "", "", 
@@ -127,22 +121,34 @@
                 ]
             ];
 
+            // 2. Дані (використовуємо змінені назви колонок)
             const rows = flights.map((f, index) => [
                 index + 1,
-                f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date,
+                f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date, // Дата дд.мм.рррр
                 f.drone,
                 f.route || "",
                 f.takeoff,
                 f.landing,
                 f.duration + " хв",
-                "", "", "Патрулювання", "", "", "", "",
-                f.operator, "", "", "",
+                "", "",
+                "Патрулювання",
+                "", "", "", "",
+                f.operator,
+                "", "", "",
                 f.battery_id,
                 f.battery_cycles
             ]);
 
             const ws = XLSX.utils.aoa_to_sheet(header.concat(rows));
-            ws['!cols'] = [{wch: 4}, {wch: 12}, {wch: 35}, {wch: 25}, {wch: 10}, {wch: 10}, {wch: 15}, {wch: 5}, {wch: 5}, {wch: 20}, {wch: 5}, {wch: 5}, {wch: 10}, {wch: 10}, {wch: 25}, {wch: 5}, {wch: 10}, {wch: 10}, {wch: 12}, {wch: 10}];
+
+            // Ширина колонок
+            ws['!cols'] = [
+                {wch: 4}, {wch: 12}, {wch: 35}, {wch: 25}, {wch: 10}, {wch: 10}, 
+                {wch: 15}, {wch: 5}, {wch: 5}, {wch: 20}, {wch: 5}, {wch: 5}, 
+                {wch: 10}, {wch: 10}, {wch: 25}, {wch: 5}, {wch: 10}, {wch: 10}, {wch: 12}, {wch: 10}
+            ];
+
+            // Об'єднання заголовка
             ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 19 } }];
 
             const wb = XLSX.utils.book_new();
