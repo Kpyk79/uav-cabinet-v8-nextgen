@@ -27,7 +27,7 @@ app.add_middleware(
 )
 
 # Telegram Config
-TELEGRAM_TOKEN = "8532620253:AAEY7ug33Ru6VS4EZeXQPqOPiMx3fB49y-Q"
+TELEGRAM_TOKEN = TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = "627363301"
 
 # Supabase Config
