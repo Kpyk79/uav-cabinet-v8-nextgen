@@ -171,6 +171,14 @@ async def read_request():
 async def read_admin():
     return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
 
+@app.get("/analytics")
+async def read_analytics():
+    return FileResponse(os.path.join(FRONTEND_DIR, "analytics.html"))
+
+@app.get("/handbook")
+async def read_handbook():
+    return FileResponse(os.path.join(FRONTEND_DIR, "handbook.html"))
+
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 if __name__ == "__main__":
