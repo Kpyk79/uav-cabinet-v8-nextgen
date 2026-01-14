@@ -216,14 +216,14 @@
             const currentRoute = document.getElementById('route').value || "Не вказано";
             
             // ФОРМУЄМО ЧИСТИЙ ТЕКСТ ДЛЯ TELEGRAM
-            let report = "**Донесення:** " + first.unit + "\n" +
-                         "**Пілот:** " + first.operator + "\n" +
-                         "**Дата:** " + first.date + "\n" +
-                         "**Час завдання:** " + currentShift + "\n" +
-                         "**БпЛА:** " + first.drone + "\n" +
-                         "**Маршрут:** " + currentRoute + "\n" +
+            let report = "Донесення: " + first.unit + "\n" +
+                         "Пілот: " + first.operator + "\n" +
+                         "Дата: " + first.date + "\n" +
+                         "Час завдання: " + currentShift + "\n" +
+                         "БпЛА: " + first.drone + "\n" +
+                         "Маршрут: " + currentRoute + "\n" +
                          "━━━━━━━━━━━━━━━\n" +
-                         "**Вильоти:**\n";
+                         "Вильоти:\n";
             
             draft.forEach((f, i) => {
                 const [h1, m1] = f.takeoff.split(':').map(Number);
