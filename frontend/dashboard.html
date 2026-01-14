@@ -98,15 +98,63 @@ const key = cleanDate + " | " + f.shift_time;
         async function del(id) { if(confirm("Видалити запис?")) { await fetch(API + "/delete_flight/" + id, {method:'DELETE'}); load(); } }
 
         function exportToExcel() {
-            if(flights.length === 0) return alert("Немає даних");
-            const ws = XLSX.utils.json_to_sheet(flights.map(f => ({
-                "Дата": f.date, "Зміна": f.shift_time, "Модель": f.drone, "Зліт": f.takeoff, "Посадка": f.landing, 
-                "Наліт": f.duration, "Дистанція": f.distance, "АКБ": f.battery_id, "Результат": f.result
-            })));
-            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Journal");
-            XLSX.writeFile(wb, "UAV_Log_" + new Date().toISOString().slice(0,10) + ".xlsx");
-        }
-        load();
+    if (flights.length === 0) return alert("Немає даних для експорту");
+
+    // 1. Формуємо шапку згідно з паперовим журналом (3 рядки)
+    const header = [
+        ["ЖУРНАЛ обліку польотів із застосуванням БпЛА відділом повітряної розвідки та протидії БпС"],
+        [], // Порожній рядок для відступу
+        [
+            "№", "Дата", "Вид БпЛА", "Ділянка", "Час зльоту", "Час посадки", 
+            "Тривалість польоту год., хв", "", "", "Підстава для польоту", "", "", 
+            "Висота польоту м. (min)", "Висота польоту м. (max)", "в/зв, ПІБ оператора", "", "Підпис", "Прим.", "Номер АКБ", "Цикли АКБ"
+        ]
+    ];
+
+    // 2. Трансформуємо дані у відповідні колонки
+    const rows = flights.map((f, index) => [
+        index + 1,                   // №
+        f.date,                      // Дата
+        f.drone,                     // Вид БпЛА (Модель + S/N)
+        f.route || "",               // Ділянка
+        f.takeoff,                   // Час зльоту
+        f.landing,                   // Час посадки
+        f.duration,                  // Тривалість
+        "", "",                      // Порожні (для тривалості)
+        "Патрулювання",               // Підстава (стандартно)
+        "", "",                      // Порожні (підстава)
+        "",                          // Висота min
+        "",                          // Висота max
+        f.operator,                  // в/зв, ПІБ оператора
+        "",                          // Порожня
+        "",                          // Підпис (пусто для заповнення ручкою)
+        "",                          // Прим.
+        f.battery_id,                // Номер АКБ
+        f.battery_cycles             // Цикли АКБ
+    ]);
+
+    // 3. Створюємо робочий лист
+    const ws = XLSX.utils.aoa_to_sheet(header.concat(rows));
+
+    // 4. Налаштування ширини колонок (щоб текст не злипався)
+    ws['!cols'] = [
+        {wch: 4}, {wch: 12}, {wch: 35}, {wch: 25}, {wch: 10}, {wch: 10}, 
+        {wch: 15}, {wch: 5}, {wch: 5}, {wch: 20}, {wch: 5}, {wch: 5}, 
+        {wch: 10}, {wch: 10}, {wch: 25}, {wch: 5}, {wch: 10}, {wch: 10}, {wch: 12}, {wch: 10}
+    ];
+
+    // 5. Об'єднання комірок для головного заголовка (перший рядок)
+    ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 19 } } // Об'єднати заголовок на всю ширину
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Журнал польотів");
+    
+    // Файл збережеться з поточною датою
+    const fileName = `Journal_UAV_${new Date().toLocaleDateString('uk-UA')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+}
     </script>
 </body>
 </html>
