@@ -239,33 +239,74 @@
         }
 
         async function publishAll() {
-            const btn = document.getElementById('publishBtn'); btn.disabled = true; btn.innerText = "НАДСИЛАННЯ...";
-            const first = draft[0];
-            let report = "<b>Донесення:</b> " + first.unit + "\n<b>Пілот:</b> " + first.operator + "\n<b>Дата:</b> " + first.date + "\n<b>Час завдання:</b> " + first.shift_time + "\n<b>БпЛА:</b> " + first.drone + "\n<b>Маршрут:</b> " + first.route + "\n━━━━━━━━━━━━━━━\n<b>Вильоти:</b>\n";
-            
-            draft.forEach((f, i) => {
-                const [h1, m1] = f.takeoff.split(':').map(Number);
-                const [h2, m2] = f.landing.split(':').map(Number);
-                let d = (h2*60+m2)-(h1*60+m1); d = d > 0 ? d : d + 1440;
-                report += (i + 1) + ". " + f.takeoff + "-" + f.landing + " (" + d + " хв)\n   Результат: " + f.result + "\n";
+    if (draft.length === 0) return;
+    
+    const btn = document.getElementById('publishBtn'); 
+    btn.disabled = true; 
+    btn.innerText = "НАДСИЛАННЯ...";
+    
+    const first = draft[0];
+    let report = "<b>Донесення:</b> " + first.unit + "\n<b>Пілот:</b> " + first.operator + "\n<b>Дата:</b> " + first.date + "\n<b>Час завдання:</b> " + first.shift_time + "\n<b>БпЛА:</b> " + first.drone + "\n<b>Маршрут:</b> " + first.route + "\n━━━━━━━━━━━━━━━\n<b>Вильоти:</b>\n";
+    
+    draft.forEach((f, i) => {
+        const [h1, m1] = f.takeoff.split(':').map(Number);
+        const [h2, m2] = f.landing.split(':').map(Number);
+        let d = (h2*60+m2)-(h1*60+m1); d = d > 0 ? d : d + 1440;
+        report += (i + 1) + ". " + f.takeoff + "-" + f.landing + " (" + d + " хв)\n   Результат: " + f.result + "\n";
+    });
+
+    try {
+        // 1. Цикл відправки кожного польоту в базу даних
+        for (const f of draft) {
+            // КОНВЕРТАЦІЯ ДЛЯ БАЗИ: дд.мм.рррр -> рррр-мм-дд
+            // Це критично важливо для того, щоб Dashboard бачив записи
+            let dbDate = f.date;
+            if (f.date.includes('.')) {
+                const [d, m, y] = f.date.split('.');
+                dbDate = `${y}-${m}-${d}`;
+            }
+
+            // Створюємо об'єкт для бази з правильним форматом дати
+            const flightToDb = { ...f, date: dbDate };
+            // Видаляємо тимчасовий id, якщо база сама його генерує (Identity)
+            delete flightToDb.id; 
+
+            const response = await fetch(API + "/add_flight", { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify(flightToDb) 
             });
 
-            try {
-                for (const f of draft) await fetch(API + "/add_flight", { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(f) });
-                const fd = new FormData(); fd.append('report_text', report);
-                const ph = document.getElementById('photos');
-                const files = Array.from(ph.files);
-                files.forEach(file => { fd.append('images', file); });
-
-                const res = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
-                const json = await res.json();
-                if (json.status === "ok") {
-                    alert("Успішно опубліковано!");
-                    draft = []; localStorage.removeItem('uav_draft_cache'); location.reload();
-                } else alert("Помилка Telegram: " + json.message);
-            } catch (e) { alert("Помилка зв'язку"); }
-            finally { btn.disabled = false; btn.innerText = "Опублікувати донесення"; }
+            if (!response.ok) throw new Error("Помилка при збереженні польоту в базу");
         }
+
+        // 2. Формування даних для Telegram
+        const fd = new FormData(); 
+        fd.append('report_text', report);
+        const ph = document.getElementById('photos');
+        const files = Array.from(ph.files);
+        files.forEach(file => { fd.append('images', file); });
+
+        // 3. Відправка звіту в Telegram через ваш API
+        const res = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
+        const json = await res.json();
+        
+        if (json.status === "ok") {
+            alert("Успішно опубліковано в базу та Telegram!");
+            draft = []; 
+            localStorage.removeItem('uav_draft_cache'); 
+            location.reload();
+        } else {
+            alert("Помилка Telegram: " + json.message);
+        }
+    } catch (e) { 
+        console.error(e);
+        alert("Помилка: " + e.message); 
+    } finally { 
+        btn.disabled = false; 
+        btn.innerText = "Опублікувати донесення"; 
+    }
+}
 
         function logout() { if(confirm("Вийти?")) { localStorage.clear(); location.reload(); } }
     </script>
