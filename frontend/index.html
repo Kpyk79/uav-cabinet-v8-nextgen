@@ -32,9 +32,7 @@
             <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
                 <div id="userBadge" class="text-[10px] font-black text-green-500 uppercase italic"></div>
                 <div class="flex gap-2">
-                    <button onclick="window.location.href='/request'" class="p-2 bg-purple-500/20 text-purple-400 rounded-lg border border-purple-500/30 hover:bg-purple-500/40 transition-all" title="Створити заявку">
-                        <i class="fa-solid fa-file-signature"></i>
-                    </button>
+                    <button onclick="window.location.href='/request'" class="p-2 bg-purple-500/20 text-purple-400 rounded-lg"><i class="fa-solid fa-file-signature"></i></button>
                     <button onclick="window.location.href='/dashboard'" class="p-2 bg-blue-500/20 text-blue-400 rounded-lg"><i class="fa-solid fa-journal-whills"></i></button>
                     <button onclick="logout()" class="p-2 bg-red-500/20 text-red-400 rounded-lg"><i class="fa-solid fa-power-off"></i></button>
                 </div>
@@ -67,7 +65,7 @@
                     <label class="label-style">Скріншоти / Фото донесення</label>
                     <input type="file" id="photos" multiple accept="image/*" class="text-[10px] text-slate-500">
                 </div>
-                <button type="button" onclick="addToDraft()" class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Додати в чернетку</button>
+                <button type="button" onclick="addToDraft()" class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm">Додати в чернетку</button>
             </form>
         </div>
 
@@ -113,22 +111,19 @@
         window.onload = async function() {
             const res = await fetch(API + "/get_options");
             const opt = await res.json();
-            document.getElementById('loginUnit').innerHTML = opt.units.map(u => "<option>" + u + "</option>").join('');
-            document.getElementById('weather').innerHTML = opt.weather.map(w => "<option>" + w + "</option>").join('');
-            document.getElementById('mode').innerHTML = opt.flight_modes.map(m => "<option>" + m + "</option>").join('');
-            document.getElementById('result').innerHTML = opt.results.map(r => "<option>" + r + "</option>").join('');
+            document.getElementById('loginUnit').innerHTML = opt.units.map(u => `<option>${u}</option>`).join('');
+            document.getElementById('weather').innerHTML = opt.weather.map(w => `<option>${w}</option>`).join('');
+            document.getElementById('mode').innerHTML = opt.flight_modes.map(m => `<option>${m}</option>`).join('');
+            document.getElementById('result').innerHTML = opt.results.map(r => `<option>${r}</option>`).join('');
 
             const u = localStorage.getItem('uav_unit'), o = localStorage.getItem('uav_op');
             if (u && o) {
-                document.getElementById('loginUnit').value = u; 
-                document.getElementById('loginOp').value = o;
                 document.getElementById('userBadge').innerText = u + " | " + o;
                 showMain(u);
             } else document.getElementById('loginScreen').classList.remove('hidden');
 
             const cached = localStorage.getItem('uav_draft_cache');
             if (cached) { draft = JSON.parse(cached); renderDraft(); }
-            if (localStorage.getItem('last_route')) document.getElementById('route').value = localStorage.getItem('last_route');
         };
 
         async function showMain(unit) {
@@ -136,7 +131,7 @@
             document.getElementById('mainScreen').classList.remove('hidden');
             const resD = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(unit));
             const drones = await resD.json();
-            document.getElementById('drone').innerHTML = drones.map(d => '<option value="' + d.model + ' (S/N: ' + d.serial_number + ')">' + d.model + ' [' + d.serial_number + ']</option>').join('');
+            document.getElementById('drone').innerHTML = drones.map(d => `<option value="${d.model} (S/N: ${d.serial_number})">${d.model} [${d.serial_number}]</option>`).join('');
             document.getElementById('date').valueAsDate = new Date();
         }
 
@@ -148,33 +143,23 @@
 
         function addToDraft() {
             const rawDate = document.getElementById('date').value;
-            const formattedDate = rawDate.split('-').reverse().join('.');
-
             const flight = {
                 id: Date.now(),
-                date: formattedDate,
+                date: rawDate.split('-').reverse().join('.'),
                 shift_time: document.getElementById('s1').value + "-" + document.getElementById('s2').value,
-                operator: localStorage.getItem('uav_op'), 
-                unit: localStorage.getItem('uav_unit'),
-                drone: document.getElementById('drone').value, 
-                route: document.getElementById('route').value,
-                takeoff: document.getElementById('t1').value, 
-                landing: document.getElementById('t2').value,
+                operator: localStorage.getItem('uav_op'), unit: localStorage.getItem('uav_unit'),
+                drone: document.getElementById('drone').value, route: document.getElementById('route').value || "Не вказано",
+                takeoff: document.getElementById('t1').value, landing: document.getElementById('t2').value,
                 distance: parseInt(document.getElementById('dist').value) || 0,
-                battery_id: document.getElementById('akb').value, 
-                battery_cycles: parseInt(document.getElementById('cyc').value) || 0,
-                mission_type: "Патрулювання", 
+                battery_id: document.getElementById('akb').value, battery_cycles: parseInt(document.getElementById('cyc').value) || 0,
+                conditions: document.getElementById('weather').value + ", " + document.getElementById('mode').value,
                 result: document.getElementById('result').value
             };
-
             if(!flight.takeoff.includes(':') || !flight.landing.includes(':')) return alert("Перевірте час!");
-            
             draft.push(flight);
             localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
-            localStorage.setItem('last_route', flight.route);
             renderDraft();
             ['t1', 't2', 'dist', 'akb', 'cyc'].forEach(id => document.getElementById(id).value = "");
-            document.getElementById('t1').focus();
         }
 
         function renderDraft() {
@@ -193,7 +178,7 @@
             draft.forEach(f => {
                 const [h1, m1] = f.takeoff.split(':').map(Number), [h2, m2] = f.landing.split(':').map(Number);
                 let d = (h2 * 60 + m2) - (h1 * 60 + m1); if (d <= 0) d += 1440;
-                const line = f.takeoff + "-" + f.landing + " - " + f.distance + "м (" + d + " хв)\n";
+                const line = `${f.takeoff}-${f.landing} - ${f.distance}м (${d} хв)\n`;
                 if (f.takeoff < "08:00" || f.takeoff > "20:00") a += line; else b += line;
             });
             document.getElementById('cusBefore').value = b || "---"; document.getElementById('cusAfter').value = a || "---";
@@ -207,65 +192,36 @@
         }
 
         async function publishAll() {
-    if (draft.length === 0) return;
-    const btn = document.getElementById('publishBtn'); btn.disabled = true; btn.innerText = "НАДСИЛАННЯ...";
-    
-    const first = draft[0];
-    const currentShift = document.getElementById('s1').value + "-" + document.getElementById('s2').value;
-    const currentRoute = document.getElementById('route').value || "Не вказано";
-
-    // ФОРМУЄМО ЧИСТИЙ ТЕКСТ (кожен тег чітко закрито)
-    let report = "<b>Донесення:</b> " + first.unit + "\n" +
-                 "<b>Пілот:</b> " + first.operator + "\n" +
-                 "<b>Дата:</b> " + first.date + "\n" +
-                 "<b>Час завдання:</b> " + currentShift + "\n" +
-                 "<b>БпЛА:</b> " + first.drone + "\n" +
-                 "<b>Маршрут:</b> " + currentRoute + "\n" +
-                 "━━━━━━━━━━━━━━━\n" +
-                 "<b>Вильоти:</b>\n";
-    
-    draft.forEach((f, i) => {
-        const [h1, m1] = f.takeoff.split(':').map(Number);
-        const [h2, m2] = f.landing.split(':').map(Number);
-        let d = (h2*60+m2)-(h1*60+m1); d = d > 0 ? d : d + 1440;
-        report += (i + 1) + ". " + f.takeoff + "-" + f.landing + " (" + d + " хв)\n   Результат: " + f.result + "\n";
-    });
-
-    try {
-        for (const f of draft) {
-            // Конвертація для бази: дд.мм.рррр -> рррр-мм-дд
-            let dbDate = f.date;
-            if (f.date.includes('.')) {
-                const parts = f.date.split('.');
-                dbDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-            }
-            const flightToDb = { ...f, date: dbDate };
-            delete flightToDb.id; 
-
-            const res = await fetch(API + "/add_flight", { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify(flightToDb) 
+            const btn = document.getElementById('publishBtn'); btn.disabled = true; btn.innerText = "НАДСИЛАННЯ...";
+            const first = draft[0];
+            const currentShift = document.getElementById('s1').value + "-" + document.getElementById('s2').value;
+            const currentRoute = document.getElementById('route').value || "Не вказано";
+            
+            let report = `<b>Донесення:</b> ${first.unit}\n<b>Пілот:</b> ${first.operator}\n<b>Дата:</b> ${first.date}\n<b>Час завдання:</b> ${currentShift}\n<b>БпЛА:</b> ${first.drone}\n<b>Маршрут:</b> ${currentRoute}\n━━━━━━━━━━━━━━━\n<b>Вильоти:</b>\n`;
+            
+            draft.forEach((f, i) => {
+                const [h1, m1] = f.takeoff.split(':').map(Number);
+                const [h2, m2] = f.landing.split(':').map(Number);
+                let d = (h2*60+m2)-(h1*60+m1); d = d > 0 ? d : d + 1440;
+                report += `${i + 1}. ${f.takeoff}-${f.landing} (${d} хв)\n   Результат: ${f.result}\n`;
             });
-            if (!res.ok) throw new Error("Сервер не прийняв дані");
-        }
 
-        const fd = new FormData(); 
-        fd.append('report_text', report);
-        const ph = document.getElementById('photos');
-        Array.from(ph.files).forEach(file => fd.append('images', file));
-
-        const resT = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
-        if ((await resT.json()).status === "ok") {
-            alert("Успішно опубліковано!");
-            draft = []; localStorage.removeItem('uav_draft_cache'); location.reload();
+            try {
+                for (const f of draft) {
+                    let [d, m, y] = f.date.split('.');
+                    const dbDate = `${y}-${m}-${d}`;
+                    const toDb = { ...f, date: dbDate, shift_time: currentShift, route: currentRoute };
+                    delete toDb.id;
+                    const res = await fetch(API + "/add_flight", { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(toDb) });
+                    if (!res.ok) throw new Error("DB Error");
+                }
+                const fd = new FormData(); fd.append('report_text', report);
+                const ph = document.getElementById('photos');
+                Array.from(ph.files).forEach(file => fd.append('images', file));
+                const resT = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
+                if ((await resT.json()).status === "ok") { alert("Успішно!"); draft = []; localStorage.removeItem('uav_draft_cache'); location.reload(); }
+            } catch (e) { alert("Помилка!"); } finally { btn.disabled = false; btn.innerText = "Опублікувати"; }
         }
-    } catch (e) { 
-        alert("Помилка: " + e.message); 
-    } finally { 
-        btn.disabled = false; btn.innerText = "Опублікувати донесення"; 
-    }
-}
 
         function logout() { if(confirm("Вийти?")) { localStorage.clear(); location.reload(); } }
     </script>
