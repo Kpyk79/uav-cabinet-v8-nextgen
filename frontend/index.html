@@ -10,122 +10,93 @@
         body { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); min-height: 100vh; font-family: 'Inter', sans-serif; color: white; padding: 8px; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .label-style { font-size: 9px; text-transform: uppercase; font-weight: 800; color: #94a3b8; margin-bottom: 0.1rem; display: block; }
-        input, select, textarea { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.75rem !important; padding: 0.5rem 0.75rem !important; font-size: 13px !important; width: 100%; outline: none; }
-        input:focus { border-color: #22c55e !important; box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2); }
-        .btn-primary { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.2s; border: none; cursor: pointer; }
-        .btn-primary:active { transform: scale(0.95); opacity: 0.9; }
-        .draft-card { background: rgba(15, 23, 42, 0.6); border-left: 3px solid #22c55e; border-radius: 0.75rem; margin-bottom: 0.5rem; padding: 0.75rem; }
+        input, select, textarea { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.5rem; font-size: 14px !important; width: 100%; outline: none; transition: all 0.2s; }
+        input:focus { border-color: #22c55e !important; }
+        .btn-green { background: #16a34a; font-weight: 900; text-transform: uppercase; }
+        .cus-box { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.75rem; padding: 8px; }
+        .btn-purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .btn-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .btn-red { background: rgba(239, 68, 68, 0.2); color: #f87171; }
     </style>
 </head>
-<body class="max-w-md mx-auto pb-20">
+<body class="flex items-center justify-center">
 
-    <div class="flex justify-between items-center mb-6 mt-2 px-2">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
-                <i class="fa-solid fa-drone text-white text-xl"></i>
-            </div>
-            <div>
-                <h1 class="text-sm font-black uppercase italic leading-none tracking-tighter">UAV COMMAND</h1>
-                <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1" id="displayUnit">Завантаження...</p>
-            </div>
-        </div>
-        <div class="flex gap-2">
-            <button onclick="window.location.href='/request'" class="w-10 h-10 glass rounded-xl flex items-center justify-center text-purple-400">
-                <i class="fa-solid fa-file-signature text-sm"></i>
-            </button>
-            <button onclick="window.location.href='/dashboard'" class="w-10 h-10 glass rounded-xl flex items-center justify-center text-blue-400">
-                <i class="fa-solid fa-box-archive text-sm"></i>
-            </button>
+    <div id="loginScreen" class="w-full max-w-md glass p-8 rounded-[2rem] hidden">
+        <h1 class="text-2xl font-black text-center text-green-500 mb-6 uppercase italic">Авторизація</h1>
+        <div class="space-y-3">
+            <div><label class="label-style italic">Підрозділ</label><select id="loginUnit" class="p-3"></select></div>
+            <div><label class="label-style italic">Прізвище</label><input type="text" id="loginOp" class="p-3"></div>
+            <button onclick="saveAuth()" class="w-full btn-green py-4 rounded-xl text-slate-900 mt-2">Увійти</button>
         </div>
     </div>
 
-    <div class="glass rounded-2xl p-4 shadow-2xl mb-6">
-        <div class="grid grid-cols-2 gap-3 mb-4">
-            <div>
-                <label class="label-style">Дата</label>
-                <input type="date" id="date">
-            </div>
-            <div>
-                <label class="label-style">Зміна (час)</label>
-                <div class="flex items-center gap-1">
-                    <input type="text" id="s1" placeholder="08:00" maxlength="5">
-                    <span class="text-slate-500">-</span>
-                    <input type="text" id="s2" placeholder="20:00" maxlength="5">
+    <div id="mainScreen" class="w-full max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 hidden">
+        <div class="lg:w-1/2 glass p-4 rounded-[1.5rem] h-fit">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                <div id="userBadge" class="text-[10px] font-black text-green-500 uppercase italic"></div>
+                <div class="flex gap-2">
+                    <button onclick="window.location.href='/request'" class="p-2 btn-purple rounded-lg hover:bg-purple-500/40 transition-all" title="Створити заявку">
+                        <i class="fa-solid fa-file-signature"></i>
+                    </button>
+                    <button onclick="window.location.href='/dashboard'" class="p-2 btn-blue rounded-lg"><i class="fa-solid fa-journal-whills"></i></button>
+                    <button onclick="logout()" class="p-2 btn-red rounded-lg"><i class="fa-solid fa-power-off"></i></button>
                 </div>
             </div>
+
+            <form id="flightForm" class="space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="label-style">Дата</label><input type="date" id="date" class="p-2"></div>
+                    <div><label class="label-style">Зміна</label>
+                        <div class="flex gap-1">
+                            <input type="text" id="s1" placeholder="08:00" class="p-2 text-center" maxlength="5">
+                            <input type="text" id="s2" placeholder="20:00" class="p-2 text-center" maxlength="5">
+                        </div>
+                    </div>
+                </div>
+                <div><label class="label-style">БпЛА</label><select id="drone" class="p-2 text-green-400 font-bold"><option>Завантаження...</option></select></div>
+                <div><label class="label-style">Маршрут</label><input type="text" id="route" class="p-2"></div>
+                
+                <div class="grid grid-cols-2 gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800 text-center">
+                    <div><label class="label-style text-green-500">Зліт</label><input type="tel" id="t1" placeholder="930" class="p-1 text-lg font-mono text-green-400 text-center bg-transparent border-none" maxlength="5"></div>
+                    <div><label class="label-style text-red-500">Посадка</label><input type="tel" id="t2" placeholder="1015" class="p-1 text-lg font-mono text-red-400 text-center bg-transparent border-none" maxlength="5"></div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <div><label class="label-style">Дист.(м)</label><input type="number" id="dist" inputmode="numeric" class="p-2"></div>
+                    <div><label class="label-style">№ АКБ</label><input type="text" id="akb" class="p-2"></div>
+                    <div><label class="label-style">Цикли</label><input type="number" id="cyc" inputmode="numeric" class="p-2"></div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 border-b border-slate-800 pb-3">
+                    <div><label class="label-style">Погода</label><select id="weather" class="p-2 text-[10px]"></select></div>
+                    <div><label class="label-style">Умови</label><select id="mode" class="p-2 text-[10px]"></select></div>
+                    <div><label class="label-style text-orange-400">Результат</label><select id="result" class="p-2 text-[10px] text-orange-400 font-bold"></select></div>
+                </div>
+
+                <div class="bg-slate-900/40 p-3 rounded-xl border border-dashed border-slate-700">
+                    <label class="label-style">Скріншоти / Фото донесення</label>
+                    <input type="file" id="photos" multiple accept="image/*" class="text-[10px] text-slate-500">
+                </div>
+                <button type="button" onclick="addToDraft()" class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Додати в чернетку</button>
+            </form>
         </div>
 
-        <div class="mb-4">
-            <label class="label-style">БпЛА (Модель та S/N)</label>
-            <select id="drone" class="font-bold text-green-400">
-                <option value="">Оберіть борт...</option>
-            </select>
-        </div>
+        <div class="lg:w-1/2 glass p-4 rounded-[1.5rem] flex flex-col">
+            <h2 class="text-[11px] font-black uppercase text-slate-500 mb-2 italic">Чернетка (<span id="draftCount">0</span>)</h2>
+            <div id="draftList" class="flex-grow space-y-2 overflow-y-auto max-h-[300px] mb-4"></div>
 
-        <div class="mb-4">
-            <label class="label-style">Маршрут / Район</label>
-            <input type="text" id="route" placeholder="н.п. Кодима - н.п. Загнітків">
-        </div>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <div class="cus-box">
+                    <div class="flex justify-between mb-1"><span class="text-[8px] font-black uppercase text-green-500 tracking-tighter">До 00:00</span><button onclick="copyText('cusBefore')" class="text-[8px] text-blue-400 font-bold">COPY</button></div>
+                    <textarea id="cusBefore" readonly class="w-full bg-transparent p-1 text-[10px] h-14 text-slate-400 font-mono outline-none resize-none"></textarea>
+                </div>
+                <div class="cus-box">
+                    <div class="flex justify-between mb-1"><span class="text-[8px] font-black uppercase text-blue-500 tracking-tighter">Після 00:00</span><button onclick="copyText('cusAfter')" class="text-[8px] text-blue-400 font-bold">COPY</button></div>
+                    <textarea id="cusAfter" readonly class="w-full bg-transparent p-1 text-[10px] h-14 text-slate-400 font-mono outline-none resize-none"></textarea>
+                </div>
+            </div>
 
-        <div class="grid grid-cols-3 gap-3 mb-4">
-            <div>
-                <label class="label-style">Зліт</label>
-                <input type="text" id="t1" placeholder="10:20" maxlength="5">
-            </div>
-            <div>
-                <label class="label-style">Посадка</label>
-                <input type="text" id="t2" placeholder="11:05" maxlength="5">
-            </div>
-            <div>
-                <label class="label-style">Дист. (м)</label>
-                <input type="number" id="dist" placeholder="4500">
-            </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 mb-4">
-            <div>
-                <label class="label-style">№ АКБ</label>
-                <input type="text" id="akb" placeholder="AKB-01">
-            </div>
-            <div>
-                <label class="label-style">Цикли</label>
-                <input type="number" id="cyc" placeholder="12">
-            </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 mb-4">
-            <div>
-                <label class="label-style">Погода</label>
-                <select id="weather"></select>
-            </div>
-            <div>
-                <label class="label-style">Режим</label>
-                <select id="mode"></select>
-            </div>
-        </div>
-
-        <div class="mb-6">
-            <label class="label-style">Результат польоту</label>
-            <select id="result" class="font-bold"></select>
-        </div>
-
-        <button onclick="addToDraft()" class="w-100 btn-primary w-full py-4 rounded-xl shadow-lg shadow-green-500/20 flex items-center justify-center gap-2">
-            <i class="fa-solid fa-plus text-lg"></i>
-            <span>Додати в чернетку</span>
-        </button>
-    </div>
-
-    <div id="draftContainer" class="hidden">
-        <h2 class="text-[10px] font-black uppercase text-slate-500 mb-3 px-2 tracking-widest italic">Чернетка донесення</h2>
-        <div id="draftList"></div>
-        
-        <div class="glass rounded-2xl p-4 mt-4 border-dashed border-slate-700">
-            <label class="label-style">Фото результатів (необов'язково)</label>
-            <input type="file" id="photos" multiple accept="image/*" class="text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-slate-300">
-            
-            <button id="publishBtn" onclick="publishAll()" class="w-full mt-4 bg-blue-600 py-4 rounded-xl font-black uppercase italic tracking-tighter text-sm">
-                Опублікувати донесення
-            </button>
+            <button id="publishBtn" onclick="publishAll()" disabled class="w-full btn-green py-4 rounded-xl text-slate-900 mt-auto shadow-xl uppercase font-black">Опублікувати донесення</button>
         </div>
     </div>
 
@@ -133,106 +104,126 @@
         const API = window.location.origin + "/api";
         let draft = [];
 
-        async function init() {
-            const params = new URLSearchParams(window.location.search);
-            const u = params.get('u') || localStorage.getItem('uav_unit');
-            const o = params.get('o') || localStorage.getItem('uav_op');
-
-            if (!u || !o) {
-                const unit = prompt("Ваш підрозділ (напр. впс Кодима):");
-                const op = prompt("Ваше звання та прізвище:");
-                if(unit && op) {
-                    localStorage.setItem('uav_unit', unit);
-                    localStorage.setItem('uav_op', op);
-                    location.reload();
-                }
-                return;
+        // Форматування часу (наприклад, 930 -> 09:30)
+        function formatTimeInput(val) {
+            let clean = val.replace(/\D/g, '');
+            if (clean.length === 3) clean = '0' + clean;
+            if (clean.length === 4) {
+                let h = clean.slice(0, 2), m = clean.slice(2, 4);
+                if (parseInt(h) < 24 && parseInt(m) < 60) return h + ":" + m;
             }
+            return val;
+        }
 
-            document.getElementById('displayUnit').innerText = u;
-            document.getElementById('date').value = new Date().toISOString().split('T')[0];
-            
-            const lastRoute = localStorage.getItem('last_route');
-            if(lastRoute) document.getElementById('route').value = lastRoute;
+        const timeIds = ['t1', 't2', 's1', 's2'];
+        timeIds.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('blur', function() { this.value = formatTimeInput(this.value); });
+        });
 
+        // Ініціалізація
+        window.onload = async function() {
             const res = await fetch(API + "/get_options");
             const opt = await res.json();
-            
-            const w = document.getElementById('weather'); opt.weather.forEach(x => w.innerHTML += `<option>${x}</option>`);
-            const m = document.getElementById('mode'); opt.flight_modes.forEach(x => m.innerHTML += `<option>${x}</option>`);
-            const r = document.getElementById('result'); opt.results.forEach(x => r.innerHTML += `<option>${x}</option>`);
+            document.getElementById('loginUnit').innerHTML = opt.units.map(u => "<option>" + u + "</option>").join('');
+            document.getElementById('weather').innerHTML = opt.weather.map(w => "<option>" + w + "</option>").join('');
+            document.getElementById('mode').innerHTML = opt.flight_modes.map(m => "<option>" + m + "</option>").join('');
+            document.getElementById('result').innerHTML = opt.results.map(r => "<option>" + r + "</option>").join('');
 
-            const drRes = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(u));
-            const drones = await drRes.json();
-            const dSel = document.getElementById('drone');
-            drones.forEach(d => dSel.innerHTML += `<option value="${d.model} (S/N: ${d.serial_number})">${d.model} [${d.serial_number}]</option>`);
+            const u = localStorage.getItem('uav_unit'), o = localStorage.getItem('uav_op');
+            if (u && o) {
+                document.getElementById('userBadge').innerText = u + " | " + o;
+                showMain(u);
+            } else document.getElementById('loginScreen').classList.remove('hidden');
 
             const cached = localStorage.getItem('uav_draft_cache');
-            if(cached) { draft = JSON.parse(cached); renderDraft(); }
+            if (cached) { draft = JSON.parse(cached); renderDraft(); }
+            if (localStorage.getItem('last_route')) document.getElementById('route').value = localStorage.getItem('last_route');
+        };
+
+        async function showMain(unit) {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainScreen').classList.remove('hidden');
+            const resD = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(unit));
+            const drones = await resD.json();
+            document.getElementById('drone').innerHTML = drones.map(d => '<option value="' + d.model + ' (S/N: ' + d.serial_number + ')">' + d.model + ' [' + d.serial_number + ']</option>').join('');
+            document.getElementById('date').valueAsDate = new Date();
+        }
+
+        function saveAuth() {
+            localStorage.setItem('uav_unit', document.getElementById('loginUnit').value);
+            localStorage.setItem('uav_op', document.getElementById('loginOp').value);
+            location.reload();
         }
 
         function addToDraft() {
             const rawDate = document.getElementById('date').value;
-            if(!rawDate) return alert("Оберіть дату!");
-            
             const formattedDate = rawDate.split('-').reverse().join('.');
 
             const flight = {
                 id: Date.now(),
                 date: formattedDate,
                 shift_time: document.getElementById('s1').value + "-" + document.getElementById('s2').value,
-                operator: localStorage.getItem('uav_op'),
+                operator: localStorage.getItem('uav_op'), 
                 unit: localStorage.getItem('uav_unit'),
-                drone: document.getElementById('drone').value,
+                drone: document.getElementById('drone').value, 
                 route: document.getElementById('route').value,
-                takeoff: document.getElementById('t1').value,
+                takeoff: document.getElementById('t1').value, 
                 landing: document.getElementById('t2').value,
                 distance: parseInt(document.getElementById('dist').value) || 0,
-                battery_id: document.getElementById('akb').value,
+                battery_id: document.getElementById('akb').value, 
                 battery_cycles: parseInt(document.getElementById('cyc').value) || 0,
-                mission_type: "Патрулювання",
+                mission_type: "Патрулювання", 
                 conditions: document.getElementById('weather').value + ", " + document.getElementById('mode').value,
-                result: document.getElementById('result').value,
+                result: document.getElementById('result').value, 
                 notes: ""
             };
 
-            if(!flight.takeoff.includes(':') || !flight.landing.includes(':')) return alert("Перевірте формат часу (н-д 10:20)");
-            if(!flight.drone) return alert("Оберіть БпЛА");
-
+            if(!flight.takeoff.includes(':') || !flight.landing.includes(':')) return alert("Перевірте формат часу!");
+            
             draft.push(flight);
             localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
             localStorage.setItem('last_route', flight.route);
             renderDraft();
-
+            
             ['t1', 't2', 'dist', 'akb', 'cyc'].forEach(id => document.getElementById(id).value = "");
             document.getElementById('t1').focus();
         }
 
         function renderDraft() {
-            const cont = document.getElementById('draftContainer');
-            const list = document.getElementById('draftList');
-            if(draft.length === 0) { cont.classList.add('hidden'); return; }
-            cont.classList.remove('hidden');
-
-            list.innerHTML = draft.map((f, i) => `
-                <div class="draft-card">
-                    <div class="flex justify-between items-start mb-1">
-                        <div class="text-[10px] font-black text-green-400 uppercase tracking-tighter">${f.drone}</div>
-                        <button onclick="removeDraft(${i})" class="text-red-500/50"><i class="fa-solid fa-xmark text-xs"></i></button>
-                    </div>
-                    <div class="flex gap-4 text-[10px] font-bold">
-                        <span class="text-slate-300"><i class="fa-regular fa-clock mr-1 text-slate-500"></i>${f.takeoff}-${f.landing}</span>
-                        <span class="text-slate-300"><i class="fa-solid fa-battery-three-quarters mr-1 text-slate-500"></i>${f.battery_id}</span>
-                        <span class="text-blue-400"><i class="fa-solid fa-route mr-1 text-slate-500"></i>${f.distance}м</span>
-                    </div>
+            document.getElementById('draftCount').innerText = draft.length;
+            document.getElementById('publishBtn').disabled = draft.length === 0;
+            document.getElementById('draftList').innerHTML = draft.map(f => `
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700 flex justify-between items-center">
+                    <div class="text-[10px]"><div class="font-bold text-green-500">${f.takeoff} → ${f.landing}</div><div class="text-slate-400 uppercase">${f.drone.split(' (')[0]}</div></div>
+                    <button onclick="removeFromDraft(${f.id})" class="text-red-500 p-2"><i class="fa-solid fa-trash-can"></i></button>
                 </div>
             `).join('');
+            generateCUS();
         }
 
-        function removeDraft(i) {
-            draft.splice(i, 1);
-            localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
-            renderDraft();
+        function generateCUS() {
+            let before = "", after = "";
+            draft.forEach(f => {
+                const [h1, m1] = f.takeoff.split(':').map(Number);
+                const [h2, m2] = f.landing.split(':').map(Number);
+                let d = (h2 * 60 + m2) - (h1 * 60 + m1);
+                if (d <= 0) d += 1440;
+                const line = f.takeoff + "-" + f.landing + " - " + f.distance + "м (" + d + " хв)\n";
+                if (f.takeoff < "08:00" || f.takeoff > "20:00") after += line;
+                else before += line;
+            });
+            document.getElementById('cusBefore').value = before || "---";
+            document.getElementById('cusAfter').value = after || "---";
+        }
+
+        function removeFromDraft(id) { draft = draft.filter(f => f.id !== id); localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); renderDraft(); }
+
+        function copyText(id) {
+            const el = document.getElementById(id);
+            if (el.value === "---") return;
+            navigator.clipboard.writeText(el.value);
+            alert("Скопійовано!");
         }
 
         async function publishAll() {
@@ -241,7 +232,6 @@
             btn.disabled = true; 
             btn.innerText = "НАДСИЛАННЯ...";
             
-            // Формуємо ТЕКСТ для Telegram (використовуємо дату як вона є в draft - дд.мм.рррр)
             const first = draft[0];
             let report = "<b>Донесення:</b> " + first.unit + "\n<b>Пілот:</b> " + first.operator + "\n<b>Дата:</b> " + first.date + "\n<b>Час завдання:</b> " + first.shift_time + "\n<b>БпЛА:</b> " + first.drone + "\n<b>Маршрут:</b> " + first.route + "\n━━━━━━━━━━━━━━━\n<b>Вильоти:</b>\n";
             
@@ -253,12 +243,11 @@
             });
 
             try {
-                // Відправка в базу (з конвертацією ТІЛЬКИ для запиту)
                 for (const f of draft) {
                     let dbDate = f.date;
                     if (f.date.includes('.')) {
                         const parts = f.date.split('.');
-                        if(parts.length === 3) dbDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                        dbDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
                     }
                     const flightToDb = { ...f, date: dbDate };
                     delete flightToDb.id; 
@@ -270,7 +259,6 @@
                     });
                 }
 
-                // Відправка в Telegram
                 const fd = new FormData(); 
                 fd.append('report_text', report);
                 const ph = document.getElementById('photos');
@@ -285,6 +273,8 @@
                     draft = []; 
                     localStorage.removeItem('uav_draft_cache'); 
                     location.reload();
+                } else {
+                    alert("Помилка Telegram: " + json.message);
                 }
             } catch (e) { 
                 alert("Помилка зв'язку"); 
@@ -294,7 +284,7 @@
             }
         }
 
-        window.onload = init;
+        function logout() { if(confirm("Вийти?")) { localStorage.clear(); location.reload(); } }
     </script>
 </body>
 </html>
