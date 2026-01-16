@@ -2,8 +2,8 @@ import os
 import httpx
 import json
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, Form, UploadFile, File, Query
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Form, UploadFile, File, Query, Request
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -16,7 +16,7 @@ load_dotenv()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
-app = FastAPI(title="UAV Command System v10.6")
+app = FastAPI(title="UAV Command System v10.7")
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,7 +36,24 @@ supabase: Client = create_client(URL, KEY)
 
 UNITS = ['впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"', 'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"', 'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"', 'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"', 'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"', 'віпс "Кучурган"', 'віпс "Лиманське"', "Група ВОПРтаПБпПС"]
 
-# Модель даних з Optional полями, щоб уникнути помилок валідації
+# --- СИСТЕМА ПРИВАТНОСТІ (Cookies) ---
+SECRET_TOKEN = "kodyma2026"
+
+@app.middleware("http")
+async def check_auth(request: Request, call_next):
+    protected_paths = ["/", "/dashboard", "/analytics", "/handbook", "/admin", "/request", "/admin_analytics"]
+    if request.url.path in protected_paths:
+        token_in_url = request.query_params.get("token")
+        token_in_cookie = request.cookies.get("access_token")
+        if token_in_url != SECRET_TOKEN and token_in_cookie != SECRET_TOKEN:
+            return HTMLResponse(content="<h1>403 Forbidden</h1>", status_code=403)
+        response = await call_next(request)
+        if token_in_url == SECRET_TOKEN:
+            response.set_cookie(key="access_token", value=SECRET_TOKEN, max_age=31536000, httponly=True)
+        return response
+    return await call_next(request)
+
+# --- МОДЕЛЬ ДАНИХ (ВИПРАВЛЕНО) ---
 class FlightEntry(BaseModel):
     date: str
     shift_time: str
@@ -51,7 +68,9 @@ class FlightEntry(BaseModel):
     battery_id: Optional[str] = ""
     battery_cycles: Optional[int] = 0
     mission_type: Optional[str] = "Патрулювання"
-    conditions: Optional[str] = ""
+    # Додано поля, які фронтенд тепер надсилає індивідуально для кожного польоту
+    weather: Optional[str] = "Нормальні"
+    conditions: Optional[str] = "Норма"
     notes: Optional[str] = ""
 
 def calculate_duration(t1: str, t2: str):
@@ -71,10 +90,7 @@ def calculate_duration(t1: str, t2: str):
 async def add_flight(entry: FlightEntry):
     try:
         data = entry.dict()
-        # Розрахунок тривалості польоту
         data["duration"] = str(calculate_duration(entry.takeoff, entry.landing))
-        
-        # Видаляємо ID, якщо він прийшов з фронтенду, щоб БД створила свій
         if "id" in data: del data["id"]
         
         res = supabase.table("flights").insert(data).execute()
@@ -88,30 +104,19 @@ async def publish_report(report_text: str = Form(...), images: List[UploadFile] 
     try:
         async with httpx.AsyncClient() as client:
             if not images:
-                # Відправка тільки тексту
                 await client.post(
                     f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
                     data={"chat_id": TELEGRAM_CHAT_ID, "text": report_text, "parse_mode": "HTML"}
                 )
             else:
-                # Відправка медіагрупи (альбом з підписом)
                 media = []
                 files = {}
-                
                 for i, img in enumerate(images):
                     file_id = f"pic{i}"
                     img_content = await img.read()
                     files[file_id] = (img.filename, img_content)
-                    
-                    media_item = {
-                        "type": "photo",
-                        "media": f"attach://{file_id}",
-                        "parse_mode": "HTML"
-                    }
-                    # Додаємо текст донесення як підпис ТІЛЬКИ до першого фото
-                    if i == 0:
-                        media_item["caption"] = report_text
-                        
+                    media_item = {"type": "photo", "media": f"attach://{file_id}", "parse_mode": "HTML"}
+                    if i == 0: media_item["caption"] = report_text
                     media.append(media_item)
 
                 await client.post(
@@ -121,7 +126,6 @@ async def publish_report(report_text: str = Form(...), images: List[UploadFile] 
                 )
         return {"status": "ok"}
     except Exception as e:
-        print(f"Telegram API Error: {e}")
         return {"status": "error", "message": str(e)}
 
 @app.get("/api/get_options")
@@ -138,11 +142,6 @@ async def get_unit_drones(unit: str):
     res = supabase.table("drones").select("model, serial_number").eq("unit", unit).execute()
     return res.data
 
-@app.get("/api/get_my_flights")
-async def get_my_flights(unit: str, operator: str):
-    res = supabase.table("flights").select("*").eq("unit", unit).eq("operator", operator).order("id", desc=True).execute()
-    return res.data
-
 @app.get("/api/get_all_flights")
 async def get_all_flights():
     res = supabase.table("flights").select("*").order("id", desc=True).execute()
@@ -156,34 +155,27 @@ async def delete_flight(id: int):
 # --- СТОРІНКИ ---
 
 @app.get("/")
-async def read_index():
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+async def read_index(): return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
 @app.get("/dashboard")
-async def read_dashboard():
-    return FileResponse(os.path.join(FRONTEND_DIR, "dashboard.html"))
+async def read_dashboard(): return FileResponse(os.path.join(FRONTEND_DIR, "dashboard.html"))
 
 @app.get("/request")
-async def read_request():
-    return FileResponse(os.path.join(FRONTEND_DIR, "request.html"))
+async def read_request(): return FileResponse(os.path.join(FRONTEND_DIR, "request.html"))
 
 @app.get("/admin")
-async def read_admin():
-    return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
+async def read_admin(): return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
 
 @app.get("/analytics")
-async def read_analytics():
-    return FileResponse(os.path.join(FRONTEND_DIR, "analytics.html"))
+async def read_analytics(): return FileResponse(os.path.join(FRONTEND_DIR, "analytics.html"))
 
 @app.get("/handbook")
-async def read_handbook():
-    return FileResponse(os.path.join(FRONTEND_DIR, "handbook.html"))
-
-app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+async def read_handbook(): return FileResponse(os.path.join(FRONTEND_DIR, "handbook.html"))
 
 @app.get("/admin_analytics")
-async def read_admin_analytics():
-    return FileResponse(os.path.join(FRONTEND_DIR, "admin_analytics.html"))
+async def read_admin_analytics(): return FileResponse(os.path.join(FRONTEND_DIR, "admin_analytics.html"))
+
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 if __name__ == "__main__":
     import uvicorn
