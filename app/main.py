@@ -27,8 +27,8 @@ app.add_middleware(
 )
 
 # --- CONFIG ---
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN") 
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "627363301")
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8532620253:AAEY7ug33Ru6VS4EZeXQPqOPiMx3fB49y-Q")
+TELEGRAM_CHAT_ID = "627363301"
 
 URL = os.environ.get("SUPABASE_URL")
 KEY = os.environ.get("SUPABASE_KEY")
@@ -187,7 +187,10 @@ app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 async def read_admin_analytics():
     return FileResponse(os.path.join(FRONTEND_DIR, "admin_analytics.html"))
 
+@app.get("/xxx")
+async def read_xxx():
+    return FileResponse(os.path.join(FRONTEND_DIR, "xxx.html"))
+
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="127.0.0.1", port=8001)
