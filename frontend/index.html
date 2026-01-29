@@ -42,26 +42,29 @@
 
             <form id="flightForm" class="space-y-3">
                 <div class="grid grid-cols-2 gap-2">
-                    <div><label class="label-style">Дата</label><input type="date" id="date" class="p-2"></div>
+                    <div><label class="label-style">Дата</label><input type="date" id="date" class="p-2" oninput="saveState(this.id)"></div>
                     <div><label class="label-style">Час польотного завдання</label>
-                        <div class="flex gap-1"><input type="time" id="s1" value="08:00" class="p-2 text-center"><input type="time" id="s2" value="20:00" class="p-2 text-center"></div>
+                        <div class="flex gap-1">
+                            <input type="time" id="s1" value="08:00" class="p-2 text-center" oninput="saveState(this.id)">
+                            <input type="time" id="s2" value="20:00" class="p-2 text-center" oninput="saveState(this.id)">
+                        </div>
                     </div>
                 </div>
-                <div><label class="label-style">БпЛА</label><select id="drone" class="p-2 text-green-400 font-bold"><option>Завантаження...</option></select></div>
-                <div><label class="label-style">Маршрут</label><input type="text" id="route" class="p-2"></div>
+                <div><label class="label-style">БпЛА</label><select id="drone" class="p-2 text-green-400 font-bold" onchange="saveState(this.id)"><option>Завантаження...</option></select></div>
+                <div><label class="label-style">Маршрут</label><input type="text" id="route" class="p-2" oninput="saveState(this.id)"></div>
                 <div class="grid grid-cols-2 gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800 text-center">
-                    <div><label class="label-style text-green-500">Зліт</label><input type="tel" id="t1" placeholder="930" class="p-1 text-lg font-mono text-green-400 text-center bg-transparent border-none"></div>
-                    <div><label class="label-style text-red-500">Посадка</label><input type="tel" id="t2" placeholder="1015" class="p-1 text-lg font-mono text-red-400 text-center bg-transparent border-none"></div>
+                    <div><label class="label-style text-green-500">Зліт</label><input type="tel" id="t1" placeholder="09:30" class="p-1 text-lg font-mono text-green-400 text-center bg-transparent border-none" oninput="saveState(this.id)"></div>
+                    <div><label class="label-style text-red-500">Посадка</label><input type="tel" id="t2" placeholder="10:15" class="p-1 text-lg font-mono text-red-400 text-center bg-transparent border-none" oninput="saveState(this.id)"></div>
                 </div>
                 <div class="grid grid-cols-3 gap-2">
-                    <div><label class="label-style">Дист.(м)</label><input type="number" id="dist" inputmode="numeric" class="p-2"></div>
-                    <div><label class="label-style">№ АКБ</label><input type="text" id="akb" class="p-2"></div>
-                    <div><label class="label-style">Цикли</label><input type="number" id="cyc" inputmode="numeric" class="p-2"></div>
+                    <div><label class="label-style">Дист.(м)</label><input type="number" id="dist" inputmode="numeric" class="p-2" oninput="saveState(this.id)"></div>
+                    <div><label class="label-style">№ АКБ</label><input type="text" id="akb" class="p-2" oninput="saveState(this.id)"></div>
+                    <div><label class="label-style">Цикли</label><input type="number" id="cyc" inputmode="numeric" class="p-2" oninput="saveState(this.id)"></div>
                 </div>
                 <div class="grid grid-cols-3 gap-2 border-b border-slate-800 pb-3">
-                    <div><label class="label-style">Погодні умови</label><select id="weather" class="p-2 text-[10px]"></select></div>
-                    <div><label class="label-style">Умови польоту</label><select id="mode" class="p-2 text-[10px]"></select></div>
-                    <div><label class="label-style text-orange-400">Результат</label><select id="result" class="p-2 text-[10px] text-orange-400 font-bold"></select></div>
+                    <div><label class="label-style">Погодні умови</label><select id="weather" class="p-2 text-[10px]" onchange="saveState(this.id)"></select></div>
+                    <div><label class="label-style">Умови польоту</label><select id="mode" class="p-2 text-[10px]" onchange="saveState(this.id)"></select></div>
+                    <div><label class="label-style text-orange-400">Результат</label><select id="result" class="p-2 text-[10px] text-orange-400 font-bold" onchange="saveState(this.id)"></select></div>
                 </div>
                 <div class="bg-slate-900/40 p-3 rounded-xl border border-dashed border-slate-700">
                     <label class="label-style">Скріншоти / Фото донесення</label>
@@ -99,6 +102,21 @@
             window.location.href = token ? `${path}?token=${token}` : path;
         }
 
+        // --- НОВА ФУНКЦІЯ: Збереження стану ---
+        function saveState(id) {
+            const el = document.getElementById(id);
+            if(el) localStorage.setItem('saved_' + id, el.value);
+        }
+
+        // --- НОВА ФУНКЦІЯ: Відновлення полів ---
+        function restoreField(id) {
+            const val = localStorage.getItem('saved_' + id);
+            if (val) {
+                const el = document.getElementById(id);
+                if(el) el.value = val;
+            }
+        }
+
         function formatTimeInput(val) {
             let clean = val.replace(/\D/g, '');
             if (clean.length === 3) clean = '0' + clean;
@@ -112,16 +130,26 @@
         const timeIds = ['t1', 't2', 's1', 's2'];
         timeIds.forEach(id => {
             const el = document.getElementById(id);
-            if(el) el.addEventListener('blur', function() { this.value = formatTimeInput(this.value); });
+            if(el) el.addEventListener('blur', function() { 
+                this.value = formatTimeInput(this.value); 
+                saveState(id); // Зберігаємо після форматування
+            });
         });
 
         window.onload = async function() {
             const res = await fetch(API + "/get_options");
             const opt = await res.json();
             document.getElementById('loginUnit').innerHTML = opt.units.map(u => "<option>" + u + "</option>").join('');
+            
+            // Заповнення і відновлення селектів
             document.getElementById('weather').innerHTML = opt.weather.map(w => "<option>" + w + "</option>").join('');
+            restoreField('weather');
+
             document.getElementById('mode').innerHTML = opt.flight_modes.map(m => "<option>" + m + "</option>").join('');
+            restoreField('mode');
+
             document.getElementById('result').innerHTML = opt.results.map(r => "<option>" + r + "</option>").join('');
+            restoreField('result');
 
             const u = localStorage.getItem('uav_unit'), o = localStorage.getItem('uav_op');
             if (u && o) {
@@ -133,7 +161,13 @@
 
             const cached = localStorage.getItem('uav_draft_cache');
             if (cached) { draft = JSON.parse(cached); renderDraft(); }
-            if (localStorage.getItem('last_route')) document.getElementById('route').value = localStorage.getItem('last_route');
+            
+            // Відновлення інших текстових полів
+            ['route', 's1', 's2', 't1', 't2', 'dist', 'akb', 'cyc', 'date'].forEach(restoreField);
+            
+            if (!document.getElementById('date').value) {
+                document.getElementById('date').valueAsDate = new Date();
+            }
         };
 
         async function showMain(unit) {
@@ -142,7 +176,9 @@
             const resD = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(unit));
             const drones = await resD.json();
             document.getElementById('drone').innerHTML = drones.map(d => '<option value="' + d.model + ' (S/N: ' + d.serial_number + ')">' + d.model + ' [' + d.serial_number + ']</option>').join('');
-            document.getElementById('date').valueAsDate = new Date();
+            
+            // Відновлюємо дрон після завантаження списку
+            restoreField('drone');
         }
 
         function saveAuth() {
@@ -152,65 +188,70 @@
         }
 
         function addToDraft() {
-    // 1. Отримуємо обов'язкові поля
-    const takeoffInput = document.getElementById('t1'); // перевірте, чи id 't1' або 'takeoff'
-    const landingInput = document.getElementById('t2'); // перевірте, чи id 't2' або 'landing'
-    
-    if (!takeoffInput || !landingInput || !takeoffInput.value || !landingInput.value) {
-        return alert("Спочатку вкажіть ЧАС зльоту та посадки!");
-    }
+            const takeoffInput = document.getElementById('t1');
+            const landingInput = document.getElementById('t2');
+            
+            if (!takeoffInput || !landingInput || !takeoffInput.value || !landingInput.value) {
+                return alert("Спочатку вкажіть ЧАС зльоту та посадки!");
+            }
 
-    // 2. Функція безпечного збору даних (якщо елемента немає - беремо дефолт)
-    const getVal = (id, def) => {
-        const el = document.getElementById(id);
-        return el ? el.value : def;
-    };
+            const getVal = (id, def) => {
+                const el = document.getElementById(id);
+                return el ? el.value : def;
+            };
 
-    // 3. Формуємо об'єкт польоту
-    const flight = {
-        id: Date.now(),
-        date: getVal('date', new Date().toLocaleDateString('uk-UA')),
-        shift_time: (getVal('s1', '08:00') + "-" + getVal('s2', '20:00')),
-        operator: localStorage.getItem('uav_op') || "Невідомий",
-        unit: localStorage.getItem('uav_unit') || "Не вказано",
-        drone: getVal('drone', 'БпЛА'),
-        route: getVal('route', 'Патрулювання'),
-        takeoff: takeoffInput.value,
-        landing: landingInput.value,
-        distance: getVal('dist', 0),
-        battery_id: getVal('akb', '—'),
-        battery_cycles: getVal('cyc', 0),
-        
-        // Ці поля тепер не ламають код, навіть якщо їх немає в HTML
-        weather: getVal('weather', 'Нормальні'),
-        conditions: getVal('flight_conditions', 'Норма'),
-        result: getVal('result', 'Без ознак порушення')
-    };
+            const flight = {
+                id: Date.now(),
+                date: getVal('date', new Date().toLocaleDateString('uk-UA')),
+                shift_time: (getVal('s1', '08:00') + "-" + getVal('s2', '20:00')),
+                operator: localStorage.getItem('uav_op') || "Невідомий",
+                unit: localStorage.getItem('uav_unit') || "Не вказано",
+                drone: getVal('drone', 'БпЛА'),
+                route: getVal('route', 'Патрулювання'),
+                takeoff: takeoffInput.value,
+                landing: landingInput.value,
+                distance: getVal('dist', 0),
+                battery_id: getVal('akb', '—'),
+                battery_cycles: getVal('cyc', 0),
+                weather: getVal('weather', 'Нормальні'),
+                conditions: getVal('mode', 'Норма'), // Використовуємо id='mode'
+                result: getVal('result', 'Без ознак порушення')
+            };
 
-    // 4. Розрахунок тривалості (якщо функція calculateDuration доступна)
-    if (typeof calculateDuration === "function") {
-        flight.duration = calculateDuration(flight.takeoff, flight.landing);
-    } else {
-        // Простий розрахунок всередині, якщо функції немає
-        const [h1, m1] = flight.takeoff.split(':').map(Number);
-        const [h2, m2] = flight.landing.split(':').map(Number);
-        let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
-        flight.duration = diff > 0 ? diff : diff + 1440;
-    }
+            // --- ВИПРАВЛЕНА ЛОГІКА ЧАСУ (23:00 -> 01:00) ---
+            const [h1, m1] = flight.takeoff.split(':').map(Number);
+            const [h2, m2] = flight.landing.split(':').map(Number);
+            
+            let mStart = h1 * 60 + m1;
+            let mEnd = h2 * 60 + m2;
 
-    // 5. Додаємо в масив та оновлюємо екран
-    draft.push(flight);
-    localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); // Збереження кешу
-    
-    if (typeof renderDraft === "function") {
-        renderDraft();
-    }
-    
-    // Очищення полів після додавання
-    takeoffInput.value = "";
-    landingInput.value = "";
-    if(document.getElementById('dist')) document.getElementById('dist').value = "";
-}
+            // Якщо час посадки менший за час зльоту, додаємо добу (1440 хв)
+            if (mEnd < mStart) {
+                mEnd += 1440;
+            }
+            
+            flight.duration = mEnd - mStart;
+            // -----------------------------------------------
+
+            draft.push(flight);
+            localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); 
+            
+            renderDraft();
+            
+            // Очищення тільки часу для наступного польоту (візуально)
+            takeoffInput.value = "";
+            landingInput.value = "";
+            
+            // Видаляємо збережений час із пам'яті, щоб не відновився при F5, 
+            // але решту (маршрут, дрон) ЗАЛИШАЄМО
+            localStorage.removeItem('saved_t1');
+            localStorage.removeItem('saved_t2');
+            
+            if(document.getElementById('dist')) {
+                document.getElementById('dist').value = "";
+                localStorage.removeItem('saved_dist');
+            }
+        }
 
         function renderDraft() {
             document.getElementById('draftCount').innerText = draft.length;
@@ -226,9 +267,9 @@
         function generateCUS() {
             let b = "", a = "";
             draft.forEach(f => {
-                const [h1, m1] = f.takeoff.split(':').map(Number), [h2, m2] = f.landing.split(':').map(Number);
-                let d = (h2 * 60 + m2) - (h1 * 60 + m1); if (d <= 0) d += 1440;
-                const line = f.takeoff + "-" + f.landing + " - " + f.distance + "м (" + d + " хв)\n";
+                // Використовуємо вже розраховану тривалість
+                const line = f.takeoff + "-" + f.landing + " - " + f.distance + "м (" + f.duration + " хв)\n";
+                // Спрощена логіка розділення (можна адаптувати за потреби)
                 if (f.takeoff < "08:00" || f.takeoff > "20:00") a += line; else b += line;
             });
             document.getElementById('cusBefore').value = b || "---"; document.getElementById('cusAfter').value = a || "---";
@@ -242,97 +283,89 @@
         }
 
         async function publishAll() {
-    if (draft.length === 0) return;
-    const btn = document.getElementById('publishBtn'); 
-    btn.disabled = true; 
-    btn.innerText = "НАДСИЛАННЯ...";
+            if (draft.length === 0) return;
+            const btn = document.getElementById('publishBtn'); 
+            btn.disabled = true; 
+            btn.innerText = "НАДСИЛАННЯ...";
 
-    const first = draft[0];
-    const currentShift = (document.getElementById('s1')?.value || "08:00") + "-" + (document.getElementById('s2')?.value || "20:00");
-    const currentRoute = document.getElementById('route')?.value || "Не вказано";
-    
-    let report = "<b>Донесення:</b> " + first.unit + "\n" +
-                 "<b>Пілот:</b> " + first.operator + "\n" +
-                 "<b>Дата:</b> " + first.date + "\n" +
-                 "<b>Час завдання:</b> " + currentShift + "\n" +
-                 "<b>БпЛА:</b> " + first.drone + "\n" +
-                 "<b>Маршрут:</b> " + currentRoute + "\n" +
-                 "━━━━━━━━━━━━━━━\n" +
-                 "<b>Вильоти:</b>\n";
-    
-    draft.forEach((f, i) => {
-        report += (i + 1) + ". " + f.takeoff + "-" + f.landing + " (" + f.duration + " хв)\n";
+            const first = draft[0];
+            const currentShift = (document.getElementById('s1')?.value || "08:00") + "-" + (document.getElementById('s2')?.value || "20:00");
+            const currentRoute = document.getElementById('route')?.value || "Не вказано";
+            
+            let report = "<b>Донесення:</b> " + first.unit + "\n" +
+                         "<b>Пілот:</b> " + first.operator + "\n" +
+                         "<b>Дата:</b> " + first.date + "\n" +
+                         "<b>Час завдання:</b> " + currentShift + "\n" +
+                         "<b>БпЛА:</b> " + first.drone + "\n" +
+                         "<b>Маршрут:</b> " + currentRoute + "\n" +
+                         "━━━━━━━━━━━━━━━\n" +
+                         "<b>Вильоти:</b>\n";
+            
+            draft.forEach((f, i) => {
+                report += (i + 1) + ". " + f.takeoff + "-" + f.landing + " (" + f.duration + " хв)\n";
+                let statusParts = [];
+                if (f.weather && f.weather !== "Нормальні") statusParts.push("☁️ " + f.weather);
+                if (f.conditions && f.conditions !== "Норма") statusParts.push("⚠️ " + f.conditions);
+                if (f.result && f.result !== "Без ознак порушення") statusParts.push("🎯 <b>" + f.result + "</b>");
+                if (statusParts.length > 0) report += "   └ " + statusParts.join(" | ") + "\n";
+            });
 
-        // Збираємо тільки "аномалії"
-        let statusParts = [];
-        if (f.weather && f.weather !== "Нормальні") statusParts.push("☁️ " + f.weather);
-        if (f.conditions && f.conditions !== "Норма") statusParts.push("⚠️ " + f.conditions);
-        if (f.result && f.result !== "Без ознак порушення") statusParts.push("🎯 <b>" + f.result + "</b>");
+            try {
+                for (const f of draft) {
+                    let dbDate;
+                    if (f.date && f.date.includes('.')) {
+                        let [d, m, y] = f.date.split('.');
+                        dbDate = `${y}-${m}-${d}`;
+                    } else {
+                        dbDate = f.date || new Date().toISOString().split('T')[0];
+                    }
 
-        // Додаємо рядок статусів під польотом, якщо вони є
-        if (statusParts.length > 0) {
-            report += "   └ " + statusParts.join(" | ") + "\n";
+                    const toDb = { 
+                        ...f, 
+                        date: dbDate,
+                        duration: Math.floor(Number(f.duration)) || 0,
+                        distance: Math.floor(Number(f.distance)) || 0,
+                        battery_cycles: Math.floor(Number(f.battery_cycles)) || 0
+                    };
+                    delete toDb.id;
+
+                    await fetch(API + "/add_flight", { 
+                        method: 'POST', 
+                        headers: {'Content-Type': 'application/json'}, 
+                        body: JSON.stringify(toDb) 
+                    });
+                }
+                
+                const fd = new FormData(); 
+                fd.append('report_text', report);
+                const ph = document.getElementById('photos');
+                if (ph && ph.files.length > 0) {
+                    Array.from(ph.files).forEach(file => fd.append('images', file));
+                }
+
+                const resT = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
+                if ((await resT.json()).status === "ok") { 
+                    alert("Успішно опубліковано!"); 
+                    
+                    // --- ПОВНЕ ОЧИЩЕННЯ ТІЛЬКИ ТУТ ---
+                    draft = []; 
+                    localStorage.removeItem('uav_draft_cache'); 
+                    
+                    // Видаляємо всі збережені поля форми (saved_*)
+                    Object.keys(localStorage).forEach(key => {
+                        if (key.startsWith('saved_')) localStorage.removeItem(key);
+                    });
+
+                    location.reload(); 
+                }
+            } catch (e) { 
+                alert("Помилка при відправці!"); 
+                console.error(e);
+            } finally { 
+                btn.disabled = false; 
+                btn.innerText = "Опублікувати донесення"; 
+            }
         }
-    });
-
-    try {
-        // Збереження в базу (Supabase)
-        for (const f of draft) {
-    let dbDate;
-    // 1. Корекція дати (щоб не було undefined-undefined)
-    if (f.date && f.date.includes('.')) {
-        let [d, m, y] = f.date.split('.');
-        dbDate = `${y}-${m}-${d}`;
-    } else {
-        dbDate = f.date || new Date().toISOString().split('T')[0];
-    }
-
-    // 2. Очищення об'єкта перед відправкою (Важливо!)
-   const toDb = { 
-    ...f, 
-    date: dbDate,
-    // Примусово робимо цілими числами через Math.floor
-    duration: Math.floor(Number(f.duration)) || 0,
-    distance: Math.floor(Number(f.distance)) || 0,
-    battery_cycles: Math.floor(Number(f.battery_cycles)) || 0
-};
-    
-    delete toDb.id; // Тимчасовий ID не потрібен базі
-
-    const response = await fetch(API + "/add_flight", { 
-        method: 'POST', 
-        headers: {'Content-Type': 'application/json'}, 
-        body: JSON.stringify(toDb) 
-    });
-
-    if (!response.ok) {
-        const errDetail = await response.json();
-        console.error("Деталі помилки 422:", errDetail);
-    }
-}
-        
-        // Відправка в Telegram
-        const fd = new FormData(); 
-        fd.append('report_text', report);
-        const ph = document.getElementById('photos');
-        if (ph && ph.files.length > 0) {
-            Array.from(ph.files).forEach(file => fd.append('images', file));
-        }
-
-        const resT = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
-        if ((await resT.json()).status === "ok") { 
-            alert("Успішно опубліковано!"); 
-            draft = []; 
-            localStorage.removeItem('uav_draft_cache'); 
-            location.reload(); 
-        }
-    } catch (e) { 
-        alert("Помилка при відправці!"); 
-    } finally { 
-        btn.disabled = false; 
-        btn.innerText = "Опублікувати донесення"; 
-    }
-}
 
         function logout() { if(confirm("Вийти?")) { localStorage.clear(); location.reload(); } }
     </script>
