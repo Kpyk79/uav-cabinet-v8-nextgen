@@ -20,7 +20,7 @@
 </head>
 <body class="max-w-7xl mx-auto">
 
-    <div class="flex justify-between items-center mb-8">
+    <div class="flex justify-between items-center mb-6">
         <div>
             <h1 class="text-3xl font-black italic text-green-500 uppercase tracking-tighter">Admin Panel</h1>
             <p class="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">UAV Command System Center</p>
@@ -33,11 +33,34 @@
                 <i class="fa-solid fa-file-excel mr-2"></i> Експорт Журналу
             </button>
             <button onclick="nav('/admin_analytics')" class="bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-xl text-white font-black uppercase text-xs shadow-lg shadow-orange-500/20 transition-all">
-    <i class="fa-solid fa-chart-pie mr-2"></i> Аналітика
-</button>
+                <i class="fa-solid fa-chart-pie mr-2"></i> Аналітика
+            </button>
         </div>
     </div>
 
+    <div class="card p-6 mb-6 border-l-4 border-purple-500 bg-slate-800/50">
+        <h3 class="text-sm font-black uppercase text-purple-400 mb-4 flex items-center">
+            <i class="fa-solid fa-bullhorn mr-2"></i>Налаштування оголошення
+        </h3>
+        
+        <div class="flex flex-col gap-4">
+            <textarea id="adminMsgText" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white h-20 focus:border-purple-500 outline-none transition-colors font-mono" placeholder="Введіть текст оголошення для пілотів..."></textarea>
+            
+            <div class="flex items-center justify-between">
+                <label class="flex items-center gap-3 cursor-pointer select-none group">
+                    <div class="relative">
+                        <input type="checkbox" id="adminMsgActive" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 group-hover:bg-slate-600"></div>
+                    </div>
+                    <span class="text-xs font-bold uppercase text-slate-300 group-hover:text-white transition-colors">Активувати показ на головній</span>
+                </label>
+                
+                <button onclick="saveAnnouncement()" class="bg-purple-600 hover:bg-purple-500 px-6 py-2 rounded-xl text-white font-black uppercase text-xs shadow-lg shadow-purple-500/20 transition-all active:scale-95">
+                    <i class="fa-solid fa-floppy-disk mr-2"></i> Зберегти
+                </button>
+            </div>
+        </div>
+    </div>
     <div class="card p-6 mb-6">
         <div class="relative">
             <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
@@ -82,6 +105,39 @@
             }
         }
 
+        // --- ЛОГІКА ОГОЛОШЕННЯ ---
+        async function loadAdminAnnouncement() {
+            try {
+                const res = await fetch('/api/get_announcement');
+                const data = await res.json();
+                document.getElementById('adminMsgText').value = data.announcement_text || "";
+                document.getElementById('adminMsgActive').checked = data.is_announcement_active;
+            } catch (e) {
+                console.error("Error loading announcement:", e);
+            }
+        }
+
+        async function saveAnnouncement() {
+            const text = document.getElementById('adminMsgText').value;
+            const isActive = document.getElementById('adminMsgActive').checked;
+            
+            if(!text && isActive) return alert("Введіть текст оголошення!");
+
+            try {
+                const res = await fetch('/api/update_announcement', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ text: text, is_active: isActive })
+                });
+
+                if(res.ok) alert("Налаштування оголошення оновлено!");
+                else alert("Помилка збереження!");
+            } catch (e) {
+                alert("Помилка з'єднання!");
+            }
+        }
+        // -------------------------
+
         function renderTable(flights) {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = flights.map(f => {
@@ -114,7 +170,6 @@
             renderTable(filtered);
         }
 
-        // --- ОНОВЛЕНА ФУНКЦІЯ ЕКСПОРТУ ---
         function exportAllToExcel() {
             if (allFlights.length === 0) return alert("Немає даних для експорту");
 
@@ -141,7 +196,7 @@
                     hh > 0 ? hh : "0",
                     mm,
                     "",
-                    f.unit, // Використовуємо поле підстави для позначення підрозділу в адмінці
+                    f.unit, 
                     "", "",
                     "50", "150",
                     f.operator,
@@ -179,7 +234,10 @@
             XLSX.writeFile(wb, `Global_UAV_Journal_${new Date().toLocaleDateString()}.xlsx`);
         }
 
-        window.onload = loadAllFlights;
+        window.onload = async () => {
+            await loadAllFlights();
+            await loadAdminAnnouncement(); // Завантаження статусу оголошення
+        };
     </script>
 </body>
 </html>
