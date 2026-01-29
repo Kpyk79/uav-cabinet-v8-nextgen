@@ -14,10 +14,29 @@
         input:focus { border-color: #22c55e !important; }
         .btn-green { background: #16a34a; font-weight: 900; text-transform: uppercase; }
         .cus-box { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.75rem; padding: 8px; }
+        /* Анімація для оголошення */
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
+        .animate-pop { animation: popIn 0.3s ease-out forwards; }
     </style>
 </head>
 <body class="flex items-center justify-center">
 
+    <div id="announcementCard" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
+        <div class="glass w-full max-w-sm p-6 rounded-2xl border-l-4 border-yellow-500 shadow-2xl relative animate-pop">
+            <div class="flex justify-between items-start mb-4">
+                <h2 class="text-lg font-black text-yellow-500 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-triangle-exclamation mr-2"></i>Увага
+                </h2>
+                <button onclick="closeAnnouncement()" class="text-slate-500 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <div id="announcementText" class="text-sm text-slate-200 leading-relaxed font-mono mb-6 whitespace-pre-wrap"></div>
+            <button onclick="closeAnnouncement()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-black uppercase py-3 rounded-xl transition-all shadow-lg active:scale-95">
+                Зрозуміло
+            </button>
+        </div>
+    </div>
     <div id="loginScreen" class="w-full max-w-md glass p-8 rounded-[2rem] hidden">
         <h1 class="text-2xl font-black text-center text-green-500 mb-6 uppercase italic">Авторизація</h1>
         <div class="space-y-3">
@@ -102,18 +121,41 @@
             window.location.href = token ? `${path}?token=${token}` : path;
         }
 
-        // --- НОВА ФУНКЦІЯ: Збереження стану ---
+        // --- ЛОГІКА ОГОЛОШЕНЬ (НОВЕ) ---
+        async function checkAnnouncement() {
+            try {
+                if (sessionStorage.getItem('announcement_seen')) return;
+                const res = await fetch(API + "/get_announcement");
+                if(!res.ok) return;
+                
+                const data = await res.json();
+                if (data.is_announcement_active && data.announcement_text) {
+                    document.getElementById('announcementText').innerText = data.announcement_text;
+                    document.getElementById('announcementCard').classList.remove('hidden');
+                }
+            } catch (e) { console.error("Announcement error:", e); }
+        }
+
+        function closeAnnouncement() {
+            document.getElementById('announcementCard').classList.add('hidden');
+            sessionStorage.setItem('announcement_seen', 'true');
+        }
+        // -------------------------------
+
         function saveState(id) {
             const el = document.getElementById(id);
             if(el) localStorage.setItem('saved_' + id, el.value);
         }
 
-        // --- НОВА ФУНКЦІЯ: Відновлення полів ---
-        function restoreField(id) {
-            const val = localStorage.getItem('saved_' + id);
-            if (val) {
+        function restoreFields() {
+            const ids = ['date', 's1', 's2', 'drone', 'route', 't1', 't2', 'dist', 'akb', 'cyc', 'weather', 'mode', 'result'];
+            ids.forEach(id => {
+                const val = localStorage.getItem('saved_' + id);
                 const el = document.getElementById(id);
-                if(el) el.value = val;
+                if (val && el) el.value = val;
+            });
+            if (!document.getElementById('date').value) {
+                document.getElementById('date').valueAsDate = new Date();
             }
         }
 
@@ -132,24 +174,22 @@
             const el = document.getElementById(id);
             if(el) el.addEventListener('blur', function() { 
                 this.value = formatTimeInput(this.value); 
-                saveState(id); // Зберігаємо після форматування
+                saveState(id); 
             });
         });
 
         window.onload = async function() {
+            // Перевірка оголошення при старті
+            checkAnnouncement();
+
             const res = await fetch(API + "/get_options");
             const opt = await res.json();
             document.getElementById('loginUnit').innerHTML = opt.units.map(u => "<option>" + u + "</option>").join('');
-            
-            // Заповнення і відновлення селектів
             document.getElementById('weather').innerHTML = opt.weather.map(w => "<option>" + w + "</option>").join('');
-            restoreField('weather');
-
             document.getElementById('mode').innerHTML = opt.flight_modes.map(m => "<option>" + m + "</option>").join('');
-            restoreField('mode');
-
             document.getElementById('result').innerHTML = opt.results.map(r => "<option>" + r + "</option>").join('');
-            restoreField('result');
+
+            restoreFields(); // Відновлюємо селекти після завантаження опцій
 
             const u = localStorage.getItem('uav_unit'), o = localStorage.getItem('uav_op');
             if (u && o) {
@@ -161,13 +201,6 @@
 
             const cached = localStorage.getItem('uav_draft_cache');
             if (cached) { draft = JSON.parse(cached); renderDraft(); }
-            
-            // Відновлення інших текстових полів
-            ['route', 's1', 's2', 't1', 't2', 'dist', 'akb', 'cyc', 'date'].forEach(restoreField);
-            
-            if (!document.getElementById('date').value) {
-                document.getElementById('date').valueAsDate = new Date();
-            }
         };
 
         async function showMain(unit) {
@@ -177,8 +210,8 @@
             const drones = await resD.json();
             document.getElementById('drone').innerHTML = drones.map(d => '<option value="' + d.model + ' (S/N: ' + d.serial_number + ')">' + d.model + ' [' + d.serial_number + ']</option>').join('');
             
-            // Відновлюємо дрон після завантаження списку
-            restoreField('drone');
+            const savedDrone = localStorage.getItem('saved_drone');
+            if(savedDrone) document.getElementById('drone').value = savedDrone;
         }
 
         function saveAuth() {
@@ -214,36 +247,25 @@
                 battery_id: getVal('akb', '—'),
                 battery_cycles: getVal('cyc', 0),
                 weather: getVal('weather', 'Нормальні'),
-                conditions: getVal('mode', 'Норма'), // Використовуємо id='mode'
+                conditions: getVal('mode', 'Норма'),
                 result: getVal('result', 'Без ознак порушення')
             };
 
-            // --- ВИПРАВЛЕНА ЛОГІКА ЧАСУ (23:00 -> 01:00) ---
             const [h1, m1] = flight.takeoff.split(':').map(Number);
             const [h2, m2] = flight.landing.split(':').map(Number);
-            
             let mStart = h1 * 60 + m1;
             let mEnd = h2 * 60 + m2;
 
-            // Якщо час посадки менший за час зльоту, додаємо добу (1440 хв)
-            if (mEnd < mStart) {
-                mEnd += 1440;
-            }
-            
+            if (mEnd < mStart) { mEnd += 1440; }
+
             flight.duration = mEnd - mStart;
-            // -----------------------------------------------
 
             draft.push(flight);
             localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); 
-            
             renderDraft();
             
-            // Очищення тільки часу для наступного польоту (візуально)
             takeoffInput.value = "";
             landingInput.value = "";
-            
-            // Видаляємо збережений час із пам'яті, щоб не відновився при F5, 
-            // але решту (маршрут, дрон) ЗАЛИШАЄМО
             localStorage.removeItem('saved_t1');
             localStorage.removeItem('saved_t2');
             
@@ -264,21 +286,19 @@
             generateCUS();
         }
 
-        // --- ВИПРАВЛЕНА ЛОГІКА СОРТУВАННЯ ЗА ЧАСОМ ---
         function generateCUS() {
             let b = "", a = "";
             draft.forEach(f => {
                 const line = f.takeoff + "-" + f.landing + " - " + f.distance + "м (" + f.duration + " хв)\n";
-                
-                // Якщо час посадки менший за час зльоту (перетин 00:00) 
-                // АБО час зльоту менший за 08:00 (ранок наступного дня) -> "Після 00:00"
+                // Сортування: "Після 00:00" якщо посадка менша за зліт АБО час зльоту < 08:00
                 if (f.landing < f.takeoff || f.takeoff < "08:00") {
-                    a += line; // Після 00:00
+                    a += line; 
                 } else {
-                    b += line; // До 00:00
+                    b += line; 
                 }
             });
-            document.getElementById('cusBefore').value = b || "---"; document.getElementById('cusAfter').value = a || "---";
+            document.getElementById('cusBefore').value = b || "---"; 
+            document.getElementById('cusAfter').value = a || "---";
         }
 
         function removeFromDraft(id) { draft = draft.filter(f => f.id !== id); localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); renderDraft(); }
@@ -352,16 +372,11 @@
                 const resT = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
                 if ((await resT.json()).status === "ok") { 
                     alert("Успішно опубліковано!"); 
-                    
-                    // --- ПОВНЕ ОЧИЩЕННЯ ТІЛЬКИ ТУТ ---
                     draft = []; 
                     localStorage.removeItem('uav_draft_cache'); 
-                    
-                    // Видаляємо всі збережені поля форми (saved_*)
                     Object.keys(localStorage).forEach(key => {
                         if (key.startsWith('saved_')) localStorage.removeItem(key);
                     });
-
                     location.reload(); 
                 }
             } catch (e) { 
