@@ -264,13 +264,19 @@
             generateCUS();
         }
 
+        // --- ВИПРАВЛЕНА ЛОГІКА СОРТУВАННЯ ЗА ЧАСОМ ---
         function generateCUS() {
             let b = "", a = "";
             draft.forEach(f => {
-                // Використовуємо вже розраховану тривалість
                 const line = f.takeoff + "-" + f.landing + " - " + f.distance + "м (" + f.duration + " хв)\n";
-                // Спрощена логіка розділення (можна адаптувати за потреби)
-                if (f.takeoff < "08:00" || f.takeoff > "20:00") a += line; else b += line;
+                
+                // Якщо час посадки менший за час зльоту (перетин 00:00) 
+                // АБО час зльоту менший за 08:00 (ранок наступного дня) -> "Після 00:00"
+                if (f.landing < f.takeoff || f.takeoff < "08:00") {
+                    a += line; // Після 00:00
+                } else {
+                    b += line; // До 00:00
+                }
             });
             document.getElementById('cusBefore').value = b || "---"; document.getElementById('cusAfter').value = a || "---";
         }
