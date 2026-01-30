@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Парк БпЛА | Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; padding: 15px; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1rem; }
+        .card-active { border-left: 4px solid #22c55e; }
+        .card-repair { border-left: 4px solid #eab308; }
+        .card-broken { border-left: 4px solid #ef4444; }
+    </style>
+</head>
+<body class="max-w-2xl mx-auto">
+
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-xl font-black uppercase tracking-tighter text-blue-500">Техніка підрозділу</h1>
+            <p id="currentUnitDisplay" class="text-[10px] font-bold text-slate-500 uppercase"></p>
+        </div>
+        <button onclick="addNewDrone()" class="bg-blue-600 hover:bg-blue-500 text-[10px] font-black uppercase px-4 py-2 rounded-xl transition-all">
+    + Додати борт
+</button>
+    </div>
+
+    <div id="fleetList" class="space-y-3">
+        <div class="text-center py-10 text-slate-600">Завантаження даних...</div>
+    </div>
+
+    <script>
+        // 1. Отримуємо підрозділ
+        const unit = localStorage.getItem('uav_unit');
+
+        // Додайте цю функцію до існуючих
+async function addNewDrone() {
+    const model = prompt("Модель БпЛА (напр. DJI Mavic 3T):");
+    if (!model) return;
+    const sn = prompt("Серійний номер:");
+    
+    const response = await fetch('/api/add_new_drone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            model: model, 
+            serial_number: sn || "—", 
+            unit: unit // використовуємо змінну unit, яка вже є в файлі
+        })
+    });
+
+    if (response.ok) {
+        loadFleet(); // Оновлюємо список на екрані
+    } else {
+        alert("Помилка при додаванні");
+    }
+}
+        
+        async function loadFleet() {
+    if (!unit) {
+        document.getElementById('fleetList').innerHTML = `<div class="p-4 text-center text-xs">Виберіть підрозділ на головній</div>`;
+        return;
+    }
+    document.getElementById('currentUnitDisplay').innerText = unit;
+
+    try {
+        const res = await fetch(`/api/get_unit_drones?unit=${encodeURIComponent(unit)}`);
+        const drones = await res.json();
+        
+        const list = document.getElementById('fleetList');
+        list.innerHTML = drones.map(d => {
+            const status = d.status || 'Active';
+            // Важливо: використовуємо d.model та d.serial_number
+            return `
+            <div class="glass p-4 mb-2 border-l-4 ${status === 'Active' ? 'border-green-500' : 'border-red-500'}">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="text-xs font-black uppercase">${d.model}</div>
+                        <div class="text-[9px] text-slate-500 font-mono">${d.serial_number || 'S/N: ---'}</div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <select onchange="updateStatus(${d.id}, this.value)" class="bg-slate-900 text-[10px] font-bold p-1 rounded">
+                            <option value="Active" ${status === 'Active' ? 'selected' : ''}>В строю</option>
+                            <option value="Repair" ${status === 'Repair' ? 'selected' : ''}>Сезонне обслуговування</option>
+                            <option value="Broken" ${status === 'Broken' ? 'selected' : ''}>Пошкоджений</option>
+                        </select>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        console.error("Помилка:", err);
+    }
+}
+
+        function renderDrones(drones) {
+            const list = document.getElementById('fleetList');
+            list.innerHTML = drones.map(d => {
+                const status = d.status || 'Active';
+                const sClass = status === 'Active' ? 'card-active' : (status === 'Repair' ? 'card-repair' : 'card-broken');
+                
+                return `
+                <div class="glass p-4 ${sClass}">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="text-xs font-black uppercase text-slate-200">${d.model}</div>
+                            <div class="text-[9px] font-mono text-slate-500 mt-1">${d.serial_number || 'S/N: ---'}</div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <select onchange="updateStatus(${d.id}, this.value)" class="bg-slate-900 text-[10px] font-bold p-1 rounded border border-white/10 outline-none">
+                                <option value="Active" ${status === 'Active' ? 'selected' : ''}>В строю</option>
+                                <option value="Repair" ${status === 'Repair' ? 'selected' : ''}>Сезонне обслуговування</option>
+                                <option value="Broken" ${status === 'Broken' ? 'selected' : ''}>Пошкоджений</option>
+                            </select>
+                            <button onclick="deleteDrone(${d.id})" class="text-slate-600 hover:text-red-500 transition-all"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function updateStatus(id, newStatus) {
+    try {
+        const response = await fetch('/api/update_drone_status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                id: parseInt(id), // Гарантовано перетворюємо в число
+                status: String(newStatus) 
+            })
+        });
+
+        if (response.ok) {
+            console.log("Статус успішно оновлено в базі");
+            // Невелике візуальне підтвердження
+            loadFleet(); 
+        } else {
+            const errorData = await response.json();
+            console.error("Сервер відхилив запит (422):", errorData);
+        }
+    } catch (e) {
+        console.error("Помилка мережі:", e);
+    }
+}
+
+        async function deleteDrone(id) {
+            if (confirm("Видалити борт з обліку підрозділу?")) {
+                await fetch(`/api/delete_drone/${id}`, { method: 'DELETE' });
+                loadFleet();
+            }
+        }
+
+        loadFleet();
+    </script>
+</body>
+</html>
