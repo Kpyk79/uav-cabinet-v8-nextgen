@@ -11,12 +11,16 @@
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; }
         .stat-card { background: rgba(15, 23, 42, 0.6); padding: 15px; border-radius: 1rem; border: 1px solid rgba(255,255,255,0.05); }
         select { background: #1e293b !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.5rem; padding: 6px 12px; font-size: 12px; outline: none; }
-        .rank-gold { color: #fbbf24; } /* Золото */
-        .rank-silver { color: #94a3b8; } /* Срібло */
-        .rank-bronze { color: #b45309; } /* Бронза */
+        .rank-gold { color: #fbbf24; }
+        .rank-silver { color: #94a3b8; }
+        .rank-bronze { color: #b45309; }
+        /* Простий CSS графік */
+        .bar-container { display: flex; align-items: flex-end; height: 60px; gap: 4px; }
+        .bar { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.5s ease; position: relative; }
+        .bar:hover::after { content: attr(data-val); position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; color: white; }
     </style>
 </head>
-<body class="max-w-6xl mx-auto pb-10">
+<body class="max-w-7xl mx-auto pb-10">
 
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pt-4 px-2">
         <div class="flex items-center gap-4">
@@ -25,7 +29,7 @@
             </button>
             <div>
                 <h1 class="text-2xl font-black uppercase italic text-green-500 tracking-tighter leading-none">Глобальна Аналітика</h1>
-                <p class="text-[9px] text-slate-500 uppercase font-bold tracking-widest mt-1">Контроль ефективності підрозділів</p>
+                <p class="text-[9px] text-slate-500 uppercase font-bold tracking-widest mt-1">Operational Command Center</p>
             </div>
         </div>
 
@@ -47,44 +51,70 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div class="stat-card">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="stat-card border-l-4 border-blue-500">
             <div class="text-[9px] text-slate-500 font-black uppercase italic">Всього вильотів</div>
-            <div id="totalFlights" class="text-xl font-black text-white mt-1">0</div>
+            <div id="totalFlights" class="text-2xl font-black text-white mt-1">0</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card border-l-4 border-green-500">
             <div class="text-[9px] text-slate-500 font-black uppercase italic">Загальний наліт</div>
-            <div id="totalHours" class="text-xl font-black text-blue-400 mt-1">0г 0хв</div>
+            <div id="totalHours" class="text-2xl font-black text-green-400 mt-1">0г 0хв</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card border-l-4 border-red-500">
             <div class="text-[9px] text-slate-500 font-black uppercase italic">Затримання</div>
-            <div id="totalDetentions" class="text-xl font-black text-red-500 mt-1">0</div>
+            <div id="totalDetentions" class="text-2xl font-black text-red-500 mt-1">0</div>
         </div>
-        <div class="stat-card">
-            <div class="text-[9px] text-slate-500 font-black uppercase italic">Активні пілоти</div>
-            <div id="activePilots" class="text-xl font-black text-orange-400 mt-1">0</div>
+        <div class="stat-card border-l-4 border-orange-500">
+            <div class="text-[9px] text-slate-500 font-black uppercase italic">Найактивніший підрозділ</div>
+            <div id="topUnit" class="text-sm font-black text-orange-400 mt-2 truncate">---</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="glass p-5">
+            <h2 class="text-xs font-black uppercase mb-4 text-slate-400 italic flex items-center gap-2">
+                <i class="fa-solid fa-clock text-purple-500"></i> Інтенсивність вильотів (доба)
+            </h2>
+            <div id="timeChart" class="bar-container w-full px-2">
+                </div>
+            <div class="flex justify-between text-[8px] text-slate-500 font-mono mt-2 uppercase px-2">
+                <span>00-04</span><span>04-08</span><span>08-12</span><span>12-16</span><span>16-20</span><span>20-24</span>
+            </div>
+        </div>
+
+        <div class="glass p-5">
+            <h2 class="text-xs font-black uppercase mb-4 text-slate-400 italic flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie text-cyan-500"></i> Ефективність застосування
+            </h2>
+            <div id="resultsStats" class="space-y-2 overflow-y-auto max-h-[100px]">
+                </div>
         </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         <div class="lg:col-span-2 glass p-6">
-            <h2 class="text-xs font-black uppercase mb-6 text-slate-400 italic flex items-center gap-2">
-                <i class="fa-solid fa-trophy text-yellow-500"></i> Рейтинг операторів
-            </h2>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xs font-black uppercase text-slate-400 italic flex items-center gap-2">
+                    <i class="fa-solid fa-trophy text-yellow-500"></i> Лідерборд
+                </h2>
+                <div class="flex gap-2 bg-slate-900 p-1 rounded-lg">
+                    <button onclick="switchTab('pilots')" id="btnPilots" class="px-3 py-1 text-[10px] font-bold bg-slate-700 rounded text-white transition-all">Пілоти</button>
+                    <button onclick="switchTab('units')" id="btnUnits" class="px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-white transition-all">Підрозділи</button>
+                </div>
+            </div>
+
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
                     <thead>
                         <tr class="text-[9px] uppercase text-slate-500 border-b border-white/5">
-                            <th class="pb-3">Пілот</th>
-                            <th class="pb-3 text-center">Завдання</th>
+                            <th class="pb-3 pl-2" id="colName">Пілот</th>
                             <th class="pb-3 text-center">Вильоти</th>
                             <th class="pb-3 text-center">Наліт</th>
-                            <th class="pb-3 text-right">Результат</th>
+                            <th class="pb-3 text-right pr-2">Результат</th>
                         </tr>
                     </thead>
-                    <tbody id="pilotRankingBody" class="text-sm">
-                        </tbody>
+                    <tbody id="rankingBody" class="text-sm"></tbody>
                 </table>
             </div>
         </div>
@@ -94,14 +124,14 @@
                 <h2 class="text-xs font-black uppercase mb-4 text-slate-400 italic">
                     <i class="fa-solid fa-plane-up text-blue-500 mr-2"></i> Використання БпЛА
                 </h2>
-                <div id="droneStats" class="space-y-4"></div>
+                <div id="droneStats" class="space-y-4 max-h-[200px] overflow-y-auto pr-1"></div>
             </div>
 
             <div class="glass p-6">
                 <h2 class="text-xs font-black uppercase mb-4 text-slate-400 italic">
-                    <i class="fa-solid fa-battery-half text-red-500 mr-2"></i> Критичний знос АКБ
+                    <i class="fa-solid fa-battery-half text-red-500 mr-2"></i> ТОП зносу АКБ
                 </h2>
-                <div id="batteryStats" class="space-y-3"></div>
+                <div id="batteryStats" class="space-y-2 max-h-[150px] overflow-y-auto pr-1"></div>
             </div>
         </div>
 
@@ -109,6 +139,7 @@
 
     <script>
         let allFlights = [];
+        let currentTab = 'pilots';
 
         function nav(path) {
             const token = new URLSearchParams(window.location.search).get('token');
@@ -123,11 +154,18 @@
             } catch (e) { console.error(e); }
         }
 
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('btnPilots').className = tab === 'pilots' ? "px-3 py-1 text-[10px] font-bold bg-slate-700 rounded text-white" : "px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-white";
+            document.getElementById('btnUnits').className = tab === 'units' ? "px-3 py-1 text-[10px] font-bold bg-slate-700 rounded text-white" : "px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-white";
+            document.getElementById('colName').innerText = tab === 'pilots' ? "Пілот" : "Підрозділ";
+            updateAnalytics();
+        }
+
         function updateAnalytics() {
             const m = document.getElementById('monthSelect').value;
             const y = document.getElementById('yearSelect').value;
             
-            // Фільтрація за часом
             const filtered = allFlights.filter(f => {
                 if (!f.date) return false;
                 const matchesYear = f.date.startsWith(y);
@@ -135,72 +173,115 @@
                 return matchesYear && matchesMonth;
             });
 
-            // Обчислення
+            // ЗМІННІ ДЛЯ АГРЕГАЦІЇ
             let totalMin = 0;
             let detentions = 0;
             const pilots = {};
+            const units = {};
             const drones = {};
             const batteries = {};
+            const timeDistribution = [0,0,0,0,0,0]; // 6 блоків по 4 години
+            const resultsDist = {};
 
             filtered.forEach(f => {
                 const dur = parseInt(f.duration) || 0;
                 totalMin += dur;
                 if (f.result === "Затримання") detentions++;
 
-                // Статистика Пілотів
-                if (!pilots[f.operator]) {
-                    pilots[f.operator] = { missions: new Set(), flights: 0, time: 0, det: 0 };
-                }
-                const p = pilots[f.operator];
-                p.flights += 1;
-                p.time += dur;
-                if (f.result === "Затримання") p.det += 1;
-                // Польотне завдання = Дата + Зміна + Маршрут
-                p.missions.add(`${f.date}_${f.shift_time}_${f.route}`);
+                // 1. Агрегація Пілотів
+                if (!pilots[f.operator]) pilots[f.operator] = { flights: 0, time: 0, det: 0 };
+                pilots[f.operator].flights++;
+                pilots[f.operator].time += dur;
+                if (f.result === "Затримання") pilots[f.operator].det++;
 
-                // Статистика БпЛА
+                // 2. Агрегація Підрозділів (НОВЕ)
+                const uName = f.unit || "Не вказано";
+                if (!units[uName]) units[uName] = { flights: 0, time: 0, det: 0 };
+                units[uName].flights++;
+                units[uName].time += dur;
+                if (f.result === "Затримання") units[uName].det++;
+
+                // 3. БпЛА та АКБ
                 const dName = f.drone ? f.drone.split(' (')[0] : 'Unknown';
                 drones[dName] = (drones[dName] || 0) + 1;
 
-                // Статистика АКБ
                 if (f.battery_id) {
                     const cyc = parseInt(f.battery_cycles) || 0;
                     if (!batteries[f.battery_id] || cyc > batteries[f.battery_id].cyc) {
                         batteries[f.battery_id] = { cyc: cyc, drone: dName };
                     }
                 }
+
+                // 4. Час доби (НОВЕ)
+                if (f.takeoff) {
+                    const hour = parseInt(f.takeoff.split(':')[0]);
+                    const timeIndex = Math.floor(hour / 4); // 0..5
+                    if (timeDistribution[timeIndex] !== undefined) timeDistribution[timeIndex]++;
+                }
+
+                // 5. Результати (НОВЕ)
+                const resText = f.result || "Інше";
+                resultsDist[resText] = (resultsDist[resText] || 0) + 1;
             });
 
-            // Оновлення карток
+            // ЗАПОВНЕННЯ КАРТОК
             document.getElementById('totalFlights').innerText = filtered.length;
             document.getElementById('totalHours').innerText = `${Math.floor(totalMin/60)}г ${totalMin%60}хв`;
             document.getElementById('totalDetentions').innerText = detentions;
-            document.getElementById('activePilots').innerText = Object.keys(pilots).length;
 
-            // Рендер рейтингу пілотів
-            const rankingBody = document.getElementById('pilotRankingBody');
-            const sortedPilots = Object.entries(pilots).sort((a,b) => b[1].time - a[1].time);
-            
-            rankingBody.innerHTML = sortedPilots.map(([name, data], index) => {
+            // Знаходимо топ підрозділ
+            const sortedUnits = Object.entries(units).sort((a,b) => b[1].flights - a[1].flights);
+            document.getElementById('topUnit').innerText = sortedUnits.length > 0 ? sortedUnits[0][0] : "---";
+
+            // РЕНДЕР ТАБЛИЦІ (ПІЛОТИ АБО ПІДРОЗДІЛИ)
+            const rankingBody = document.getElementById('rankingBody');
+            const dataMap = currentTab === 'pilots' ? pilots : units;
+            const sortedData = Object.entries(dataMap).sort((a,b) => b[1].time - a[1].time); // Сортування за нальотом
+
+            rankingBody.innerHTML = sortedData.map(([name, data], index) => {
                 let rankClass = '';
-                if (index === 0) rankClass = 'rank-gold';
-                else if (index === 1) rankClass = 'rank-silver';
-                else if (index === 2) rankClass = 'rank-bronze';
+                if (index === 0) rankClass = 'text-yellow-400';
+                else if (index === 1) rankClass = 'text-slate-300';
+                else if (index === 2) rankClass = 'text-orange-700';
 
                 return `
                 <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
-                    <td class="py-4 font-bold flex items-center gap-2">
-                        <span class="${rankClass} text-[10px] w-4">${index + 1}.</span>
-                        ${name}
+                    <td class="py-3 pl-2 font-bold text-xs flex items-center gap-2">
+                        <span class="${rankClass} w-4 text-right">${index + 1}.</span>
+                        <span class="truncate max-w-[150px] md:max-w-none">${name}</span>
                     </td>
-                    <td class="py-4 text-center font-mono text-xs text-slate-400">${data.missions.size}</td>
-                    <td class="py-4 text-center font-mono text-xs text-slate-400">${data.flights}</td>
-                    <td class="py-4 text-center font-black text-blue-400">${Math.floor(data.time/60)}г ${data.time%60}хв</td>
-                    <td class="py-4 text-right font-black ${data.det > 0 ? 'text-red-500' : 'text-slate-600'}">${data.det}</td>
+                    <td class="py-3 text-center font-mono text-xs text-slate-400">${data.flights}</td>
+                    <td class="py-3 text-center font-black text-blue-400 text-xs">${Math.floor(data.time/60)}г ${data.time%60}хв</td>
+                    <td class="py-3 pr-2 text-right font-black text-xs ${data.det > 0 ? 'text-red-500' : 'text-slate-600'}">${data.det}</td>
                 </tr>`;
-            }).join('') || '<tr><td colspan="5" class="py-10 text-center text-slate-600 uppercase text-[10px] font-black tracking-widest">Немає даних за цей період</td></tr>';
+            }).join('') || '<tr><td colspan="4" class="py-10 text-center text-slate-600 uppercase text-[10px] font-black">Немає даних</td></tr>';
 
-            // Рендер дронів
+            // РЕНДЕР ГРАФІКА ЧАСУ (Bar Chart)
+            const maxTimeVal = Math.max(...timeDistribution, 1);
+            document.getElementById('timeChart').innerHTML = timeDistribution.map(val => {
+                const height = (val / maxTimeVal) * 100;
+                // Градієнт залежить від висоти: більше активність - яскравіше
+                const color = height > 50 ? 'bg-purple-500' : 'bg-purple-500/50';
+                return `<div class="bar ${color}" style="height: ${height}%" data-val="${val}"></div>`;
+            }).join('');
+
+            // РЕНДЕР РЕЗУЛЬТАТІВ
+            const resultsContainer = document.getElementById('resultsStats');
+            const sortedRes = Object.entries(resultsDist).sort((a,b) => b[1] - a[1]);
+            resultsContainer.innerHTML = sortedRes.map(([name, count]) => {
+                const percent = ((count / filtered.length) * 100).toFixed(1);
+                let color = 'text-slate-300';
+                if(name === 'Затримання') color = 'text-red-400';
+                if(name === 'Без ознак порушення') color = 'text-green-400';
+                
+                return `
+                <div class="flex justify-between items-center text-[10px] border-b border-white/5 pb-1 last:border-0">
+                    <span class="${color} font-bold">${name}</span>
+                    <span class="font-mono text-slate-500">${count} (${percent}%)</span>
+                </div>`;
+            }).join('');
+
+            // РЕНДЕР ДРОНІВ
             const droneContainer = document.getElementById('droneStats');
             const sortedDrones = Object.entries(drones).sort((a,b) => b[1] - a[1]);
             const maxD = sortedDrones.length > 0 ? sortedDrones[0][1] : 1;
@@ -210,16 +291,16 @@
                     <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
                         <div class="bg-blue-500 h-full transition-all duration-1000" style="width: ${(count/maxD)*100}%"></div>
                     </div>
-                </div>`).join('') || '<div class="text-center text-slate-700 text-[10px]">---</div>';
+                </div>`).join('');
 
-            // Рендер АКБ (тільки критичні > 150 або топ 3 по зносу)
+            // РЕНДЕР АКБ
             const batContainer = document.getElementById('batteryStats');
-            const sortedBats = Object.entries(batteries).sort((a,b) => b[1].cyc - a[1].cyc).slice(0, 4);
+            const sortedBats = Object.entries(batteries).sort((a,b) => b[1].cyc - a[1].cyc).slice(0, 5);
             batContainer.innerHTML = sortedBats.map(([id, data]) => `
-                <div class="flex justify-between items-center p-3 ${data.cyc >= 150 ? 'bg-red-500/10 border-red-500/20' : 'bg-slate-800/40'} border border-transparent rounded-xl">
-                    <div class="text-[10px] font-mono ${data.cyc >= 150 ? 'text-red-400' : 'text-slate-400'}">${id}</div>
-                    <div class="text-xs font-black">${data.cyc} <span class="text-[8px] font-normal opacity-50 uppercase">цикл.</span></div>
-                </div>`).join('') || '<div class="text-center text-slate-700 text-[10px]">---</div>';
+                <div class="flex justify-between items-center p-2 ${data.cyc >= 150 ? 'bg-red-500/10 border-red-500/20' : 'bg-slate-800/40'} border border-transparent rounded-lg">
+                    <div class="text-[10px] font-mono ${data.cyc >= 150 ? 'text-red-400' : 'text-slate-400'}">${id} <span class="text-[8px] text-slate-600 ml-1">(${data.drone})</span></div>
+                    <div class="text-xs font-black">${data.cyc}</div>
+                </div>`).join('');
         }
 
         window.onload = loadData;
