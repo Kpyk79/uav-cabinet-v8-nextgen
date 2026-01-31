@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Кабінет пілота</title>
+    <title>UAV Workstation | Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -206,9 +206,18 @@
         async function showMain(unit) {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('mainScreen').classList.remove('hidden');
+            
             const resD = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(unit));
-            const drones = await resD.json();
-            document.getElementById('drone').innerHTML = drones.map(d => '<option value="' + d.model + ' (S/N: ' + d.serial_number + ')">' + d.model + ' [' + d.serial_number + ']</option>').join('');
+            const allDrones = await resD.json();
+
+            // --- ФІЛЬТР: Показуємо тільки активні дрони ---
+            // Якщо статус "Active" АБО статус взагалі не вказаний (для старих записів)
+            const activeDrones = allDrones.filter(d => !d.status || d.status === 'Active');
+            // ----------------------------------------------
+
+            document.getElementById('drone').innerHTML = activeDrones.map(d => 
+                '<option value="' + d.model + ' (S/N: ' + d.serial_number + ')">' + d.model + ' [' + d.serial_number + ']</option>'
+            ).join('');
             
             const savedDrone = localStorage.getItem('saved_drone');
             if(savedDrone) document.getElementById('drone').value = savedDrone;
