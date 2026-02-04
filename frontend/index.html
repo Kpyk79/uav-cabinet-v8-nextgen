@@ -14,7 +14,6 @@
         input:focus { border-color: #22c55e !important; }
         .btn-green { background: #16a34a; font-weight: 900; text-transform: uppercase; }
         .cus-box { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.75rem; padding: 8px; }
-        /* Анімація для оголошення */
         @keyframes popIn { 0% { opacity: 0; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
         .animate-pop { animation: popIn 0.3s ease-out forwards; }
     </style>
@@ -89,7 +88,11 @@
                     <label class="label-style">Скріншоти / Фото донесення</label>
                     <input type="file" id="photos" multiple accept="image/*" class="text-[10px] text-slate-500">
                 </div>
-                <button type="button" onclick="addToDraft()" class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Додати в чернетку</button>
+                
+                <div class="flex gap-2">
+                    <button type="button" id="submitBtn" onclick="addToDraft()" class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Додати в чернетку</button>
+                    <button type="button" id="cancelBtn" onclick="cancelEdit()" class="hidden w-1/3 bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-bold uppercase text-xs transition-all text-slate-300">Скасувати</button>
+                </div>
             </form>
         </div>
 
@@ -115,13 +118,13 @@
     <script>
         const API = window.location.origin + "/api";
         let draft = [];
+        let editingId = null; // Змінна для відстеження режиму редагування
 
         function nav(path) {
             const token = new URLSearchParams(window.location.search).get('token');
             window.location.href = token ? `${path}?token=${token}` : path;
         }
 
-        // --- ЛОГІКА ОГОЛОШЕНЬ (НОВЕ) ---
         async function checkAnnouncement() {
             try {
                 if (sessionStorage.getItem('announcement_seen')) return;
@@ -140,11 +143,13 @@
             document.getElementById('announcementCard').classList.add('hidden');
             sessionStorage.setItem('announcement_seen', 'true');
         }
-        // -------------------------------
 
         function saveState(id) {
-            const el = document.getElementById(id);
-            if(el) localStorage.setItem('saved_' + id, el.value);
+            // Зберігаємо стан тільки якщо НЕ редагуємо (щоб не псувати автозбереження старими даними)
+            if(!editingId) {
+                const el = document.getElementById(id);
+                if(el) localStorage.setItem('saved_' + id, el.value);
+            }
         }
 
         function restoreFields() {
@@ -179,7 +184,6 @@
         });
 
         window.onload = async function() {
-            // Перевірка оголошення при старті
             checkAnnouncement();
 
             const res = await fetch(API + "/get_options");
@@ -189,7 +193,7 @@
             document.getElementById('mode').innerHTML = opt.flight_modes.map(m => "<option>" + m + "</option>").join('');
             document.getElementById('result').innerHTML = opt.results.map(r => "<option>" + r + "</option>").join('');
 
-            restoreFields(); // Відновлюємо селекти після завантаження опцій
+            restoreFields();
 
             const u = localStorage.getItem('uav_unit'), o = localStorage.getItem('uav_op');
             if (u && o) {
@@ -210,10 +214,7 @@
             const resD = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(unit));
             const allDrones = await resD.json();
 
-            // --- ФІЛЬТР: Показуємо тільки активні дрони ---
-            // Якщо статус "Active" АБО статус взагалі не вказаний (для старих записів)
             const activeDrones = allDrones.filter(d => !d.status || d.status === 'Active');
-            // ----------------------------------------------
 
             document.getElementById('drone').innerHTML = activeDrones.map(d => 
                 '<option value="' + d.model + ' (S/N: ' + d.serial_number + ')">' + d.model + ' [' + d.serial_number + ']</option>'
@@ -229,6 +230,64 @@
             location.reload();
         }
 
+        // --- ЛОГІКА РЕДАГУВАННЯ ---
+        
+        function editDraft(id) {
+            const flight = draft.find(f => f.id === id);
+            if (!flight) return;
+
+            // Заповнюємо поля даними
+            document.getElementById('date').value = flight.date.split('.').reverse().join('-'); // Перетворення dd.mm.yyyy -> yyyy-mm-dd для input date
+            if (flight.shift_time) {
+                const parts = flight.shift_time.split('-');
+                if(parts.length === 2) {
+                    document.getElementById('s1').value = parts[0];
+                    document.getElementById('s2').value = parts[1];
+                }
+            }
+            document.getElementById('drone').value = flight.drone;
+            document.getElementById('route').value = flight.route;
+            document.getElementById('t1').value = flight.takeoff;
+            document.getElementById('t2').value = flight.landing;
+            document.getElementById('dist').value = flight.distance;
+            document.getElementById('akb').value = flight.battery_id;
+            document.getElementById('cyc').value = flight.battery_cycles;
+            document.getElementById('weather').value = flight.weather;
+            document.getElementById('mode').value = flight.conditions;
+            document.getElementById('result').value = flight.result;
+
+            // Змінюємо інтерфейс
+            editingId = id;
+            const btn = document.getElementById('submitBtn');
+            btn.innerText = "Зберегти зміни";
+            btn.classList.remove('bg-blue-600');
+            btn.classList.add('bg-orange-500'); // Помаранчевий колір для режиму редагування
+            
+            document.getElementById('cancelBtn').classList.remove('hidden');
+        }
+
+        function cancelEdit() {
+            editingId = null;
+            clearForm();
+            restoreFields(); // Повертаємо збережені невідправлені дані
+            
+            // Повертаємо інтерфейс
+            const btn = document.getElementById('submitBtn');
+            btn.innerText = "Додати в чернетку";
+            btn.classList.add('bg-blue-600');
+            btn.classList.remove('bg-orange-500');
+            document.getElementById('cancelBtn').classList.add('hidden');
+        }
+
+        function clearForm() {
+            document.getElementById('t1').value = "";
+            document.getElementById('t2').value = "";
+            document.getElementById('dist').value = "";
+            document.getElementById('akb').value = "";
+            document.getElementById('cyc').value = "";
+            document.getElementById('route').value = "";
+        }
+
         function addToDraft() {
             const takeoffInput = document.getElementById('t1');
             const landingInput = document.getElementById('t2');
@@ -242,9 +301,19 @@
                 return el ? el.value : def;
             };
 
-            const flight = {
-                id: Date.now(),
-                date: getVal('date', new Date().toLocaleDateString('uk-UA')),
+            // Форматування дати для об'єкта
+            let dateVal = getVal('date', '');
+            if(dateVal.includes('-')) {
+                // yyyy-mm-dd -> dd.mm.yyyy
+                dateVal = dateVal.split('-').reverse().join('.');
+            } else if (!dateVal) {
+                dateVal = new Date().toLocaleDateString('uk-UA');
+            }
+
+            const flightData = {
+                // Якщо редагуємо, залишаємо старий ID, інакше генеруємо новий
+                id: editingId || Date.now(),
+                date: dateVal,
                 shift_time: (getVal('s1', '08:00') + "-" + getVal('s2', '20:00')),
                 operator: localStorage.getItem('uav_op') || "Невідомий",
                 unit: localStorage.getItem('uav_unit') || "Не вказано",
@@ -260,37 +329,57 @@
                 result: getVal('result', 'Без ознак порушення')
             };
 
-            const [h1, m1] = flight.takeoff.split(':').map(Number);
-            const [h2, m2] = flight.landing.split(':').map(Number);
+            const [h1, m1] = flightData.takeoff.split(':').map(Number);
+            const [h2, m2] = flightData.landing.split(':').map(Number);
             let mStart = h1 * 60 + m1;
             let mEnd = h2 * 60 + m2;
 
             if (mEnd < mStart) { mEnd += 1440; }
+            flightData.duration = mEnd - mStart;
 
-            flight.duration = mEnd - mStart;
-
-            draft.push(flight);
-            localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); 
-            renderDraft();
-            
-            takeoffInput.value = "";
-            landingInput.value = "";
-            localStorage.removeItem('saved_t1');
-            localStorage.removeItem('saved_t2');
-            
-            if(document.getElementById('dist')) {
-                document.getElementById('dist').value = "";
+            if (editingId) {
+                // ОНОВЛЕННЯ ІСНУЮЧОГО
+                const index = draft.findIndex(f => f.id === editingId);
+                if (index !== -1) {
+                    draft[index] = flightData;
+                }
+                cancelEdit(); // Виходимо з режиму редагування
+            } else {
+                // ДОДАВАННЯ НОВОГО
+                draft.push(flightData);
+                // Очищення полів після додавання
+                clearForm();
+                // Видаляємо тимчасові збереження
+                localStorage.removeItem('saved_t1');
+                localStorage.removeItem('saved_t2');
                 localStorage.removeItem('saved_dist');
             }
+
+            localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); 
+            renderDraft();
         }
+        // -----------------------------
 
         function renderDraft() {
             document.getElementById('draftCount').innerText = draft.length;
             document.getElementById('publishBtn').disabled = draft.length === 0;
             document.getElementById('draftList').innerHTML = draft.map(f => `
-                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700 flex justify-between items-center">
-                    <div class="text-[10px]"><div class="font-bold text-green-500">${f.takeoff} → ${f.landing}</div><div class="text-slate-400 uppercase">${f.drone.split(' (')[0]}</div></div>
-                    <button onclick="removeFromDraft(${f.id})" class="text-red-500 p-2"><i class="fa-solid fa-trash-can"></i></button>
+                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700 flex justify-between items-center group hover:bg-slate-800 transition-colors">
+                    <div class="text-[10px] w-full mr-2" onclick="editDraft(${f.id})" style="cursor: pointer;">
+                        <div class="font-bold text-green-500 flex items-center gap-2">
+                            ${f.takeoff} → ${f.landing} 
+                            <span class="text-slate-500 font-normal">(${f.duration} хв)</span>
+                        </div>
+                        <div class="text-slate-400 uppercase truncate">${f.drone.split(' (')[0]}</div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="editDraft(${f.id})" class="text-yellow-500 p-2 hover:bg-yellow-500/10 rounded-lg transition-all" title="Редагувати">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="removeFromDraft(${f.id})" class="text-red-500 p-2 hover:bg-red-500/10 rounded-lg transition-all" title="Видалити">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
                 </div>`).join('');
             generateCUS();
         }
@@ -299,7 +388,6 @@
             let b = "", a = "";
             draft.forEach(f => {
                 const line = f.takeoff + "-" + f.landing + " - " + f.distance + "м (" + f.duration + " хв)\n";
-                // Сортування: "Після 00:00" якщо посадка менша за зліт АБО час зльоту < 08:00
                 if (f.landing < f.takeoff || f.takeoff < "08:00") {
                     a += line; 
                 } else {
@@ -310,7 +398,14 @@
             document.getElementById('cusAfter').value = a || "---";
         }
 
-        function removeFromDraft(id) { draft = draft.filter(f => f.id !== id); localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); renderDraft(); }
+        function removeFromDraft(id) { 
+            // Якщо видаляємо елемент, який зараз редагуємо — скасовуємо редагування
+            if (editingId === id) cancelEdit();
+            
+            draft = draft.filter(f => f.id !== id); 
+            localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); 
+            renderDraft(); 
+        }
 
         function copyText(id) {
             const el = document.getElementById(id); if (el.value === "---") return;
