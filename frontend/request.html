@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Заявка на політ</title>
+    <title>Подання заявки</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -30,8 +30,8 @@
         <label class="label-style text-purple-400">Отримувач (ЦУС)</label>
         <div class="grid grid-cols-3 gap-2">
             <select id="cusMessenger" class="col-span-1">
-                <option value="signal">Signal</option>
                 <option value="whatsapp">WhatsApp</option>
+                <option value="signal">Signal</option>
             </select>
             <input type="tel" id="cusPhone" placeholder="380..." class="col-span-2">
         </div>
@@ -66,8 +66,8 @@
         </div>
 
         <div class="grid grid-cols-2 gap-3">
-            <div><label class="label-style">6. Висота (м)</label><input type="number" id="height" value="500"></div>
-            <div><label class="label-style">7. Радіус (км)</label><input type="number" id="radius" value="5"></div>
+            <div><label class="label-style">6. Висота (м)</label><input type="number" id="height" value="300"></div>
+            <div><label class="label-style">7. Радіус (км)</label><input type="number" id="radius" value="3"></div>
         </div>
 
         <div>
@@ -101,7 +101,7 @@
             
             // Відновлення даних
             document.getElementById('cusPhone').value = localStorage.getItem('cus_phone') || "";
-            document.getElementById('cusMessenger').value = localStorage.getItem('cus_mess') || "signal";
+            document.getElementById('cusMessenger').value = localStorage.getItem('cus_mess') || "whatsapp";
             document.getElementById('reqMyPhone').value = localStorage.getItem('my_phone') || "";
             document.getElementById('reqContact').value = op || "";
 
@@ -170,5 +170,4 @@ const msg = `
         }
     </script>
 </body>
-
 </html>
