@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Подання заявки</title>
+    <title>Подання заявки | UAV Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -46,7 +46,7 @@
         <div>
             <label class="label-style">2. Тип БпЛА (Оберіть один або декілька)</label>
             <div id="droneList" class="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-2">
-                </div>
+            </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
@@ -99,11 +99,21 @@
             const unit = localStorage.getItem('uav_unit');
             const op = localStorage.getItem('uav_op');
             
-            // Відновлення даних
+            // Відновлення базових налаштувань
             document.getElementById('cusPhone').value = localStorage.getItem('cus_phone') || "";
             document.getElementById('cusMessenger').value = localStorage.getItem('cus_mess') || "whatsapp";
             document.getElementById('reqMyPhone').value = localStorage.getItem('my_phone') || "";
             document.getElementById('reqContact').value = op || "";
+
+            // --- НОВЕ: Відновлення полів заявки ---
+            document.getElementById('timeStart').value = localStorage.getItem('req_time_start') || "08:00";
+            document.getElementById('timeEnd').value = localStorage.getItem('req_time_end') || "20:00";
+            document.getElementById('reqRoute').value = localStorage.getItem('req_route') || "";
+            document.getElementById('height').value = localStorage.getItem('req_height') || "300";
+            document.getElementById('radius').value = localStorage.getItem('req_radius') || "3";
+            const savedTarget = localStorage.getItem('req_target');
+            if (savedTarget) document.getElementById('reqTarget').value = savedTarget;
+            // ---------------------------------------
 
             const res = await fetch(API + "/get_options");
             const opt = await res.json();
@@ -115,6 +125,7 @@
             const hist = JSON.parse(localStorage.getItem('req_route_hist') || "[]");
             document.getElementById('routeHistory').innerHTML = hist.map(r => `<option value="${r}">`).join('');
 
+            // Дати завжди ставимо "Сьогодні", бо це зручніше для нової заявки
             document.getElementById('dateStart').valueAsDate = new Date();
             document.getElementById('dateEnd').valueAsDate = new Date();
         };
@@ -122,31 +133,56 @@
         async function loadDrones(unit) {
             const res = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(unit));
             const drones = await res.json();
-            document.getElementById('droneList').innerHTML = drones.map(d => `
+            
+            // Отримуємо збережені дрони
+            const savedDrones = JSON.parse(localStorage.getItem('req_selected_drones') || "[]");
+
+            document.getElementById('droneList').innerHTML = drones.map(d => {
+                const val = `${d.model} (S/N: ${d.serial_number})`;
+                const isChecked = savedDrones.includes(val) ? 'checked' : '';
+                return `
                 <label class="drone-item">
-                    <input type="checkbox" name="drones" value="${d.model} (S/N: ${d.serial_number})" class="w-4 h-4 accent-purple-500">
+                    <input type="checkbox" name="drones" value="${val}" class="w-4 h-4 accent-purple-500" ${isChecked}>
                     <span class="text-[11px] text-slate-300">${d.model} <span class="text-slate-500 font-mono">[${d.serial_number}]</span></span>
                 </label>
-            `).join('');
+            `}).join('');
         }
 
         function sendApplication() {
             const phone = document.getElementById('cusPhone').value.replace(/\+/g, '');
             const messenger = document.getElementById('cusMessenger').value;
             
-            // Зберігаємо для наступного разу
-            localStorage.setItem('cus_phone', phone);
-            localStorage.setItem('cus_mess', messenger);
-            localStorage.setItem('my_phone', document.getElementById('reqMyPhone').value);
-
             // Отримуємо список дронів
             const selectedDrones = Array.from(document.querySelectorAll('input[name="drones"]:checked')).map(cb => cb.value);
             if(selectedDrones.length === 0) return alert("Оберіть хоча б один БпЛА!");
 
-            // Формуємо текст за вашим шаблоном
+            // --- ЗБЕРЕЖЕННЯ ВСІХ ПОЛІВ ---
+            localStorage.setItem('cus_phone', phone);
+            localStorage.setItem('cus_mess', messenger);
+            localStorage.setItem('my_phone', document.getElementById('reqMyPhone').value);
+            
+            localStorage.setItem('req_time_start', document.getElementById('timeStart').value);
+            localStorage.setItem('req_time_end', document.getElementById('timeEnd').value);
+            localStorage.setItem('req_route', document.getElementById('reqRoute').value);
+            localStorage.setItem('req_height', document.getElementById('height').value);
+            localStorage.setItem('req_radius', document.getElementById('radius').value);
+            localStorage.setItem('req_target', document.getElementById('reqTarget').value);
+            localStorage.setItem('req_selected_drones', JSON.stringify(selectedDrones)); // Зберігаємо масив обраних дронів
+
+            // Додаємо маршрут в історію, якщо він новий
+            const currentRoute = document.getElementById('reqRoute').value;
+            if (currentRoute) {
+                let hist = JSON.parse(localStorage.getItem('req_route_hist') || "[]");
+                if (!hist.includes(currentRoute)) {
+                    hist.push(currentRoute);
+                    localStorage.setItem('req_route_hist', JSON.stringify(hist));
+                }
+            }
+            // ------------------------------
+
             const formatDate = (dateStr) => dateStr.split('-').reverse().join('.');
 
-const msg = `
+            const msg = `
 1. Заявник: в/ч 2196 2 ПРИКЗ (ДПСУ) ${document.getElementById('reqUnit').value}
 2. Тип БпЛА: ${selectedDrones.join(', ')}
 3. Дата здійснення польоту: ${formatDate(document.getElementById('dateStart').value)} - ${formatDate(document.getElementById('dateEnd').value)}
@@ -157,14 +193,11 @@ const msg = `
 8. Мета польоту: ${document.getElementById('reqTarget').value}
 9. Контактна особа: ${document.getElementById('reqContact').value}, тел: ${document.getElementById('reqMyPhone').value}`;
 
-            // Відправка
             const encoded = encodeURIComponent(msg);
             if(messenger === 'whatsapp') {
                 window.location.href = `https://wa.me/${phone}?text=${encoded}`;
             } else {
-                // Пряме посилання для Signal
                 window.location.href = `sgnl://send?text=${encoded}${phone ? '&number=' + phone : ''}`;
-                // Fallback через 1 сек якщо додаток не відкрився
                 setTimeout(() => { if(!document.hidden) window.location.href = `https://signal.me/#p/${phone}`; }, 1000);
             }
         }
