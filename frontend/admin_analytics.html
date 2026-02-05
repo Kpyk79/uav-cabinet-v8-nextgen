@@ -10,14 +10,10 @@
         body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; padding: 12px; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; }
         .stat-card { background: rgba(15, 23, 42, 0.6); padding: 15px; border-radius: 1rem; border: 1px solid rgba(255,255,255,0.05); }
-        select { background: #1e293b !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.5rem; padding: 6px 12px; font-size: 12px; outline: none; }
-        .rank-gold { color: #fbbf24; }
-        .rank-silver { color: #94a3b8; }
-        .rank-bronze { color: #b45309; }
-        /* Простий CSS графік */
+        .filter-input { background: #1e293b; color: white; border: 1px solid #334155; border-radius: 0.5rem; padding: 4px 8px; font-size: 11px; outline: none; width: 100%; }
+        .filter-input:focus { border-color: #22c55e; }
         .bar-container { display: flex; align-items: flex-end; height: 60px; gap: 4px; }
         .bar { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.5s ease; position: relative; }
-        .bar:hover::after { content: attr(data-val); position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: bold; color: white; }
     </style>
 </head>
 <body class="max-w-7xl mx-auto pb-10">
@@ -32,23 +28,7 @@
                 <p class="text-[9px] text-slate-500 uppercase font-bold tracking-widest mt-1">Operational Command Center</p>
             </div>
         </div>
-
-        <div class="flex items-center gap-2 glass px-4 py-2">
-            <i class="fa-solid fa-filter text-green-500 text-xs mr-1"></i>
-            <select id="monthSelect" onchange="updateAnalytics()">
-                <option value="all">Весь рік</option>
-                <option value="01">Січень</option><option value="02">Лютий</option>
-                <option value="03">Березень</option><option value="04">Квітень</option>
-                <option value="05">Травень</option><option value="06">Червень</option>
-                <option value="07">Липень</option><option value="08">Серпень</option>
-                <option value="09">Вересень</option><option value="10">Жовтень</option>
-                <option value="11">Листопад</option><option value="12">Грудень</option>
-            </select>
-            <select id="yearSelect" onchange="updateAnalytics()">
-                <option value="2025">2025</option>
-                <option value="2026" selected>2026</option>
-            </select>
-        </div>
+        <div class="text-[10px] font-black text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full uppercase">Live Data Streaming</div>
     </div>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -65,18 +45,50 @@
             <div id="totalDetentions" class="text-2xl font-black text-red-500 mt-1">0</div>
         </div>
         <div class="stat-card border-l-4 border-orange-500">
-            <div class="text-[9px] text-slate-500 font-black uppercase italic">Найактивніший підрозділ</div>
+            <div class="text-[9px] text-slate-500 font-black uppercase italic">Топ підрозділ</div>
             <div id="topUnit" class="text-sm font-black text-orange-400 mt-2 truncate">---</div>
         </div>
+    </div>
+
+    <div class="glass p-4 mb-6 grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
+        <div>
+            <label class="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Місяць</label>
+            <select id="monthSelect" onchange="updateAnalytics()" class="filter-input">
+                <option value="all">Весь рік</option>
+                <option value="01">Січень</option><option value="02">Лютий</option><option value="03">Березень</option>
+                <option value="04">Квітень</option><option value="05">Травень</option><option value="06">Червень</option>
+                <option value="07">Липень</option><option value="08">Серпень</option><option value="09">Вересень</option>
+                <option value="10">Жовтень</option><option value="11">Листопад</option><option value="12">Грудень</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Рік</label>
+            <select id="yearSelect" onchange="updateAnalytics()" class="filter-input">
+                <option value="2025">2025</option><option value="2026" selected>2026</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Пілот</label>
+            <input type="text" id="pilotSearch" oninput="updateAnalytics()" placeholder="Прізвище..." class="filter-input">
+        </div>
+        <div>
+            <label class="text-[9px] font-bold text-slate-500 uppercase ml-1 mb-1 block">Результат</label>
+            <select id="resultFilter" onchange="updateAnalytics()" class="filter-input">
+                <option value="all">Всі результати</option>
+                <option value="Затримання">Затримання</option>
+                <option value="Без ознак порушення">Без ознак</option>
+                <option value="Польоти не здійснювались">Скасовано</option>
+            </select>
+        </div>
+        <button onclick="resetFilters()" class="filter-input bg-slate-700 hover:bg-slate-600 border-transparent font-bold">Скинути</button>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div class="glass p-5">
             <h2 class="text-xs font-black uppercase mb-4 text-slate-400 italic flex items-center gap-2">
-                <i class="fa-solid fa-clock text-purple-500"></i> Інтенсивність вильотів (доба)
+                <i class="fa-solid fa-clock text-purple-500"></i> Активність за добу
             </h2>
-            <div id="timeChart" class="bar-container w-full px-2">
-                </div>
+            <div id="timeChart" class="bar-container w-full px-2"></div>
             <div class="flex justify-between text-[8px] text-slate-500 font-mono mt-2 uppercase px-2">
                 <span>00-04</span><span>04-08</span><span>08-12</span><span>12-16</span><span>16-20</span><span>20-24</span>
             </div>
@@ -84,34 +96,31 @@
 
         <div class="glass p-5">
             <h2 class="text-xs font-black uppercase mb-4 text-slate-400 italic flex items-center gap-2">
-                <i class="fa-solid fa-chart-pie text-cyan-500"></i> Ефективність застосування
+                <i class="fa-solid fa-chart-pie text-cyan-500"></i> Структура результатів
             </h2>
-            <div id="resultsStats" class="space-y-2 overflow-y-auto max-h-[100px]">
-                </div>
+            <div id="resultsStats" class="space-y-2 overflow-y-auto max-h-[100px]"></div>
         </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
         <div class="lg:col-span-2 glass p-6">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xs font-black uppercase text-slate-400 italic flex items-center gap-2">
-                    <i class="fa-solid fa-trophy text-yellow-500"></i> Лідерборд
+                    <i class="fa-solid fa-trophy text-yellow-500"></i> Рейтинг нальоту
                 </h2>
                 <div class="flex gap-2 bg-slate-900 p-1 rounded-lg">
-                    <button onclick="switchTab('pilots')" id="btnPilots" class="px-3 py-1 text-[10px] font-bold bg-slate-700 rounded text-white transition-all">Пілоти</button>
-                    <button onclick="switchTab('units')" id="btnUnits" class="px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-white transition-all">Підрозділи</button>
+                    <button onclick="switchTab('pilots')" id="btnPilots" class="px-3 py-1 text-[10px] font-bold bg-slate-700 rounded text-white">Пілоти</button>
+                    <button onclick="switchTab('units')" id="btnUnits" class="px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-white">Підрозділи</button>
                 </div>
             </div>
-
             <div class="overflow-x-auto">
                 <table class="w-full text-left">
                     <thead>
                         <tr class="text-[9px] uppercase text-slate-500 border-b border-white/5">
-                            <th class="pb-3 pl-2" id="colName">Пілот</th>
+                            <th class="pb-3 pl-2">Об'єкт</th>
                             <th class="pb-3 text-center">Вильоти</th>
                             <th class="pb-3 text-center">Наліт</th>
-                            <th class="pb-3 text-right pr-2">Результат</th>
+                            <th class="pb-3 text-right pr-2">Затрим.</th>
                         </tr>
                     </thead>
                     <tbody id="rankingBody" class="text-sm"></tbody>
@@ -122,19 +131,19 @@
         <div class="space-y-6">
             <div class="glass p-6">
                 <h2 class="text-xs font-black uppercase mb-4 text-slate-400 italic">
-                    <i class="fa-solid fa-plane-up text-blue-500 mr-2"></i> Використання БпЛА
+                    <i class="fa-solid fa-plane-up text-blue-500 mr-2"></i> ТОП Моделей
                 </h2>
                 <div id="droneStats" class="space-y-4 max-h-[200px] overflow-y-auto pr-1"></div>
             </div>
 
             <div class="glass p-6">
-                <h2 class="text-xs font-black uppercase mb-4 text-slate-400 italic">
-                    <i class="fa-solid fa-battery-half text-red-500 mr-2"></i> ТОП зносу АКБ
+                <h2 class="text-xs font-black uppercase mb-4 text-slate-400 italic flex items-center justify-between">
+                    <span><i class="fa-solid fa-battery-three-quarters text-red-500 mr-2"></i> ТОП Зносу АКБ</span>
+                    <span class="text-[8px] text-slate-600 font-mono italic">Сортування: max cycles</span>
                 </h2>
-                <div id="batteryStats" class="space-y-2 max-h-[150px] overflow-y-auto pr-1"></div>
+                <div id="batteryStats" class="space-y-2 max-h-[300px] overflow-y-auto pr-1"></div>
             </div>
         </div>
-
     </div>
 
     <script>
@@ -158,164 +167,143 @@
             currentTab = tab;
             document.getElementById('btnPilots').className = tab === 'pilots' ? "px-3 py-1 text-[10px] font-bold bg-slate-700 rounded text-white" : "px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-white";
             document.getElementById('btnUnits').className = tab === 'units' ? "px-3 py-1 text-[10px] font-bold bg-slate-700 rounded text-white" : "px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-white";
-            document.getElementById('colName').innerText = tab === 'pilots' ? "Пілот" : "Підрозділ";
+            updateAnalytics();
+        }
+
+        function resetFilters() {
+            document.getElementById('monthSelect').value = 'all';
+            document.getElementById('pilotSearch').value = '';
+            document.getElementById('resultFilter').value = 'all';
             updateAnalytics();
         }
 
         function updateAnalytics() {
             const m = document.getElementById('monthSelect').value;
             const y = document.getElementById('yearSelect').value;
+            const search = document.getElementById('pilotSearch').value.toLowerCase();
+            const resFilter = document.getElementById('resultFilter').value;
             
             const filtered = allFlights.filter(f => {
                 if (!f.date) return false;
                 const matchesYear = f.date.startsWith(y);
                 const matchesMonth = m === 'all' ? true : f.date.includes(`-${m}-`);
-                return matchesYear && matchesMonth;
+                const matchesPilot = search === '' ? true : f.operator.toLowerCase().includes(search);
+                const matchesResult = resFilter === 'all' ? true : f.result === resFilter;
+                return matchesYear && matchesMonth && matchesPilot && matchesResult;
             });
 
-            // ЗМІННІ ДЛЯ АГРЕГАЦІЇ
-            let totalMin = 0;
-            let detentions = 0;
-            let realFlightsCount = 0; // Лічильник тільки реальних польотів
-            const pilots = {};
-            const units = {};
-            const drones = {};
-            const batteries = {};
-            const timeDistribution = [0,0,0,0,0,0]; // 6 блоків по 4 години
+            let totalMin = 0, detentions = 0, realFlights = 0;
+            const pilots = {}, units = {}, drones = {}, batteries = {};
+            const timeDistribution = [0,0,0,0,0,0];
             const resultsDist = {};
 
             filtered.forEach(f => {
-                // Перевірка на скасовані польоти
                 const isNoFly = f.result === "Польоти не здійснювались";
-
-                // Час рахуємо тільки якщо це реальний політ
                 const dur = isNoFly ? 0 : (parseInt(f.duration) || 0);
                 
-                totalMin += dur;
-                
-                // Загальна статистика
-                if (f.result === "Затримання") detentions++;
-                if (!isNoFly) realFlightsCount++;
-
-                // 1. Агрегація Пілотів
-                if (!pilots[f.operator]) pilots[f.operator] = { flights: 0, time: 0, det: 0 };
-                if (!isNoFly) pilots[f.operator].flights++; // +1 тільки якщо літав
-                pilots[f.operator].time += dur;
-                if (f.result === "Затримання") pilots[f.operator].det++;
-
-                // 2. Агрегація Підрозділів
-                const uName = f.unit || "Не вказано";
-                if (!units[uName]) units[uName] = { flights: 0, time: 0, det: 0 };
-                if (!isNoFly) units[uName].flights++; // +1 тільки якщо літав
-                units[uName].time += dur;
-                if (f.result === "Затримання") units[uName].det++;
-
-                // 3. БпЛА та АКБ
-                // Рахуємо дрони, тільки якщо вони літали
                 if (!isNoFly) {
+                    totalMin += dur;
+                    realFlights++;
+                    if (f.takeoff) {
+                        const hr = parseInt(f.takeoff.split(':')[0]);
+                        timeDistribution[Math.floor(hr / 4)]++;
+                    }
                     const dName = f.drone ? f.drone.split(' (')[0] : 'Unknown';
                     drones[dName] = (drones[dName] || 0) + 1;
                 }
+                
+                if (f.result === "Затримання") detentions++;
+                resultsDist[f.result] = (resultsDist[f.result] || 0) + 1;
 
+                // Stats for Ranking
+                const pKey = f.operator;
+                const uKey = f.unit || "Не вказано";
+                [ {t: pilots, k: pKey}, {t: units, k: uKey} ].forEach(o => {
+                    if (!o.t[o.k]) o.t[o.k] = { flights: 0, time: 0, det: 0 };
+                    if (!isNoFly) { o.t[o.k].flights++; o.t[o.k].time += dur; }
+                    if (f.result === "Затримання") o.t[o.k].det++;
+                });
+
+                // --- ЛОГІКА АКБ (ID, Дрон, Підрозділ, Цикли) ---
                 if (f.battery_id) {
                     const cyc = parseInt(f.battery_cycles) || 0;
-                    // Для АКБ можна показувати навіть без вильоту (теоретично), але краще теж фільтрувати
                     const dName = f.drone ? f.drone.split(' (')[0] : 'Unknown';
+                    const uName = f.unit || "---";
                     if (!batteries[f.battery_id] || cyc > batteries[f.battery_id].cyc) {
-                        batteries[f.battery_id] = { cyc: cyc, drone: dName };
+                        batteries[f.battery_id] = { cyc: cyc, drone: dName, unit: uName };
                     }
                 }
-
-                // 4. Час доби (тільки реальні)
-                if (f.takeoff && !isNoFly) {
-                    const hour = parseInt(f.takeoff.split(':')[0]);
-                    const timeIndex = Math.floor(hour / 4); // 0..5
-                    if (timeDistribution[timeIndex] !== undefined) timeDistribution[timeIndex]++;
-                }
-
-                // 5. Результати (тут рахуємо ВСІ, щоб бачити кількість скасувань)
-                const resText = f.result || "Інше";
-                resultsDist[resText] = (resultsDist[resText] || 0) + 1;
             });
 
-            // ЗАПОВНЕННЯ КАРТОК
-            // ТУТ ЗМІНА: Виводимо realFlightsCount замість filtered.length
-            document.getElementById('totalFlights').innerText = realFlightsCount;
+            // Stats Update
+            document.getElementById('totalFlights').innerText = realFlights;
             document.getElementById('totalHours').innerText = `${Math.floor(totalMin/60)}г ${totalMin%60}хв`;
             document.getElementById('totalDetentions').innerText = detentions;
+            const topU = Object.entries(units).sort((a,b) => b[1].flights - a[1].flights)[0];
+            document.getElementById('topUnit').innerText = topU ? topU[0] : "---";
 
-            // Знаходимо топ підрозділ
-            const sortedUnits = Object.entries(units).sort((a,b) => b[1].flights - a[1].flights);
-            document.getElementById('topUnit').innerText = sortedUnits.length > 0 ? sortedUnits[0][0] : "---";
-
-            // РЕНДЕР ТАБЛИЦІ (ПІЛОТИ АБО ПІДРОЗДІЛИ)
+            // Ranking render
             const rankingBody = document.getElementById('rankingBody');
             const dataMap = currentTab === 'pilots' ? pilots : units;
-            const sortedData = Object.entries(dataMap).sort((a,b) => b[1].time - a[1].time); // Сортування за нальотом
-
-            rankingBody.innerHTML = sortedData.map(([name, data], index) => {
-                let rankClass = '';
-                if (index === 0) rankClass = 'text-yellow-400';
-                else if (index === 1) rankClass = 'text-slate-300';
-                else if (index === 2) rankClass = 'text-orange-700';
-
-                return `
+            const sortedData = Object.entries(dataMap).sort((a,b) => b[1].time - a[1].time);
+            rankingBody.innerHTML = sortedData.map(([name, data], idx) => `
                 <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
-                    <td class="py-3 pl-2 font-bold text-xs flex items-center gap-2">
-                        <span class="${rankClass} w-4 text-right">${index + 1}.</span>
-                        <span class="truncate max-w-[150px] md:max-w-none">${name}</span>
-                    </td>
-                    <td class="py-3 text-center font-mono text-xs text-slate-400">${data.flights}</td>
-                    <td class="py-3 text-center font-black text-blue-400 text-xs">${Math.floor(data.time/60)}г ${data.time%60}хв</td>
-                    <td class="py-3 pr-2 text-right font-black text-xs ${data.det > 0 ? 'text-red-500' : 'text-slate-600'}">${data.det}</td>
-                </tr>`;
-            }).join('') || '<tr><td colspan="4" class="py-10 text-center text-slate-600 uppercase text-[10px] font-black">Немає даних</td></tr>';
+                    <td class="py-2.5 pl-2 font-bold text-xs"><span class="${idx < 3 ? 'text-yellow-500' : 'text-slate-500'} mr-2">${idx+1}.</span>${name}</td>
+                    <td class="text-center font-mono text-[10px] text-slate-400">${data.flights}</td>
+                    <td class="text-center font-black text-blue-400 text-xs">${Math.floor(data.time/60)}г ${data.time%60}хв</td>
+                    <td class="text-right pr-2 font-black text-red-500 text-xs">${data.det || ''}</td>
+                </tr>`).join('');
 
-            // РЕНДЕР ГРАФІКА ЧАСУ (Bar Chart)
-            const maxTimeVal = Math.max(...timeDistribution, 1);
-            document.getElementById('timeChart').innerHTML = timeDistribution.map(val => {
-                const height = (val / maxTimeVal) * 100;
-                // Градієнт залежить від висоти: більше активність - яскравіше
-                const color = height > 50 ? 'bg-purple-500' : 'bg-purple-500/50';
-                return `<div class="bar ${color}" style="height: ${height}%" data-val="${val}"></div>`;
-            }).join('');
-
-            // РЕНДЕР РЕЗУЛЬТАТІВ
-            const resultsContainer = document.getElementById('resultsStats');
-            const sortedRes = Object.entries(resultsDist).sort((a,b) => b[1] - a[1]);
-            resultsContainer.innerHTML = sortedRes.map(([name, count]) => {
-                const percent = ((count / filtered.length) * 100).toFixed(1);
-                let color = 'text-slate-300';
-                if(name === 'Затримання') color = 'text-red-400';
-                if(name === 'Без ознак порушення') color = 'text-green-400';
-                if(name === 'Польоти не здійснювались') color = 'text-slate-500 italic';
-                
+            // --- РЕНДЕР ТОП ЗНОСУ АКБ (СОРТУВАННЯ ВІД MAX ДО MIN) ---
+            const batBody = document.getElementById('batteryStats');
+            // Сортування: b.cyc - a.cyc (від більшого до меншого)
+            const sortedBats = Object.entries(batteries).sort((a, b) => b[1].cyc - a[1].cyc).slice(0, 12);
+            
+            batBody.innerHTML = sortedBats.map(([id, info], idx) => {
+                const isCritical = info.cyc >= 150;
                 return `
-                <div class="flex justify-between items-center text-[10px] border-b border-white/5 pb-1 last:border-0">
-                    <span class="${color} font-bold">${name}</span>
-                    <span class="font-mono text-slate-500">${count} (${percent}%)</span>
-                </div>`;
-            }).join('');
-
-            // РЕНДЕР ДРОНІВ
-            const droneContainer = document.getElementById('droneStats');
-            const sortedDrones = Object.entries(drones).sort((a,b) => b[1] - a[1]);
-            const maxD = sortedDrones.length > 0 ? sortedDrones[0][1] : 1;
-            droneContainer.innerHTML = sortedDrones.map(([name, count]) => `
-                <div>
-                    <div class="flex justify-between text-[10px] mb-1 font-bold"><span>${name}</span><span class="text-blue-400">${count}</span></div>
-                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div class="bg-blue-500 h-full transition-all duration-1000" style="width: ${(count/maxD)*100}%"></div>
+                <div class="flex items-center justify-between p-2 rounded-lg bg-slate-800/40 border border-white/5 relative overflow-hidden transition-all hover:bg-slate-800/60">
+                    <div class="flex flex-col gap-0.5">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[9px] font-black ${idx < 3 ? 'text-red-500' : 'text-slate-600'}">${idx + 1}</span>
+                            <span class="text-[10px] font-mono font-bold text-slate-200">ID: ${id}</span>
+                        </div>
+                        <div class="flex flex-col leading-tight">
+                            <span class="text-[8px] text-blue-400 uppercase font-black tracking-tighter">${info.drone}</span>
+                            <span class="text-[8px] text-slate-500 uppercase font-bold">${info.unit}</span>
+                        </div>
                     </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex flex-col items-end">
+                            <span class="text-[11px] font-black ${isCritical ? 'text-red-500' : 'text-green-400'}">${info.cyc}</span>
+                            <div class="w-16 bg-slate-900 h-1 rounded-full overflow-hidden mt-0.5 border border-white/5">
+                                <div class="h-full ${isCritical ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : 'bg-green-500'}" 
+                                     style="width: ${Math.min(info.cyc/2, 100)}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('') || '<div class="text-center text-[10px] py-4 text-slate-600">Дані про АКБ відсутні</div>';
+
+            // Time Chart render
+            const maxT = Math.max(...timeDistribution, 1);
+            document.getElementById('timeChart').innerHTML = timeDistribution.map(v => `<div class="bar bg-purple-500/60" style="height: ${(v/maxT)*100}%" title="${v}"></div>`).join('');
+
+            // Results render
+            const resBody = document.getElementById('resultsStats');
+            resBody.innerHTML = Object.entries(resultsDist).sort((a,b) => b[1]-a[1]).map(([n, c]) => `
+                <div class="flex justify-between text-[10px] border-b border-white/5 pb-1">
+                    <span class="text-slate-400 font-bold">${n}</span>
+                    <span class="text-slate-500">${c}</span>
                 </div>`).join('');
 
-            // РЕНДЕР АКБ
-            const batContainer = document.getElementById('batteryStats');
-            const sortedBats = Object.entries(batteries).sort((a,b) => b[1].cyc - a[1].cyc).slice(0, 5);
-            batContainer.innerHTML = sortedBats.map(([id, data]) => `
-                <div class="flex justify-between items-center p-2 ${data.cyc >= 150 ? 'bg-red-500/10 border-red-500/20' : 'bg-slate-800/40'} border border-transparent rounded-lg">
-                    <div class="text-[10px] font-mono ${data.cyc >= 150 ? 'text-red-400' : 'text-slate-400'}">${id} <span class="text-[8px] text-slate-600 ml-1">(${data.drone})</span></div>
-                    <div class="text-xs font-black">${data.cyc}</div>
+            // Drones render
+            const sortedD = Object.entries(drones).sort((a,b) => b[1]-a[1]);
+            const maxD = sortedD[0] ? sortedD[0][1] : 1;
+            document.getElementById('droneStats').innerHTML = sortedD.map(([n, c]) => `
+                <div>
+                    <div class="flex justify-between text-[10px] mb-1 font-bold"><span>${n}</span><span>${c}</span></div>
+                    <div class="w-full bg-slate-900 h-1.5 rounded-full"><div class="bg-blue-500 h-full" style="width: ${(c/maxD)*100}%"></div></div>
                 </div>`).join('');
         }
 
