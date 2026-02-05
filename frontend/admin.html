@@ -18,8 +18,8 @@
         .tech-table td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
         .tech-tag { font-size: 10px; font-weight: 900; text-transform: uppercase; padding: 0.25rem 0.5rem; border-radius: 0.375rem; background: rgba(255,255,255,0.05); }
         
-        /* Стилі для акордеону парку БпЛА */
-        .drone-card { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.5rem; padding: 0.5rem; margin-bottom: 0.5rem; }
+        /* Стилі для карток (Дрони та Пілоти) */
+        .info-card { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.5rem; padding: 0.5rem; margin-bottom: 0.5rem; }
         .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
         .bg-active { background-color: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); }
         .bg-repair { background-color: #eab308; }
@@ -67,20 +67,36 @@
         </div>
     </div>
 
-    <div class="card p-5 mb-6">
-        <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleFleet()">
-            <h3 class="text-sm font-black uppercase text-blue-400 flex items-center gap-2">
-                <i id="fleetArrow" class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
-                <i class="fa-solid fa-plane-up ml-1"></i> Парк БпЛА (по підрозділах)
-            </h3>
-            <button onclick="event.stopPropagation(); loadFleet()" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-white transition-all">
-                <i class="fa-solid fa-sync mr-1"></i> Оновити
-            </button>
-        </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         
-        <div id="fleetContainer" class="hidden mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div class="text-center py-10 text-slate-500 text-xs animate-pulse col-span-full">Завантаження парку техніки...</div>
+        <div class="card p-5 h-fit">
+            <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection('fleetContainer', 'fleetArrow')">
+                <h3 class="text-sm font-black uppercase text-blue-400 flex items-center gap-2">
+                    <i id="fleetArrow" class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
+                    <i class="fa-solid fa-plane-up ml-1"></i> Парк БпЛА
+                </h3>
+                <button onclick="event.stopPropagation(); loadFleet()" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-white transition-all">
+                    <i class="fa-solid fa-sync mr-1"></i>
+                </button>
+            </div>
+            <div id="fleetContainer" class="hidden mt-4 space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                <div class="text-center py-5 text-slate-500 text-xs animate-pulse">Завантаження...</div>
+            </div>
         </div>
+
+        <div class="card p-5 h-fit">
+            <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection('personnelContainer', 'personnelArrow')">
+                <h3 class="text-sm font-black uppercase text-yellow-500 flex items-center gap-2">
+                    <i id="personnelArrow" class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
+                    <i class="fa-solid fa-users ml-1"></i> Особовий Склад
+                </h3>
+                <div class="text-[10px] text-slate-500 font-bold uppercase">Active Personnel</div>
+            </div>
+            <div id="personnelContainer" class="hidden mt-4 space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                <div class="text-center py-5 text-slate-500 text-xs">Дані будуть доступні після завантаження журналу</div>
+            </div>
+        </div>
+
     </div>
 
     <div class="card p-5 mb-6">
@@ -92,7 +108,6 @@
                 <i class="fa-solid fa-rotate-left mr-1"></i> Скинути
             </button>
         </div>
-        
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
             <div><label class="label-mini">Дата з</label><input type="date" id="filterDateFrom" oninput="filterData()" class="input-dark"></div>
             <div><label class="label-mini">Дата по</label><input type="date" id="filterDateTo" oninput="filterData()" class="input-dark"></div>
@@ -139,25 +154,80 @@
                 const res = await fetch("/api/get_all_flights");
                 allFlights = await res.json();
                 renderTable(allFlights);
+                renderPersonnel(allFlights); // Генеруємо особовий склад на основі журналу
             } catch (e) { console.error(e); }
         }
 
-        // --- ЛОГІКА СПОЙЛЕРА ---
-        function toggleFleet() {
-            const container = document.getElementById('fleetContainer');
-            const arrow = document.getElementById('fleetArrow');
-            
-            // Перемикаємо видимість
+        // --- УНІВЕРСАЛЬНИЙ ТОГЛ ДЛЯ СПОЙЛЕРІВ ---
+        function toggleSection(containerId, arrowId) {
+            const container = document.getElementById(containerId);
+            const arrow = document.getElementById(arrowId);
             container.classList.toggle('hidden');
-            
-            // Обертаємо стрілку
             if (container.classList.contains('hidden')) {
                 arrow.classList.remove('rotate-90');
             } else {
                 arrow.classList.add('rotate-90');
             }
         }
-        // -----------------------
+
+        // --- ОСОБОВИЙ СКЛАД (ГЕНЕРАЦІЯ З ЖУРНАЛУ) ---
+        function renderPersonnel(flights) {
+            const container = document.getElementById('personnelContainer');
+            if (flights.length === 0) {
+                container.innerHTML = '<div class="text-center text-slate-500 text-xs">Немає даних про польоти</div>';
+                return;
+            }
+
+            // Групуємо: Підрозділ -> Пілот -> Статистика
+            const unitMap = {};
+            
+            flights.forEach(f => {
+                const u = f.unit || "Не вказано";
+                const op = f.operator || "Невідомий";
+                const dur = parseInt(f.duration) || 0;
+
+                if (!unitMap[u]) unitMap[u] = {};
+                if (!unitMap[u][op]) unitMap[u][op] = { flights: 0, time: 0 };
+
+                // Рахуємо статистику (навіть якщо політ не відбувся, пілот є в штаті, але статистику нальоту додаємо тільки реальну)
+                if(f.result !== "Польоти не здійснювались") {
+                    unitMap[u][op].flights++;
+                    unitMap[u][op].time += dur;
+                }
+            });
+
+            container.innerHTML = '';
+
+            Object.entries(unitMap).forEach(([unitName, pilotsObj]) => {
+                const pilotsList = Object.entries(pilotsObj).sort((a,b) => b[1].flights - a[1].flights); // Сортуємо за активністю
+                
+                const pilotsHtml = pilotsList.map(([name, stats]) => `
+                    <div class="info-card flex justify-between items-center text-[11px]">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-user text-slate-500"></i>
+                            <span class="font-bold text-slate-200">${name}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="text-slate-500 font-mono text-[9px] bg-slate-900 px-1 rounded border border-slate-700">${stats.flights} вил.</span>
+                            <span class="text-blue-400 font-mono text-[9px] bg-blue-900/20 px-1 rounded border border-blue-500/20">${Math.floor(stats.time/60)}г ${stats.time%60}хв</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                const unitBlock = `
+                    <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition-colors">
+                        <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-700/50">
+                            <h4 class="text-xs font-black uppercase text-slate-300 truncate pr-2" title="${unitName}">${unitName}</h4>
+                            <span class="bg-yellow-600/20 text-yellow-500 px-2 py-0.5 rounded text-[10px] font-bold">${pilotsList.length} чол</span>
+                        </div>
+                        <div class="space-y-1">
+                            ${pilotsHtml}
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', unitBlock);
+            });
+        }
 
         // --- ЗАВАНТАЖЕННЯ ПАРКУ ТЕХНІКИ ---
         async function loadFleet() {
@@ -168,27 +238,20 @@
                 const units = options.units || [];
 
                 if(units.length === 0) {
-                    container.innerHTML = '<div class="col-span-full text-center text-slate-500 text-xs">Список підрозділів порожній</div>';
+                    container.innerHTML = '<div class="text-center text-slate-500 text-xs">Список підрозділів порожній</div>';
                     return;
                 }
-
                 container.innerHTML = ''; 
-
                 const promises = units.map(async (unit) => {
                     try {
                         const resDrones = await fetch(`/api/get_unit_drones?unit=${encodeURIComponent(unit)}`);
-                        const drones = await resDrones.json();
-                        return { unit, drones };
-                    } catch (e) {
-                        return { unit, drones: [] };
-                    }
+                        return { unit, drones: await resDrones.json() };
+                    } catch (e) { return { unit, drones: [] }; }
                 });
 
                 const fleetData = await Promise.all(promises);
 
                 fleetData.forEach(({ unit, drones }) => {
-                    const activeCount = drones.filter(d => !d.status || d.status === 'Active').length;
-                    
                     let dronesHtml = '';
                     if (drones.length > 0) {
                         dronesHtml = drones.map(d => {
@@ -196,38 +259,33 @@
                             let statusTitle = 'В строю';
                             if (d.status === 'Repair') { statusClass = 'bg-repair'; statusTitle = 'В ремонті'; }
                             if (d.status === 'Lost') { statusClass = 'bg-lost'; statusTitle = 'Втрачено'; }
-
                             return `
-                                <div class="drone-card flex justify-between items-center text-[11px]">
+                                <div class="info-card flex justify-between items-center text-[11px]">
                                     <div class="flex items-center gap-2 overflow-hidden">
                                         <span class="status-dot ${statusClass}" title="${statusTitle}"></span>
                                         <span class="font-bold text-slate-200 truncate">${d.model}</span>
                                     </div>
                                     <span class="font-mono text-slate-500 text-[9px]">${d.serial_number || 'S/N ---'}</span>
-                                </div>
-                            `;
+                                </div>`;
                         }).join('');
                     } else {
                         dronesHtml = '<div class="text-center text-[10px] text-slate-600 italic py-2">Немає закріплених бортів</div>';
                     }
 
                     const unitCard = `
-                        <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex flex-col h-full hover:border-slate-600 transition-colors">
+                        <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition-colors">
                             <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-700/50">
                                 <h4 class="text-xs font-black uppercase text-slate-300 truncate pr-2" title="${unit}">${unit}</h4>
                                 <span class="bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded text-[10px] font-bold">${drones.length} шт</span>
                             </div>
-                            <div class="flex-grow space-y-1 max-h-[150px] overflow-y-auto pr-1">
+                            <div class="space-y-1">
                                 ${dronesHtml}
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                     container.insertAdjacentHTML('beforeend', unitCard);
                 });
-
             } catch (e) {
-                console.error(e);
-                container.innerHTML = '<div class="col-span-full text-center text-red-400 text-xs">Помилка завантаження парку</div>';
+                container.innerHTML = '<div class="text-center text-red-400 text-xs">Помилка завантаження парку</div>';
             }
         }
 
@@ -263,6 +321,7 @@
                 if(res.ok) {
                     allFlights = allFlights.filter(f => f.id !== id);
                     filterData();
+                    renderPersonnel(allFlights); // Оновлюємо список персоналу
                 } else { alert("Помилка при видаленні."); }
             } catch (e) { alert("Помилка з'єднання."); }
         }
@@ -347,7 +406,7 @@
         }
 
         window.onload = async () => {
-            loadFleet(); // Завантажуємо парк техніки одразу (схований)
+            loadFleet();
             await loadAllFlights();
             await loadAdminAnnouncement();
         };
