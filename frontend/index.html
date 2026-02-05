@@ -118,7 +118,7 @@
     <script>
         const API = window.location.origin + "/api";
         let draft = [];
-        let editingId = null; // Змінна для відстеження режиму редагування
+        let editingId = null; 
 
         function nav(path) {
             const token = new URLSearchParams(window.location.search).get('token');
@@ -145,7 +145,6 @@
         }
 
         function saveState(id) {
-            // Зберігаємо стан тільки якщо НЕ редагуємо (щоб не псувати автозбереження старими даними)
             if(!editingId) {
                 const el = document.getElementById(id);
                 if(el) localStorage.setItem('saved_' + id, el.value);
@@ -230,14 +229,11 @@
             location.reload();
         }
 
-        // --- ЛОГІКА РЕДАГУВАННЯ ---
-        
         function editDraft(id) {
             const flight = draft.find(f => f.id === id);
             if (!flight) return;
 
-            // Заповнюємо поля даними
-            document.getElementById('date').value = flight.date.split('.').reverse().join('-'); // Перетворення dd.mm.yyyy -> yyyy-mm-dd для input date
+            document.getElementById('date').value = flight.date.split('.').reverse().join('-'); 
             if (flight.shift_time) {
                 const parts = flight.shift_time.split('-');
                 if(parts.length === 2) {
@@ -256,12 +252,11 @@
             document.getElementById('mode').value = flight.conditions;
             document.getElementById('result').value = flight.result;
 
-            // Змінюємо інтерфейс
             editingId = id;
             const btn = document.getElementById('submitBtn');
             btn.innerText = "Зберегти зміни";
             btn.classList.remove('bg-blue-600');
-            btn.classList.add('bg-orange-500'); // Помаранчевий колір для режиму редагування
+            btn.classList.add('bg-orange-500'); 
             
             document.getElementById('cancelBtn').classList.remove('hidden');
         }
@@ -269,9 +264,8 @@
         function cancelEdit() {
             editingId = null;
             clearForm();
-            restoreFields(); // Повертаємо збережені невідправлені дані
+            restoreFields(); 
             
-            // Повертаємо інтерфейс
             const btn = document.getElementById('submitBtn');
             btn.innerText = "Додати в чернетку";
             btn.classList.add('bg-blue-600');
@@ -301,17 +295,14 @@
                 return el ? el.value : def;
             };
 
-            // Форматування дати для об'єкта
             let dateVal = getVal('date', '');
             if(dateVal.includes('-')) {
-                // yyyy-mm-dd -> dd.mm.yyyy
                 dateVal = dateVal.split('-').reverse().join('.');
             } else if (!dateVal) {
                 dateVal = new Date().toLocaleDateString('uk-UA');
             }
 
             const flightData = {
-                // Якщо редагуємо, залишаємо старий ID, інакше генеруємо новий
                 id: editingId || Date.now(),
                 date: dateVal,
                 shift_time: (getVal('s1', '08:00') + "-" + getVal('s2', '20:00')),
@@ -338,18 +329,14 @@
             flightData.duration = mEnd - mStart;
 
             if (editingId) {
-                // ОНОВЛЕННЯ ІСНУЮЧОГО
                 const index = draft.findIndex(f => f.id === editingId);
                 if (index !== -1) {
                     draft[index] = flightData;
                 }
-                cancelEdit(); // Виходимо з режиму редагування
+                cancelEdit();
             } else {
-                // ДОДАВАННЯ НОВОГО
                 draft.push(flightData);
-                // Очищення полів після додавання
                 clearForm();
-                // Видаляємо тимчасові збереження
                 localStorage.removeItem('saved_t1');
                 localStorage.removeItem('saved_t2');
                 localStorage.removeItem('saved_dist');
@@ -358,7 +345,6 @@
             localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); 
             renderDraft();
         }
-        // -----------------------------
 
         function renderDraft() {
             document.getElementById('draftCount').innerText = draft.length;
@@ -384,10 +370,16 @@
             generateCUS();
         }
 
+        // --- ОНОВЛЕНА ФУНКЦІЯ ---
         function generateCUS() {
             let b = "", a = "";
             draft.forEach(f => {
-                const line = f.takeoff + "-" + f.landing + " - " + f.distance + "м (" + f.duration + " хв)\n";
+                let line = f.takeoff + "-" + f.landing + " - " + f.distance + "м (" + f.duration + " хв)";
+                if (f.result === "Польоти не здійснювались") {
+                    line += " - Польоти не здійснювались";
+                }
+                line += "\n";
+                
                 if (f.landing < f.takeoff || f.takeoff < "08:00") {
                     a += line; 
                 } else {
@@ -397,11 +389,10 @@
             document.getElementById('cusBefore').value = b || "---"; 
             document.getElementById('cusAfter').value = a || "---";
         }
+        // ------------------------
 
         function removeFromDraft(id) { 
-            // Якщо видаляємо елемент, який зараз редагуємо — скасовуємо редагування
             if (editingId === id) cancelEdit();
-            
             draft = draft.filter(f => f.id !== id); 
             localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); 
             renderDraft(); 
