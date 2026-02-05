@@ -9,13 +9,10 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); min-height: 100vh; font-family: 'Inter', sans-serif; color: white; padding: 15px; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1rem; }
-        .label-style { font-size: 9px; text-transform: uppercase; font-weight: 800; color: #94a3b8; margin-bottom: 0.1rem; display: block; }
-        
-        /* Статуси карток */
         .status-active { border-left: 4px solid #22c55e; }
         .status-repair { border-left: 4px solid #eab308; opacity: 0.8; }
         .status-broken { border-left: 4px solid #ef4444; opacity: 0.6; }
-        
+        .status-season { border-left: 4px solid #3b82f6; opacity: 0.9; } /* Новий колір для сезонного ТО (синій) */
         select { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.5rem; outline: none; transition: all 0.2s; }
         select:focus { border-color: #22c55e !important; }
     </style>
@@ -24,7 +21,7 @@
 
     <div class="flex justify-between items-center mb-8">
         <div class="flex items-center gap-4">
-            <button onclick="window.location.href='/'" class="bg-slate-800 p-3 rounded-xl text-slate-400 hover:text-white transition-all border border-slate-700">
+            <button onclick="goBack()" class="bg-slate-800 p-3 rounded-xl text-slate-400 hover:text-white transition-all border border-slate-700">
                 <i class="fa-solid fa-arrow-left"></i>
             </button>
             <div>
@@ -39,7 +36,7 @@
 
     <div class="mb-6">
         <h2 class="text-xs font-black uppercase text-green-500 mb-3 ml-1 flex items-center">
-            <i class="fa-solid fa-circle-check mr-2"></i>В строю (Доступні для польотів)
+            <i class="fa-solid fa-circle-check mr-2"></i>В строю
         </h2>
         <div id="activeFleetList" class="space-y-3">
             <div class="text-center py-4 text-slate-600 text-xs">Завантаження...</div>
@@ -48,48 +45,71 @@
 
     <div class="mb-10">
         <h2 class="text-xs font-black uppercase text-slate-500 mb-3 ml-1 flex items-center">
-            <i class="fa-solid fa-screwdriver-wrench mr-2"></i>Технічне обслуговування / Списані
+            <i class="fa-solid fa-screwdriver-wrench mr-2"></i>Обслуговування / Списані
         </h2>
-        <div id="inactiveFleetList" class="space-y-3 opacity-80">
-            </div>
+        <div id="inactiveFleetList" class="space-y-3 opacity-80"></div>
     </div>
 
     <script>
-        const unit = localStorage.getItem('uav_unit');
+        function getTargetUnit() {
+            const queryString = window.location.search.substring(1);
+            if (!queryString) return localStorage.getItem('uav_unit');
+
+            const params = queryString.split('&');
+            for (let param of params) {
+                let [key, value] = param.split('=');
+                if (key === 'unit' && value) {
+                    return decodeURIComponent(decodeURIComponent(value)).trim();
+                }
+            }
+            return localStorage.getItem('uav_unit');
+        }
+
+        const currentUnit = getTargetUnit();
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token'); 
         let dronesCache = [];
 
+        // Розумна кнопка "Назад"
+        function goBack() {
+            if (token) {
+                // Якщо є токен — повертаємо в адмін-панель з цим же токеном
+                window.location.href = `/admin?token=${token}`;
+            } else {
+                // Якщо немає — на головну
+                window.location.href = '/';
+            }
+        }
+
         async function loadFleet() {
-            if (!unit) {
-                document.body.innerHTML = `<div class="flex h-screen items-center justify-center text-slate-500">Спочатку оберіть підрозділ на головній сторінці</div>`;
+            if (!currentUnit) {
+                document.body.innerHTML = `<div class="flex h-screen items-center justify-center text-slate-500">Підрозділ не визначено</div>`;
                 return;
             }
-            document.getElementById('currentUnitDisplay').innerText = unit;
+            document.getElementById('currentUnitDisplay').textContent = currentUnit;
 
             try {
-                const res = await fetch(`/api/get_unit_drones?unit=${encodeURIComponent(unit)}`);
+                const res = await fetch(`/api/get_unit_drones?unit=${encodeURIComponent(currentUnit)}`);
+                if (!res.ok) throw new Error();
                 dronesCache = await res.json();
                 renderDrones();
             } catch (err) {
-                console.error("Помилка:", err);
+                document.getElementById('activeFleetList').innerHTML = `<div class="text-center text-red-500 text-xs py-10">Не вдалося знайти дані для: ${currentUnit}</div>`;
             }
         }
 
         function renderDrones() {
             const activeList = document.getElementById('activeFleetList');
             const inactiveList = document.getElementById('inactiveFleetList');
-            
             activeList.innerHTML = '';
             inactiveList.innerHTML = '';
 
-            // Сортуємо: спочатку Active, потім інші
             const activeDrones = dronesCache.filter(d => (!d.status || d.status === 'Active'));
             const inactiveDrones = dronesCache.filter(d => (d.status && d.status !== 'Active'));
 
-            // Рендер Активних
-            if (activeDrones.length === 0) activeList.innerHTML = `<div class="glass p-4 text-center text-slate-500 text-xs">Немає активних бортів</div>`;
+            if (activeDrones.length === 0) activeList.innerHTML = `<div class="glass p-4 text-center text-slate-500 text-xs italic">Список порожній</div>`;
             else activeList.innerHTML = activeDrones.map(d => createDroneCard(d)).join('');
 
-            // Рендер Неактивних
             if (inactiveDrones.length === 0) inactiveList.innerHTML = `<div class="p-4 text-center text-slate-700 text-xs border border-dashed border-slate-800 rounded-xl">Порожньо</div>`;
             else inactiveList.innerHTML = inactiveDrones.map(d => createDroneCard(d)).join('');
         }
@@ -99,30 +119,26 @@
             let statusClass = 'status-active';
             if (status === 'Repair') statusClass = 'status-repair';
             if (status === 'Broken') statusClass = 'status-broken';
+            if (status === 'Season') statusClass = 'status-season'; // Клас для нового статусу
 
             return `
             <div class="glass p-4 ${statusClass} transition-all hover:bg-slate-800/50">
                 <div class="flex justify-between items-center">
                     <div>
                         <div class="text-sm font-black uppercase text-white tracking-wide">${d.model}</div>
-                        <div class="text-[10px] font-mono text-slate-400 mt-1 flex items-center gap-2">
+                        <div class="text-[10px] font-mono text-slate-400 mt-1">
                             <span class="bg-slate-800 px-2 py-0.5 rounded text-slate-300">${d.serial_number || 'S/N: ---'}</span>
-                            ${status !== 'Active' ? '<span class="text-red-400 font-bold uppercase">Приховано з польотів</span>' : ''}
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
-                        <div class="relative">
-                            <select onchange="updateStatus(${d.id}, this.value)" class="appearance-none bg-slate-900 text-[10px] font-bold py-2 pl-3 pr-8 rounded-lg border border-slate-700 cursor-pointer hover:border-blue-500">
-                                <option value="Active" ${status === 'Active' ? 'selected' : ''}>🟢 В строю</option>
-                                <option value="Repair" ${status === 'Repair' ? 'selected' : ''}>🟡 Сезонне обслуговування</option>
-                                <option value="Broken" ${status === 'Broken' ? 'selected' : ''}>🔴 Пошкоджений / Втрачений</option>
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                                <i class="fa-solid fa-chevron-down text-[10px]"></i>
-                            </div>
-                        </div>
-                        <button onclick="deleteDrone(${d.id})" class="h-8 w-8 flex items-center justify-center bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all" title="Видалити борт">
-                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        <select onchange="updateStatus(${d.id}, this.value)" class="appearance-none bg-slate-900 text-[10px] font-bold py-2 px-3 rounded-lg border border-slate-700">
+                            <option value="Active" ${status === 'Active' ? 'selected' : ''}>🟢 В строю</option>
+                            <option value="Repair" ${status === 'Repair' ? 'selected' : ''}>🟡 Ремонт</option>
+                            <option value="Season" ${status === 'Season' ? 'selected' : ''}>🔵 Сезонне ТО</option>
+                            <option value="Broken" ${status === 'Broken' ? 'selected' : ''}>🔴 Пошкоджено / Втрачено</option>
+                        </select>
+                        <button onclick="deleteDrone(${d.id})" class="text-slate-600 hover:text-red-500 p-2 transition-all active:scale-90">
+                            <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </div>
                 </div>
@@ -130,72 +146,43 @@
         }
 
         async function addNewDrone() {
-            const model = prompt("Введіть модель БпЛА (напр. Mavic 3T):");
+            const model = prompt("Модель:");
             if (!model) return;
-            const sn = prompt("Введіть серійний номер (або залиште пустим):");
-            
+            const sn = prompt("S/N:");
             try {
                 const response = await fetch('/api/add_new_drone', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        model: model, 
-                        serial_number: sn || "—", 
-                        unit: unit 
-                    })
+                    body: JSON.stringify({ model: model, serial_number: sn || "—", unit: currentUnit })
                 });
-
-                if (response.ok) {
-                    loadFleet();
-                } else {
-                    alert("Помилка при додаванні! Спробуйте ще раз.");
-                }
-            } catch (e) {
-                console.error(e);
-                alert("Помилка з'єднання");
-            }
+                if (response.ok) loadFleet();
+            } catch (e) { alert("Помилка!"); }
         }
 
         async function updateStatus(id, newStatus) {
-            // Оптимістичне оновлення інтерфейсу (миттєва реакція)
-            const droneIndex = dronesCache.findIndex(d => d.id === id);
-            if (droneIndex > -1) {
-                dronesCache[droneIndex].status = newStatus;
-                renderDrones(); // Перемальовуємо списки, щоб дрон перестрибнув у потрібну секцію
-            }
-
             try {
-                const response = await fetch('/api/update_drone_status', {
+                const res = await fetch('/api/update_drone_status', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        id: parseInt(id), 
-                        status: String(newStatus) 
-                    })
+                    body: JSON.stringify({ id: id, status: newStatus })
                 });
-
-                if (!response.ok) {
-                    alert("Помилка збереження статусу на сервері!");
-                    loadFleet(); // Відкат змін, якщо помилка
+                if (res.ok) {
+                    const drone = dronesCache.find(d => d.id === id);
+                    if (drone) drone.status = newStatus;
+                    renderDrones();
                 }
-            } catch (e) {
-                console.error("Помилка мережі:", e);
-                loadFleet();
-            }
+            } catch (e) { alert("Помилка оновлення"); }
         }
 
         async function deleteDrone(id) {
-            if (confirm("Увага! Видалити цей борт з бази даних безповоротно?")) {
+            if (confirm("Видалити борт?")) {
                 try {
                     await fetch(`/api/delete_drone/${id}`, { method: 'DELETE' });
                     loadFleet();
-                } catch (e) {
-                    alert("Не вдалося видалити");
-                }
+                } catch (e) { alert("Помилка видалення"); }
             }
         }
 
-        // Запуск при старті
         loadFleet();
     </script>
 </body>
