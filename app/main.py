@@ -156,7 +156,18 @@ async def delete_drone(id: int):
 async def add_flight(entry: FlightEntry):
     try:
         data = entry.dict()
-        data["duration"] = str(calculate_duration(entry.takeoff, entry.landing))
+        
+        # --- ЛОГІКА ДЛЯ "ПОЛЬОТИ НЕ ЗДІЙСНЮВАЛИСЬ" ---
+        if entry.result == "Польоти не здійснювались":
+            # Якщо польотів не було, примусово обнуляємо показники
+            data["duration"] = 0
+            data["distance"] = 0
+            data["battery_cycles"] = 0
+        else:
+            # Інакше рахуємо як зазвичай
+            data["duration"] = str(calculate_duration(entry.takeoff, entry.landing))
+        # ---------------------------------------------
+        
         if "id" in data: del data["id"]
         
         res = supabase.table("flights").insert(data).execute()
@@ -207,7 +218,7 @@ async def get_options():
     return {
         "units": UNITS, 
         "weather": ["Нормальні", "Складні умови", "Несприятливі умови"], 
-        "flight_modes": ["Норма", "АТТІ"], 
+        "flight_modes": ["Normal", "АТТІ"], 
         "results": ["Без ознак порушення", "Затримання", "Польоти не здійснювались"]
     }
 
@@ -271,4 +282,3 @@ app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8001)
-
