@@ -208,7 +208,7 @@ async def get_options():
         "units": UNITS, 
         "weather": ["Нормальні", "Складні умови", "Несприятливі умови"], 
         "flight_modes": ["Норма", "АТТІ"], 
-        "results": ["Без ознак порушення", "Затримання"]
+        "results": ["Без ознак порушення", "Затримання", "Польоти не здійснювались"]
     }
 
 @app.get("/api/get_my_flights")
@@ -271,3 +271,4 @@ app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8001)
+
