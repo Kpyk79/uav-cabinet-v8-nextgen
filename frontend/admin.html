@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Адмін панель</title>
+    <title>Admin Panel | UAV Monitor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -10,8 +10,9 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { background: #0f172a; color: white; font-family: 'Inter', sans-serif; padding: 20px; }
         .card { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; }
-        .search-input { background: #1e293b; border: 1px solid #334155; color: white; border-radius: 0.75rem; padding: 0.75rem 1rem 0.75rem 2.5rem; width: 100%; outline: none; transition: all 0.2s; }
-        .search-input:focus { border-color: #22c55e; box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2); }
+        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; border-radius: 0.5rem; padding: 0.5rem; width: 100%; outline: none; transition: all 0.2s; font-size: 13px; }
+        .input-dark:focus { border-color: #22c55e; box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2); }
+        .label-mini { font-size: 10px; text-transform: uppercase; font-weight: 700; color: #94a3b8; margin-bottom: 4px; display: block; }
         .tech-table { width: 100%; border-collapse: separate; border-spacing: 0; }
         .tech-table th { background: #1e293b; color: #94a3b8; font-size: 10px; text-transform: uppercase; font-weight: 800; padding: 1rem; text-align: left; border-bottom: 1px solid #334155; }
         .tech-table td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
@@ -42,10 +43,8 @@
         <h3 class="text-sm font-black uppercase text-purple-400 mb-4 flex items-center">
             <i class="fa-solid fa-bullhorn mr-2"></i>Налаштування оголошення
         </h3>
-        
         <div class="flex flex-col gap-4">
             <textarea id="adminMsgText" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white h-20 focus:border-purple-500 outline-none transition-colors font-mono" placeholder="Введіть текст оголошення для пілотів..."></textarea>
-            
             <div class="flex items-center justify-between">
                 <label class="flex items-center gap-3 cursor-pointer select-none group">
                     <div class="relative">
@@ -54,17 +53,50 @@
                     </div>
                     <span class="text-xs font-bold uppercase text-slate-300 group-hover:text-white transition-colors">Активувати показ на головній</span>
                 </label>
-                
                 <button onclick="saveAnnouncement()" class="bg-purple-600 hover:bg-purple-500 px-6 py-2 rounded-xl text-white font-black uppercase text-xs shadow-lg shadow-purple-500/20 transition-all active:scale-95">
                     <i class="fa-solid fa-floppy-disk mr-2"></i> Зберегти
                 </button>
             </div>
         </div>
     </div>
-    <div class="card p-6 mb-6">
-        <div class="relative">
-            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
-            <input type="text" id="searchInput" oninput="filterData()" placeholder="Пошук за підрозділом, пілотом або типом БпЛА..." class="search-input">
+
+    <div class="card p-5 mb-6">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-xs font-black uppercase text-slate-400 flex items-center gap-2">
+                <i class="fa-solid fa-filter text-green-500"></i> Фільтрація даних
+            </h3>
+            <button onclick="resetFilters()" class="text-[10px] text-slate-500 hover:text-white uppercase font-bold transition-colors">
+                <i class="fa-solid fa-rotate-left mr-1"></i> Скинути
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+            <div>
+                <label class="label-mini">Дата з</label>
+                <input type="date" id="filterDateFrom" oninput="filterData()" class="input-dark">
+            </div>
+            <div>
+                <label class="label-mini">Дата по</label>
+                <input type="date" id="filterDateTo" oninput="filterData()" class="input-dark">
+            </div>
+            
+            <div>
+                <label class="label-mini">Час зльоту з</label>
+                <input type="time" id="filterTimeFrom" oninput="filterData()" class="input-dark">
+            </div>
+            <div>
+                <label class="label-mini">Час зльоту по</label>
+                <input type="time" id="filterTimeTo" oninput="filterData()" class="input-dark">
+            </div>
+
+            <div>
+                <label class="label-mini">Підрозділ</label>
+                <input type="text" id="filterUnit" oninput="filterData()" placeholder="Введіть назву..." class="input-dark">
+            </div>
+            <div>
+                <label class="label-mini">Пілот (Прізвище)</label>
+                <input type="text" id="filterOp" oninput="filterData()" placeholder="Введіть прізвище..." class="input-dark">
+            </div>
         </div>
     </div>
 
@@ -80,10 +112,14 @@
                         <th>Час (Зліт-Пос)</th>
                         <th>Наліт</th>
                         <th>Результат</th>
+                        <th class="text-right">Дії</th> 
                     </tr>
                 </thead>
                 <tbody id="tableBody"></tbody>
             </table>
+        </div>
+        <div id="noDataMessage" class="hidden text-center py-10 text-slate-500 text-xs uppercase font-bold">
+            Записів не знайдено
         </div>
     </div>
 
@@ -112,15 +148,12 @@
                 const data = await res.json();
                 document.getElementById('adminMsgText').value = data.announcement_text || "";
                 document.getElementById('adminMsgActive').checked = data.is_announcement_active;
-            } catch (e) {
-                console.error("Error loading announcement:", e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         async function saveAnnouncement() {
             const text = document.getElementById('adminMsgText').value;
             const isActive = document.getElementById('adminMsgActive').checked;
-            
             if(!text && isActive) return alert("Введіть текст оголошення!");
 
             try {
@@ -129,21 +162,79 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ text: text, is_active: isActive })
                 });
-
                 if(res.ok) alert("Налаштування оголошення оновлено!");
-                else alert("Помилка збереження!");
-            } catch (e) {
-                alert("Помилка з'єднання!");
-            }
+            } catch (e) { alert("Помилка з'єднання!"); }
+        }
+
+        // --- ЛОГІКА ВИДАЛЕННЯ ---
+        async function deleteFlight(id) {
+            if(!confirm("Ви впевнені, що хочете видалити цей запис?")) return;
+            try {
+                const res = await fetch(`/api/delete_flight/${id}`, { method: 'DELETE' });
+                if(res.ok) {
+                    allFlights = allFlights.filter(f => f.id !== id);
+                    filterData(); // Оновлюємо таблицю з урахуванням поточних фільтрів
+                } else { alert("Помилка при видаленні."); }
+            } catch (e) { alert("Помилка з'єднання."); }
+        }
+
+        // --- ЛОГІКА ФІЛЬТРАЦІЇ (НОВЕ) ---
+        function filterData() {
+            // Отримуємо значення фільтрів
+            const dFrom = document.getElementById('filterDateFrom').value;
+            const dTo = document.getElementById('filterDateTo').value;
+            const tFrom = document.getElementById('filterTimeFrom').value;
+            const tTo = document.getElementById('filterTimeTo').value;
+            const sUnit = document.getElementById('filterUnit').value.toLowerCase();
+            const sOp = document.getElementById('filterOp').value.toLowerCase();
+
+            const filtered = allFlights.filter(f => {
+                // 1. Перевірка Дати
+                if (dFrom && f.date < dFrom) return false;
+                if (dTo && f.date > dTo) return false;
+
+                // 2. Перевірка Часу (по часу зльоту)
+                if (tFrom && f.takeoff < tFrom) return false;
+                if (tTo && f.takeoff > tTo) return false;
+
+                // 3. Перевірка Тексту (Підрозділ)
+                if (sUnit && !f.unit.toLowerCase().includes(sUnit)) return false;
+
+                // 4. Перевірка Тексту (Оператор)
+                if (sOp && !f.operator.toLowerCase().includes(sOp)) return false;
+
+                return true;
+            });
+
+            renderTable(filtered);
+        }
+
+        function resetFilters() {
+            document.getElementById('filterDateFrom').value = '';
+            document.getElementById('filterDateTo').value = '';
+            document.getElementById('filterTimeFrom').value = '';
+            document.getElementById('filterTimeTo').value = '';
+            document.getElementById('filterUnit').value = '';
+            document.getElementById('filterOp').value = '';
+            renderTable(allFlights);
         }
         // -------------------------
 
         function renderTable(flights) {
             const tbody = document.getElementById('tableBody');
+            const noData = document.getElementById('noDataMessage');
+
+            if (flights.length === 0) {
+                tbody.innerHTML = '';
+                noData.classList.remove('hidden');
+                return;
+            }
+            noData.classList.add('hidden');
+
             tbody.innerHTML = flights.map(f => {
                 const dateF = f.date && f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date;
                 return `
-                <tr class="hover:bg-white/5 transition-colors">
+                <tr class="hover:bg-white/5 transition-colors group">
                     <td class="font-mono text-slate-400 text-xs">${dateF}</td>
                     <td class="font-bold text-green-500">${f.unit}</td>
                     <td class="font-medium">${f.operator}</td>
@@ -155,88 +246,46 @@
                             ${f.result || '---'}
                         </span>
                     </td>
+                    <td class="text-right">
+                        <button onclick="deleteFlight(${f.id})" class="text-slate-600 hover:text-red-500 transition-colors p-2" title="Видалити запис">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
                 </tr>
                 `;
             }).join('');
         }
 
-        function filterData() {
-            const q = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = allFlights.filter(f => 
-                (f.unit || "").toLowerCase().includes(q) || 
-                (f.operator || "").toLowerCase().includes(q) || 
-                (f.drone || "").toLowerCase().includes(q)
-            );
-            renderTable(filtered);
-        }
-
         function exportAllToExcel() {
+            // Експортуємо ТІЛЬКИ відфільтровані дані, якщо користувач щось шукав? 
+            // Або всі? Логічніше експортувати всі, або додати опцію.
+            // В даному випадку залишаємо експорт ВСІХ записів, як і було.
             if (allFlights.length === 0) return alert("Немає даних для експорту");
 
             const sheetData = [
-                ["ЖУРНАЛ обліку польотів із застосуванням БпЛА відділом повітряної розвідки та протидії безпілотним повітряним суднам (ЗАГАЛЬНИЙ)"],
+                ["ЖУРНАЛ обліку польотів (ЗАГАЛЬНИЙ)"],
                 [],
-                ["№", "Дата", "Вид БпЛА", "Ділянка", "Час", "", "Тривалість польоту год., хв", "", "", "Підстава для польоту", "", "", "Висота польоту м.", "", "в/зв, ПІБ оператора", "", "Підпис", "Прим.", "Номер АКБ", "Цикли АКБ"],
-                ["", "", "", "", "Зльоту", "Посадки", "год.", "хв.", "", "", "", "", "min", "max", "", "", "", "", "", ""]
+                ["№", "Дата", "Вид БпЛА", "Ділянка", "Час", "", "Трив.", "Підрозділ", "ПІБ", "АКБ", "Цикли"],
+                ["", "", "", "", "Зліт", "Пос.", "хв.", "", "", "", ""]
             ];
 
             allFlights.forEach((f, i) => {
                 const dateFormatted = f.date && f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date;
-                const durationTotal = parseInt(f.duration) || 0;
-                const hh = Math.floor(durationTotal / 60);
-                const mm = durationTotal % 60;
-                
                 sheetData.push([
-                    i + 1,
-                    dateFormatted,
-                    f.drone,
-                    f.route || "Не вказано",
-                    f.takeoff,
-                    f.landing,
-                    hh > 0 ? hh : "0",
-                    mm,
-                    "",
-                    f.unit, 
-                    "", "",
-                    "50", "150",
-                    f.operator,
-                    "", "", "",
-                    f.battery_id || "",
-                    f.battery_cycles || ""
+                    i + 1, dateFormatted, f.drone, f.route || "---", f.takeoff, f.landing,
+                    f.duration, f.unit, f.operator, f.battery_id || "", f.battery_cycles || ""
                 ]);
             });
 
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
-
-            ws['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 19 } },
-                { s: { r: 2, c: 0 }, e: { r: 3, c: 0 } },
-                { s: { r: 2, c: 1 }, e: { r: 3, c: 1 } },
-                { s: { r: 2, c: 2 }, e: { r: 3, c: 2 } },
-                { s: { r: 2, c: 3 }, e: { r: 3, c: 3 } },
-                { s: { r: 2, c: 4 }, e: { r: 2, c: 5 } },
-                { s: { r: 2, c: 6 }, e: { r: 2, c: 8 } },
-                { s: { r: 2, c: 9 }, e: { r: 2, c: 11 } },
-                { s: { r: 2, c: 12 }, e: { r: 2, c: 13 } },
-                { s: { r: 2, c: 14 }, e: { r: 3, c: 15 } },
-                { s: { r: 2, c: 18 }, e: { r: 3, c: 18 } },
-                { s: { r: 2, c: 19 }, e: { r: 3, c: 19 } }
-            ];
-
-            ws['!cols'] = [
-                {wch: 4}, {wch: 12}, {wch: 40}, {wch: 25}, {wch: 10}, {wch: 10}, 
-                {wch: 6}, {wch: 6}, {wch: 4}, {wch: 20}, {wch: 15}, {wch: 5}, 
-                {wch: 8}, {wch: 8}, {wch: 25}, {wch: 5}, {wch: 10}, {wch: 10}, {wch: 15}, {wch: 10}
-            ];
-
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Global_Log");
-            XLSX.writeFile(wb, `Global_UAV_Journal_${new Date().toLocaleDateString()}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws, "Log");
+            XLSX.writeFile(wb, `Admin_Journal_${new Date().toLocaleDateString()}.xlsx`);
         }
 
         window.onload = async () => {
             await loadAllFlights();
-            await loadAdminAnnouncement(); // Завантаження статусу оголошення
+            await loadAdminAnnouncement();
         };
     </script>
 </body>
