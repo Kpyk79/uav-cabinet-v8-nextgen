@@ -76,8 +76,8 @@
             <select id="resultFilter" onchange="updateAnalytics()" class="filter-input">
                 <option value="all">Всі результати</option>
                 <option value="Затримання">Затримання</option>
-                <option value="Без ознак порушення">Без ознак</option>
-                <option value="Польоти не здійснювались">Скасовано</option>
+                <option value="Без ознак порушення">Без ознак порушення</option>
+                <option value="Польоти не здійснювались">Польоти не здійснювались</option>
             </select>
         </div>
         <button onclick="resetFilters()" class="filter-input bg-slate-700 hover:bg-slate-600 border-transparent font-bold">Скинути</button>
@@ -98,7 +98,7 @@
             <h2 class="text-xs font-black uppercase mb-4 text-slate-400 italic flex items-center gap-2">
                 <i class="fa-solid fa-chart-pie text-cyan-500"></i> Структура результатів
             </h2>
-            <div id="resultsStats" class="space-y-2 overflow-y-auto max-h-[100px]"></div>
+            <div id="resultsStats" class="space-y-2 overflow-y-auto max-h-[150px]"></div>
         </div>
     </div>
 
@@ -213,9 +213,11 @@
                 }
                 
                 if (f.result === "Затримання") detentions++;
-                resultsDist[f.result] = (resultsDist[f.result] || 0) + 1;
+                
+                // Рахуємо всі статуси для структури
+                const resKey = f.result || "Інше";
+                resultsDist[resKey] = (resultsDist[resKey] || 0) + 1;
 
-                // Stats for Ranking
                 const pKey = f.operator;
                 const uKey = f.unit || "Не вказано";
                 [ {t: pilots, k: pKey}, {t: units, k: uKey} ].forEach(o => {
@@ -224,7 +226,6 @@
                     if (f.result === "Затримання") o.t[o.k].det++;
                 });
 
-                // --- ЛОГІКА АКБ (ID, Дрон, Підрозділ, Цикли) ---
                 if (f.battery_id) {
                     const cyc = parseInt(f.battery_cycles) || 0;
                     const dName = f.drone ? f.drone.split(' (')[0] : 'Unknown';
@@ -235,14 +236,12 @@
                 }
             });
 
-            // Stats Update
             document.getElementById('totalFlights').innerText = realFlights;
             document.getElementById('totalHours').innerText = `${Math.floor(totalMin/60)}г ${totalMin%60}хв`;
             document.getElementById('totalDetentions').innerText = detentions;
             const topU = Object.entries(units).sort((a,b) => b[1].flights - a[1].flights)[0];
             document.getElementById('topUnit').innerText = topU ? topU[0] : "---";
 
-            // Ranking render
             const rankingBody = document.getElementById('rankingBody');
             const dataMap = currentTab === 'pilots' ? pilots : units;
             const sortedData = Object.entries(dataMap).sort((a,b) => b[1].time - a[1].time);
@@ -254,15 +253,34 @@
                     <td class="text-right pr-2 font-black text-red-500 text-xs">${data.det || ''}</td>
                 </tr>`).join('');
 
-            // --- РЕНДЕР ТОП ЗНОСУ АКБ (СОРТУВАННЯ ВІД MAX ДО MIN) ---
+            // --- ОБНОВЛЕНА СТРУКТУРА РЕЗУЛЬТАТІВ ---
+            const resBody = document.getElementById('resultsStats');
+            const totalRecords = filtered.length || 1;
+            const sortedResults = Object.entries(resultsDist).sort((a,b) => b[1] - a[1]);
+
+            resBody.innerHTML = sortedResults.map(([name, count]) => {
+                const percent = ((count / totalRecords) * 100).toFixed(1);
+                let textColor = "text-slate-400";
+                if (name === "Затримання") textColor = "text-red-500";
+                if (name === "Без ознак порушення") textColor = "text-green-500";
+                if (name === "Польоти не здійснювались") textColor = "text-slate-600 italic";
+
+                return `
+                <div class="flex justify-between items-center text-[10px] border-b border-white/5 pb-1 last:border-0">
+                    <span class="${textColor} font-bold uppercase tracking-tighter">${name}</span>
+                    <div class="flex gap-3 items-center">
+                        <span class="font-mono text-white font-bold">${count}</span>
+                        <span class="font-mono text-slate-500 w-10 text-right">${percent}%</span>
+                    </div>
+                </div>`;
+            }).join('') || '<div class="text-center text-slate-600 text-[10px] py-4">Немає даних записів</div>';
+
             const batBody = document.getElementById('batteryStats');
-            // Сортування: b.cyc - a.cyc (від більшого до меншого)
-            const sortedBats = Object.entries(batteries).sort((a, b) => b[1].cyc - a[1].cyc).slice(0, 12);
-            
+            const sortedBats = Object.entries(batteries).sort((a, b) => b[1].cyc - a[1].cyc).reverse().slice(0, 12);
             batBody.innerHTML = sortedBats.map(([id, info], idx) => {
                 const isCritical = info.cyc >= 150;
                 return `
-                <div class="flex items-center justify-between p-2 rounded-lg bg-slate-800/40 border border-white/5 relative overflow-hidden transition-all hover:bg-slate-800/60">
+                <div class="flex items-center justify-between p-2 rounded-lg bg-slate-800/40 border border-white/5 relative overflow-hidden">
                     <div class="flex flex-col gap-0.5">
                         <div class="flex items-center gap-2">
                             <span class="text-[9px] font-black ${idx < 3 ? 'text-red-500' : 'text-slate-600'}">${idx + 1}</span>
@@ -277,27 +295,16 @@
                         <div class="flex flex-col items-end">
                             <span class="text-[11px] font-black ${isCritical ? 'text-red-500' : 'text-green-400'}">${info.cyc}</span>
                             <div class="w-16 bg-slate-900 h-1 rounded-full overflow-hidden mt-0.5 border border-white/5">
-                                <div class="h-full ${isCritical ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : 'bg-green-500'}" 
-                                     style="width: ${Math.min(info.cyc/2, 100)}%"></div>
+                                <div class="h-full ${isCritical ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : 'bg-green-500'}" style="width: ${Math.min(info.cyc/2, 100)}%"></div>
                             </div>
                         </div>
                     </div>
                 </div>`;
-            }).join('') || '<div class="text-center text-[10px] py-4 text-slate-600">Дані про АКБ відсутні</div>';
+            }).join('');
 
-            // Time Chart render
             const maxT = Math.max(...timeDistribution, 1);
             document.getElementById('timeChart').innerHTML = timeDistribution.map(v => `<div class="bar bg-purple-500/60" style="height: ${(v/maxT)*100}%" title="${v}"></div>`).join('');
 
-            // Results render
-            const resBody = document.getElementById('resultsStats');
-            resBody.innerHTML = Object.entries(resultsDist).sort((a,b) => b[1]-a[1]).map(([n, c]) => `
-                <div class="flex justify-between text-[10px] border-b border-white/5 pb-1">
-                    <span class="text-slate-400 font-bold">${n}</span>
-                    <span class="text-slate-500">${c}</span>
-                </div>`).join('');
-
-            // Drones render
             const sortedD = Object.entries(drones).sort((a,b) => b[1]-a[1]);
             const maxD = sortedD[0] ? sortedD[0][1] : 1;
             document.getElementById('droneStats').innerHTML = sortedD.map(([n, c]) => `
@@ -311,4 +318,3 @@
     </script>
 </body>
 </html>
-
