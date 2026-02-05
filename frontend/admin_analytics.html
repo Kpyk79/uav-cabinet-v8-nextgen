@@ -176,6 +176,7 @@
             // ЗМІННІ ДЛЯ АГРЕГАЦІЇ
             let totalMin = 0;
             let detentions = 0;
+            let realFlightsCount = 0; // Лічильник тільки реальних польотів
             const pilots = {};
             const units = {};
             const drones = {};
@@ -184,48 +185,62 @@
             const resultsDist = {};
 
             filtered.forEach(f => {
-                const dur = parseInt(f.duration) || 0;
+                // Перевірка на скасовані польоти
+                const isNoFly = f.result === "Польоти не здійснювались";
+
+                // Час рахуємо тільки якщо це реальний політ
+                const dur = isNoFly ? 0 : (parseInt(f.duration) || 0);
+                
                 totalMin += dur;
+                
+                // Загальна статистика
                 if (f.result === "Затримання") detentions++;
+                if (!isNoFly) realFlightsCount++;
 
                 // 1. Агрегація Пілотів
                 if (!pilots[f.operator]) pilots[f.operator] = { flights: 0, time: 0, det: 0 };
-                pilots[f.operator].flights++;
+                if (!isNoFly) pilots[f.operator].flights++; // +1 тільки якщо літав
                 pilots[f.operator].time += dur;
                 if (f.result === "Затримання") pilots[f.operator].det++;
 
-                // 2. Агрегація Підрозділів (НОВЕ)
+                // 2. Агрегація Підрозділів
                 const uName = f.unit || "Не вказано";
                 if (!units[uName]) units[uName] = { flights: 0, time: 0, det: 0 };
-                units[uName].flights++;
+                if (!isNoFly) units[uName].flights++; // +1 тільки якщо літав
                 units[uName].time += dur;
                 if (f.result === "Затримання") units[uName].det++;
 
                 // 3. БпЛА та АКБ
-                const dName = f.drone ? f.drone.split(' (')[0] : 'Unknown';
-                drones[dName] = (drones[dName] || 0) + 1;
+                // Рахуємо дрони, тільки якщо вони літали
+                if (!isNoFly) {
+                    const dName = f.drone ? f.drone.split(' (')[0] : 'Unknown';
+                    drones[dName] = (drones[dName] || 0) + 1;
+                }
 
                 if (f.battery_id) {
                     const cyc = parseInt(f.battery_cycles) || 0;
+                    // Для АКБ можна показувати навіть без вильоту (теоретично), але краще теж фільтрувати
+                    const dName = f.drone ? f.drone.split(' (')[0] : 'Unknown';
                     if (!batteries[f.battery_id] || cyc > batteries[f.battery_id].cyc) {
                         batteries[f.battery_id] = { cyc: cyc, drone: dName };
                     }
                 }
 
-                // 4. Час доби (НОВЕ)
-                if (f.takeoff) {
+                // 4. Час доби (тільки реальні)
+                if (f.takeoff && !isNoFly) {
                     const hour = parseInt(f.takeoff.split(':')[0]);
                     const timeIndex = Math.floor(hour / 4); // 0..5
                     if (timeDistribution[timeIndex] !== undefined) timeDistribution[timeIndex]++;
                 }
 
-                // 5. Результати (НОВЕ)
+                // 5. Результати (тут рахуємо ВСІ, щоб бачити кількість скасувань)
                 const resText = f.result || "Інше";
                 resultsDist[resText] = (resultsDist[resText] || 0) + 1;
             });
 
             // ЗАПОВНЕННЯ КАРТОК
-            document.getElementById('totalFlights').innerText = filtered.length;
+            // ТУТ ЗМІНА: Виводимо realFlightsCount замість filtered.length
+            document.getElementById('totalFlights').innerText = realFlightsCount;
             document.getElementById('totalHours').innerText = `${Math.floor(totalMin/60)}г ${totalMin%60}хв`;
             document.getElementById('totalDetentions').innerText = detentions;
 
@@ -273,6 +288,7 @@
                 let color = 'text-slate-300';
                 if(name === 'Затримання') color = 'text-red-400';
                 if(name === 'Без ознак порушення') color = 'text-green-400';
+                if(name === 'Польоти не здійснювались') color = 'text-slate-500 italic';
                 
                 return `
                 <div class="flex justify-between items-center text-[10px] border-b border-white/5 pb-1 last:border-0">
