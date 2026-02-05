@@ -12,10 +12,18 @@
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.25rem; }
         .chief-label { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; letter-spacing: 0.1em; margin-bottom: 8px; }
         .stat-value { font-size: 1.5rem; font-weight: 900; line-height: 1; }
+        
         /* Стилі для графіка часу */
         .bar-container { display: flex; align-items: flex-end; height: 50px; gap: 4px; }
         .bar { width: 100%; border-radius: 4px 4px 0 0; background: #3b82f6; opacity: 0.5; transition: all 0.3s; }
         .bar:hover { opacity: 1; transform: scaleY(1.1); }
+
+        /* Стилі для списків */
+        .info-card { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.5rem; padding: 0.5rem; margin-bottom: 0.5rem; }
+        .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .bg-active { background-color: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); }
+        .bg-repair { background-color: #eab308; }
+        .bg-lost { background-color: #ef4444; }
     </style>
 </head>
 <body class="max-w-6xl mx-auto pb-20">
@@ -44,8 +52,51 @@
         </div>
     </div>
 
-    <div id="statsGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div id="statsGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8"></div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        
+        <div class="glass p-5 h-fit">
+            <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection('fleetContainer', 'fleetArrow')">
+                <h3 class="text-sm font-black uppercase text-blue-400 flex items-center gap-2">
+                    <i id="fleetArrow" class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
+                    <i class="fa-solid fa-plane-up ml-1"></i> Парк БпЛА (Ввірені підрозділи)
+                </h3>
+                <div class="flex gap-2" onclick="event.stopPropagation()">
+                    <button onclick="exportFleetToExcel()" class="text-[10px] bg-green-700 hover:bg-green-600 px-3 py-1 rounded text-white transition-all shadow-lg shadow-green-900/20" title="Експорт списку БпЛА">
+                        <i class="fa-solid fa-file-excel"></i>
+                    </button>
+                    <button onclick="window.location.href='/fleet'" class="text-[10px] bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-white transition-all shadow-lg shadow-blue-900/20" title="Редагувати парк">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button onclick="reloadFleetData()" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-white transition-all">
+                        <i class="fa-solid fa-sync"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="fleetContainer" class="hidden mt-4 space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                <div class="text-center py-5 text-slate-500 text-xs animate-pulse">Завантаження...</div>
+            </div>
         </div>
+
+        <div class="glass p-5 h-fit">
+            <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection('personnelContainer', 'personnelArrow')">
+                <h3 class="text-sm font-black uppercase text-yellow-500 flex items-center gap-2">
+                    <i id="personnelArrow" class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
+                    <i class="fa-solid fa-users ml-1"></i> Особовий Склад
+                </h3>
+                <div class="flex gap-2" onclick="event.stopPropagation()">
+                     <button onclick="exportPersonnelToExcel()" class="text-[10px] bg-green-700 hover:bg-green-600 px-3 py-1 rounded text-white transition-all shadow-lg shadow-green-900/20" title="Експорт списку О/С">
+                        <i class="fa-solid fa-file-excel"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="personnelContainer" class="hidden mt-4 space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                <div class="text-center py-5 text-slate-500 text-xs">Очікування даних...</div>
+            </div>
+        </div>
+
+    </div>
 
     <div class="grid lg:grid-cols-3 gap-6">
         
@@ -64,8 +115,8 @@
 
             <div>
                 <div class="chief-label px-2 flex justify-between">
-                    <span>Навантаження на особовий склад</span>
-                    <span>Вклад у загальний наліт</span>
+                    <span>Навантаження на особовий склад (Поточний період)</span>
+                    <span>Вклад у наліт</span>
                 </div>
                 <div id="pilotsContainer" class="space-y-3"></div>
             </div>
@@ -101,7 +152,21 @@
         };
 
         const currentUnit = localStorage.getItem('uav_unit');
-        let filteredData = [];
+        let allUnitFlights = []; 
+        let filteredData = []; 
+        let globalFleetData = []; 
+        let myUnits = []; 
+
+        function toggleSection(containerId, arrowId) {
+            const container = document.getElementById(containerId);
+            const arrow = document.getElementById(arrowId);
+            container.classList.toggle('hidden');
+            if (container.classList.contains('hidden')) {
+                arrow.classList.remove('rotate-90');
+            } else {
+                arrow.classList.add('rotate-90');
+            }
+        }
 
         async function init() {
             if (!currentUnit) {
@@ -110,17 +175,19 @@
                 return;
             }
             document.getElementById('unitInfo').innerText = `Сектор відповідальності: ${currentUnit}`;
+            
+            myUnits = hierarchy[currentUnit] ? [currentUnit, ...hierarchy[currentUnit]] : [currentUnit];
 
             try {
                 const res = await fetch("/api/get_all_flights");
                 const data = await res.json();
                 
-                const myUnits = hierarchy[currentUnit] ? [currentUnit, ...hierarchy[currentUnit]] : [currentUnit];
-                const period = document.getElementById('dateFilter').value;
+                allUnitFlights = data.filter(f => myUnits.includes(f.unit));
                 
+                const period = document.getElementById('dateFilter').value;
                 const now = new Date();
-                filteredData = data.filter(f => {
-                    if (!myUnits.includes(f.unit)) return false;
+                
+                filteredData = allUnitFlights.filter(f => {
                     const fDate = new Date(f.date);
                     if (period === 'today') return fDate.toDateString() === now.toDateString();
                     if (period === 'week') return (now - fDate) / (1000 * 60 * 60 * 24) <= 7;
@@ -129,25 +196,191 @@
                 });
 
                 renderDashboard();
+                loadFleet(myUnits); 
+                renderPersonnel(allUnitFlights); 
+
             } catch (e) { console.error(e); }
         }
 
         function renderDashboard() {
             renderStats();
             renderTimeChart();
-            renderPilots();
+            renderPilotsChart(); 
             renderResources();
             renderTactics();
         }
 
-        function renderStats() {
-            // Фільтруємо реальні вильоти для коректної статистики
-            const realFlights = filteredData.filter(f => f.result !== "Польоти не здійснювались");
+        function reloadFleetData() {
+            loadFleet(myUnits);
+        }
+
+        async function loadFleet(unitsList) {
+            const container = document.getElementById('fleetContainer');
+            if(unitsList.length === 0) {
+                container.innerHTML = '<div class="text-center text-slate-500 text-xs">Список підрозділів порожній</div>';
+                return;
+            }
+            container.innerHTML = ''; 
             
+            const promises = unitsList.map(async (unit) => {
+                try {
+                    const resDrones = await fetch(`/api/get_unit_drones?unit=${encodeURIComponent(unit)}`);
+                    return { unit, drones: await resDrones.json() };
+                } catch (e) { return { unit, drones: [] }; }
+            });
+
+            globalFleetData = await Promise.all(promises);
+
+            globalFleetData.forEach(({ unit, drones }) => {
+                let dronesHtml = '';
+                if (drones.length > 0) {
+                    dronesHtml = drones.map(d => {
+                        let statusClass = 'bg-active';
+                        let statusTitle = 'В строю';
+                        if (d.status === 'Repair') { statusClass = 'bg-repair'; statusTitle = 'В ремонті'; }
+                        if (d.status === 'Lost') { statusClass = 'bg-lost'; statusTitle = 'Втрачено'; }
+                        return `
+                            <div class="info-card flex justify-between items-center text-[11px]">
+                                <div class="flex items-center gap-2 overflow-hidden">
+                                    <span class="status-dot ${statusClass}" title="${statusTitle}"></span>
+                                    <span class="font-bold text-slate-200 truncate">${d.model}</span>
+                                </div>
+                                <span class="font-mono text-slate-500 text-[9px]">${d.serial_number || 'S/N ---'}</span>
+                            </div>`;
+                    }).join('');
+                } else {
+                    dronesHtml = '<div class="text-center text-[10px] text-slate-600 italic py-2">Немає закріплених бортів</div>';
+                }
+
+                const unitCard = `
+                    <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition-colors">
+                        <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-700/50">
+                            <h4 class="text-xs font-black uppercase text-slate-300 truncate pr-2" title="${unit}">${unit}</h4>
+                            <span class="bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded text-[10px] font-bold">${drones.length} шт</span>
+                        </div>
+                        <div class="space-y-1">${dronesHtml}</div>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', unitCard);
+            });
+        }
+
+        function renderPersonnel(flights) {
+            const container = document.getElementById('personnelContainer');
+            if (flights.length === 0) {
+                container.innerHTML = '<div class="text-center text-slate-500 text-xs">Немає даних про польоти</div>';
+                return;
+            }
+
+            const unitMap = {};
+            flights.forEach(f => {
+                const u = f.unit || "Не вказано";
+                const op = f.operator || "Невідомий";
+                const dur = parseInt(f.duration) || 0;
+
+                if (!unitMap[u]) unitMap[u] = {};
+                if (!unitMap[u][op]) unitMap[u][op] = { flights: 0, time: 0 };
+
+                if(f.result !== "Польоти не здійснювались") {
+                    unitMap[u][op].flights++;
+                    unitMap[u][op].time += dur;
+                }
+            });
+
+            container.innerHTML = '';
+
+            Object.entries(unitMap).forEach(([unitName, pilotsObj]) => {
+                const pilotsList = Object.entries(pilotsObj).sort((a,b) => b[1].flights - a[1].flights);
+                
+                const pilotsHtml = pilotsList.map(([name, stats]) => `
+                    <div class="info-card flex justify-between items-center text-[11px]">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-user text-slate-500"></i>
+                            <span class="font-bold text-slate-200">${name}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="text-slate-500 font-mono text-[9px] bg-slate-900 px-1 rounded border border-slate-700">${stats.flights} вил.</span>
+                            <span class="text-blue-400 font-mono text-[9px] bg-blue-900/20 px-1 rounded border border-blue-500/20">${Math.floor(stats.time/60)}г ${stats.time%60}хв</span>
+                        </div>
+                    </div>`).join('');
+
+                const unitBlock = `
+                    <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition-colors">
+                        <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-700/50">
+                            <h4 class="text-xs font-black uppercase text-slate-300 truncate pr-2" title="${unitName}">${unitName}</h4>
+                            <span class="bg-yellow-600/20 text-yellow-500 px-2 py-0.5 rounded text-[10px] font-bold">${pilotsList.length} чол</span>
+                        </div>
+                        <div class="space-y-1">${pilotsHtml}</div>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', unitBlock);
+            });
+        }
+
+        function exportFleetToExcel() {
+            if (globalFleetData.length === 0) return alert("Дані про парк техніки ще не завантажені або порожні");
+
+            const sheetData = [
+                ["ЗВІТ: Парк БпЛА (Ввірені підрозділи)"],
+                [],
+                ["Підрозділ", "Модель БпЛА", "Серійний номер", "Статус"]
+            ];
+
+            globalFleetData.forEach(({ unit, drones }) => {
+                if (drones.length > 0) {
+                    drones.forEach(d => {
+                        sheetData.push([unit, d.model, d.serial_number || "---", d.status || "Active"]);
+                    });
+                } else {
+                     sheetData.push([unit, "Немає техніки", "", ""]);
+                }
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            ws['!cols'] = [{wch: 25}, {wch: 30}, {wch: 25}, {wch: 15}];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Fleet");
+            XLSX.writeFile(wb, `Fleet_Report_${currentUnit}.xlsx`);
+        }
+
+        function exportPersonnelToExcel() {
+            if (allUnitFlights.length === 0) return alert("Немає даних для експорту");
+            
+            const unitMap = {};
+            allUnitFlights.forEach(f => {
+                const u = f.unit || "Не вказано";
+                const op = f.operator || "Невідомий";
+                const dur = parseInt(f.duration) || 0;
+                if (!unitMap[u]) unitMap[u] = {};
+                if (!unitMap[u][op]) unitMap[u][op] = { flights: 0, time: 0 };
+                if(f.result !== "Польоти не здійснювались") {
+                    unitMap[u][op].flights++;
+                    unitMap[u][op].time += dur;
+                }
+            });
+
+            const sheetData = [
+                ["ЗВІТ: Особовий склад (Пілоти)"],
+                [],
+                ["Підрозділ", "Прізвище", "К-сть вильотів", "Наліт (хв)", "Наліт (год)"]
+            ];
+
+            Object.entries(unitMap).forEach(([unitName, pilotsObj]) => {
+                 Object.entries(pilotsObj).forEach(([name, stats]) => {
+                     const hours = (stats.time / 60).toFixed(1);
+                     sheetData.push([unitName, name, stats.flights, stats.time, hours]);
+                 });
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            ws['!cols'] = [{wch: 25}, {wch: 25}, {wch: 15}, {wch: 15}, {wch: 15}];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Personnel");
+            XLSX.writeFile(wb, `Personnel_Report_${currentUnit}.xlsx`);
+        }
+
+        function renderStats() {
+            const realFlights = filteredData.filter(f => f.result !== "Польоти не здійснювались");
             const time = filteredData.reduce((s, f) => s + (f.duration || 0), 0);
             const results = filteredData.filter(f => f.result === 'Затримання').length;
-            
-            // Середній час рахуємо від кількості реальних вильотів
             const avgDuration = realFlights.length > 0 ? Math.round(time / realFlights.length) : 0;
             
             document.getElementById('statsGrid').innerHTML = `
@@ -166,21 +399,18 @@
                 <div class="glass p-5 border-l-4 border-red-500">
                     <div class="chief-label">Результативність</div>
                     <div class="stat-value text-red-400">${results}</div>
-                </div>
-            `;
+                </div>`;
         }
 
         function renderTimeChart() {
             const hours = new Array(24).fill(0);
             filteredData.forEach(f => {
-                // Враховуємо тільки реальні польоти
                 if(f.takeoff && f.result !== "Польоти не здійснювались") {
                     const h = parseInt(f.takeoff.split(':')[0]);
                     if(!isNaN(h)) hours[h]++;
                 }
             });
             const max = Math.max(...hours, 1);
-            
             document.getElementById('timeChart').innerHTML = hours.map((val, i) => {
                 const h = (val / max) * 100;
                 const isNight = i >= 22 || i <= 4;
@@ -189,38 +419,26 @@
             }).join('');
         }
 
-        function renderPilots() {
+        function renderPilotsChart() {
             const pilots = {};
             let totalUnitTime = 0;
-
             filteredData.forEach(f => {
                 const dur = f.duration || 0;
                 totalUnitTime += dur;
-                
                 if (!pilots[f.operator]) pilots[f.operator] = { time: 0, flights: 0, unit: f.unit };
-                
                 pilots[f.operator].time += dur;
-                
-                // Рахуємо виліт тільки якщо він відбувся
-                if (f.result !== "Польоти не здійснювались") {
-                    pilots[f.operator].flights++;
-                }
+                if (f.result !== "Польоти не здійснювались") pilots[f.operator].flights++;
             });
 
             const sorted = Object.entries(pilots).sort((a,b) => b[1].time - a[1].time);
-            
             document.getElementById('pilotsContainer').innerHTML = sorted.map(([name, data], index) => {
                 const percent = totalUnitTime > 0 ? Math.round((data.time / totalUnitTime) * 100) : 0;
-                
                 return `
                 <div class="glass p-4 relative overflow-hidden group hover:bg-slate-800/80 transition-all">
                     <div class="absolute bottom-0 left-0 h-1 bg-blue-500/50 transition-all duration-1000" style="width: ${percent}%"></div>
-                    
                     <div class="flex justify-between items-center relative z-10">
                         <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm border-2 ${index === 0 ? 'border-yellow-500 text-yellow-500 bg-yellow-500/10' : 'border-slate-600 text-slate-400 bg-slate-800'}">
-                                ${index + 1}
-                            </div>
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm border-2 ${index === 0 ? 'border-yellow-500 text-yellow-500 bg-yellow-500/10' : 'border-slate-600 text-slate-400 bg-slate-800'}">${index + 1}</div>
                             <div>
                                 <div class="text-sm font-black uppercase text-white">${name}</div>
                                 <div class="text-[10px] text-slate-500 font-bold tracking-widest uppercase">${data.unit}</div>
@@ -231,46 +449,35 @@
                             <div class="text-xs font-mono text-slate-400 mt-1">${Math.floor(data.time/60)}г ${data.time%60}хв <span class="text-blue-500/50 ml-1">(${percent}%)</span></div>
                         </div>
                     </div>
-                </div>
-            `;
+                </div>`;
             }).join('') || '<div class="text-center text-slate-500 py-4">Немає даних за цей період</div>';
         }
 
         function renderResources() {
-            // Дрони
             const drones = {};
             filteredData.forEach(f => {
-                // Враховуємо дрон тільки якщо він літав
                 if (f.result !== "Польоти не здійснювались") {
                     const model = f.drone.split(' (')[0];
                     drones[model] = (drones[model] || 0) + 1;
                 }
             });
             const sortedDrones = Object.entries(drones).sort((a,b) => b[1] - a[1]);
-            
             document.getElementById('droneUsageContainer').innerHTML = sortedDrones.map(([name, count]) => `
                 <div class="flex justify-between items-center border-b border-white/5 pb-2 last:border-0">
                     <span class="font-bold text-slate-300">${name}</span>
                     <span class="bg-blue-500/20 text-blue-400 px-2 rounded text-[10px] font-black">${count}</span>
-                </div>
-            `).join('') || '<div class="text-slate-700 italic text-center">Немає даних</div>';
+                </div>`).join('') || '<div class="text-slate-700 italic text-center">Немає даних</div>';
 
-            // АКБ (тут можна показувати всі, бо знос все одно фіксується в базі, навіть якщо це був запис)
             const batteries = {};
             filteredData.forEach(f => {
                 if(f.battery_id) batteries[f.battery_id] = Math.max(batteries[f.battery_id] || 0, f.battery_cycles || 0);
             });
-            const critical = Object.entries(batteries)
-                .filter(([id, cyc]) => cyc > 0)
-                .sort((a,b) => b[1] - a[1])
-                .slice(0, 5); 
-
+            const critical = Object.entries(batteries).filter(([id, cyc]) => cyc > 0).sort((a,b) => b[1] - a[1]).slice(0, 5); 
             document.getElementById('batteryContainer').innerHTML = critical.map(([id, cyc]) => `
                 <div class="flex justify-between items-center p-2 ${cyc > 150 ? 'bg-red-500/10 border border-red-500/20' : 'bg-slate-800'} rounded-lg">
                     <span class="font-mono text-slate-300">${id}</span>
                     <span class="font-black ${cyc > 150 ? 'text-red-400' : 'text-green-400'}">${cyc} ц.</span>
-                </div>
-            `).join('') || '<div class="text-slate-700 italic text-center">Дані відсутні</div>';
+                </div>`).join('') || '<div class="text-slate-700 italic text-center">Дані відсутні</div>';
         }
 
         function renderTactics() {
@@ -281,7 +488,6 @@
                 }
             });
             const topRoutes = Object.entries(routes).sort((a,b) => b[1] - a[1]).slice(0, 5);
-
             document.getElementById('routeContainer').innerHTML = topRoutes.map(([name, count]) => `
                 <div class="flex justify-between items-center">
                     <span class="truncate w-3/4 font-medium text-slate-400" title="${name}">${name}</span>
@@ -289,25 +495,16 @@
                 </div>
                 <div class="w-full bg-slate-800 h-1 rounded-full mb-2">
                     <div class="bg-orange-500 h-full rounded-full" style="width: ${(count/filteredData.length)*100}%"></div>
-                </div>
-            `).join('') || '<div class="text-slate-700 italic text-center">Немає даних</div>';
+                </div>`).join('') || '<div class="text-slate-700 italic text-center">Немає даних</div>';
         }
 
         function exportToExcel() {
             if (filteredData.length === 0) return alert("Немає даних для експорту!");
-            
             const dataForExcel = filteredData.map(f => ({
-                'Дата': f.date,
-                'Підрозділ': f.unit,
-                'Оператор': f.operator,
-                'БпЛА': f.drone,
-                'Зліт': f.takeoff,
-                'Посадка': f.landing,
-                'Тривалість (хв)': f.duration,
-                'Результат': f.result,
-                'Маршрут': f.route
+                'Дата': f.date, 'Підрозділ': f.unit, 'Оператор': f.operator, 'БпЛА': f.drone,
+                'Зліт': f.takeoff, 'Посадка': f.landing, 'Тривалість (хв)': f.duration,
+                'Результат': f.result, 'Маршрут': f.route
             }));
-
             const ws = XLSX.utils.json_to_sheet(dataForExcel);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Звіт");
