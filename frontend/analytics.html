@@ -12,10 +12,14 @@
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; }
         .stat-card { background: rgba(15, 23, 42, 0.6); padding: 15px; border-radius: 1rem; border: 1px solid rgba(255,255,255,0.05); transition: transform 0.2s; }
         .stat-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,0.1); }
-        select { background: #1e293b !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.5rem; padding: 4px 8px; font-size: 12px; outline: none; }
-        .user-highlight { color: #22c55e; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; }
         
-        /* Стилізація скролбару */
+        /* Стилі для інпутів */
+        select, input { background: #1e293b !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.5rem; padding: 4px 8px; font-size: 11px; outline: none; width: 100%; }
+        select:focus, input:focus { border-color: #f97316 !important; }
+        
+        .user-highlight { color: #22c55e; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; }
+        .label-mini { font-size: 9px; text-transform: uppercase; font-weight: 700; color: #94a3b8; margin-bottom: 2px; display: block; }
+        
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
@@ -24,7 +28,7 @@
 </head>
 <body class="max-w-6xl mx-auto pb-10">
     
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pt-4 px-2">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pt-4 px-2">
         <div class="flex items-center gap-4">
             <button onclick="window.location.href='/'" class="p-2 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-all border border-slate-700">
                 <i class="fa-solid fa-arrow-left"></i>
@@ -36,7 +40,7 @@
         </div>
 
         <div class="flex items-center gap-2 glass px-3 py-2">
-            <select id="monthSelect" onchange="updateAnalytics()">
+            <select id="monthSelect" onchange="updateAnalytics()" class="w-auto">
                 <option value="01">Січень</option><option value="02">Лютий</option>
                 <option value="03">Березень</option><option value="04">Квітень</option>
                 <option value="05">Травень</option><option value="06">Червень</option>
@@ -44,13 +48,51 @@
                 <option value="09">Вересень</option><option value="10">Жовтень</option>
                 <option value="11">Листопад</option><option value="12">Грудень</option>
             </select>
-            <select id="yearSelect" onchange="updateAnalytics()">
+            <select id="yearSelect" onchange="updateAnalytics()" class="w-auto">
                 <option value="2025">2025</option><option value="2026" selected>2026</option>
             </select>
         </div>
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="glass p-4 mb-6 mx-2 border-l-4 border-orange-500">
+        <div class="flex flex-col md:flex-row items-end gap-3">
+            <div class="w-full md:w-auto">
+                <label class="label-mini">Конкретна дата</label>
+                <input type="date" id="filterDate" onchange="updateAnalytics()">
+            </div>
+            
+            <div class="w-full md:w-auto flex gap-2">
+                <div class="w-1/2 md:w-auto">
+                    <label class="label-mini">Час з</label>
+                    <input type="time" id="filterTimeStart" onchange="updateAnalytics()">
+                </div>
+                <div class="w-1/2 md:w-auto">
+                    <label class="label-mini">Час по</label>
+                    <input type="time" id="filterTimeEnd" onchange="updateAnalytics()">
+                </div>
+            </div>
+
+            <div class="w-full md:w-auto">
+                <label class="label-mini">Модель БпЛА</label>
+                <select id="filterDrone" onchange="updateAnalytics()">
+                    <option value="">Всі борти</option>
+                </select>
+            </div>
+
+            <div class="w-full md:w-auto">
+                <label class="label-mini">Результат</label>
+                <select id="filterResult" onchange="updateAnalytics()">
+                    <option value="">Всі результати</option>
+                </select>
+            </div>
+
+            <button onclick="resetFilters()" class="w-full md:w-auto bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold uppercase py-1.5 px-4 rounded-lg transition-colors h-[26px]">
+                <i class="fa-solid fa-rotate-left mr-1"></i> Скинути
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 px-2">
         <div class="stat-card border-l-4 border-green-500">
             <div class="text-[10px] text-slate-500 font-black uppercase italic">Вильоти</div>
             <div id="totalFlights" class="text-2xl font-black text-white mt-1">0</div>
@@ -69,7 +111,7 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 px-2">
         
         <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="glass p-5">
@@ -111,9 +153,9 @@
         </div>
     </div>
 
-    <div class="glass p-6">
+    <div class="glass p-6 mx-2">
         <h2 class="text-xs font-black uppercase mb-4 text-slate-400 italic flex items-center gap-2">
-            <i class="fa-solid fa-list-check text-blue-500"></i> Детальний Журнал вильотів (поточний місяць)
+            <i class="fa-solid fa-list-check text-blue-500"></i> Детальний Журнал вильотів
         </h2>
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse min-w-[600px]">
@@ -152,8 +194,46 @@
                 const now = new Date();
                 document.getElementById('monthSelect').value = String(now.getMonth() + 1).padStart(2, '0');
                 
+                populateDropdowns(); // Заповнюємо фільтри БпЛА і Результатів
                 updateAnalytics();
             } catch (e) { console.error(e); }
+        }
+
+        // Автозаповнення випадаючих списків унікальними даними
+        function populateDropdowns() {
+            const userFlights = allFlights.filter(f => f.operator === currentOp && f.unit === currentUnit);
+            
+            // Дрони
+            const uniqueDrones = [...new Set(userFlights.map(f => {
+                return f.drone ? f.drone.split(' (')[0] : "";
+            }))].filter(d => d !== "").sort();
+            
+            const droneSelect = document.getElementById('filterDrone');
+            uniqueDrones.forEach(d => {
+                droneSelect.add(new Option(d, d));
+            });
+
+            // Результати
+            const uniqueResults = [...new Set(userFlights.map(f => f.result))].filter(r => r).sort();
+            const resSelect = document.getElementById('filterResult');
+            uniqueResults.forEach(r => {
+                resSelect.add(new Option(r, r));
+            });
+        }
+
+        function resetFilters() {
+            document.getElementById('filterDate').value = "";
+            document.getElementById('filterTimeStart').value = "";
+            document.getElementById('filterTimeEnd').value = "";
+            document.getElementById('filterDrone').value = "";
+            document.getElementById('filterResult').value = "";
+            
+            // Скидаємо місяць на поточний
+            const now = new Date();
+            document.getElementById('monthSelect').value = String(now.getMonth() + 1).padStart(2, '0');
+            document.getElementById('yearSelect').value = "2026";
+            
+            updateAnalytics();
         }
 
         function updateAnalytics() {
@@ -161,13 +241,39 @@
             const selectedYear = document.getElementById('yearSelect').value;
             const targetPeriod = `${selectedYear}-${selectedMonth}`;
 
-            // Фільтр: Всі записи поточного юзера за місяць
-            const filtered = allFlights.filter(f => 
-                f.date && f.date.startsWith(targetPeriod) && 
-                f.operator === currentOp && f.unit === currentUnit
-            );
+            // Отримуємо значення нових фільтрів
+            const fDate = document.getElementById('filterDate').value;
+            const fTimeStart = document.getElementById('filterTimeStart').value;
+            const fTimeEnd = document.getElementById('filterTimeEnd').value;
+            const fDrone = document.getElementById('filterDrone').value;
+            const fResult = document.getElementById('filterResult').value;
 
-            // Фільтр: Тільки РЕАЛЬНІ польоти (для статистики)
+            // ФІЛЬТРАЦІЯ
+            const filtered = allFlights.filter(f => {
+                // 1. Базова перевірка юзера
+                if (f.operator !== currentOp || f.unit !== currentUnit) return false;
+
+                // 2. Якщо вибрана конкретна дата - ігноруємо місяць/рік, інакше фільтруємо по місяцю
+                if (fDate) {
+                    if (f.date !== fDate) return false;
+                } else {
+                    if (!f.date || !f.date.startsWith(targetPeriod)) return false;
+                }
+
+                // 3. Час
+                if (fTimeStart && f.takeoff < fTimeStart) return false;
+                if (fTimeEnd && f.takeoff > fTimeEnd) return false;
+
+                // 4. БпЛА (частковий збіг, бо в базі назва може бути з серійником)
+                if (fDrone && (!f.drone || !f.drone.includes(fDrone))) return false;
+
+                // 5. Результат
+                if (fResult && f.result !== fResult) return false;
+
+                return true;
+            });
+
+            // Далі йде стандартна логіка підрахунку статистики для filtered масиву
             const realFlights = filtered.filter(f => f.result !== "Польоти не здійснювались");
 
             // ЗМІННІ
@@ -179,32 +285,22 @@
             const batteries = {};
             const flightsPerDay = {};
 
-            // Проходимо по ВСІХ записах, щоб відобразити їх в журналі, але статистику рахуємо хитро
             filtered.forEach(f => {
                 const isNoFly = f.result === "Польоти не здійснювались";
-                
-                // Час додаємо тільки якщо це реальний політ
                 const dur = isNoFly ? 0 : (parseInt(f.duration) || 0);
                 const dist = isNoFly ? 0 : (parseInt(f.distance) || 0);
                 
                 totalMin += dur;
-                
                 if (f.result === "Затримання") detentions++;
                 
-                // Якщо це реальний політ - рахуємо статистику рекордів та дронів
                 if (!isNoFly) {
-                    // Records Calculation
                     if (dur > maxDuration) { maxDuration = dur; maxDurationDate = f.date; }
                     if (dist > maxDistance) { maxDistance = dist; maxDistanceDate = f.date; }
-                    
-                    // Daily Activity
                     flightsPerDay[f.date] = (flightsPerDay[f.date] || 0) + 1;
 
-                    // Drone Stats
                     const model = f.drone ? f.drone.split(' (')[0] : "Інші";
                     droneStats[model] = (droneStats[model] || 0) + 1;
 
-                    // Battery Stats
                     if (f.battery_id) {
                         const cyc = parseInt(f.battery_cycles) || 0;
                         if (!batteries[f.battery_id] || cyc > batteries[f.battery_id].cycles) {
@@ -214,24 +310,18 @@
                 }
             });
 
-            // 1. TOP STATS
-            // ВИКОРИСТОВУЄМО realFlights.length замість filtered.length
+            // Оновлення DOM
             document.getElementById('totalFlights').innerText = realFlights.length;
             document.getElementById('totalDuration').innerText = `${Math.floor(totalMin/60)}г ${totalMin%60}хв`;
             document.getElementById('totalResults').innerText = detentions;
-            
-            // Efficiency (Detentions / Real Flights)
             const eff = realFlights.length > 0 ? ((detentions / realFlights.length) * 100).toFixed(1) : 0;
             document.getElementById('efficiencyRate').innerText = `${eff}%`;
 
-            // 2. RECORDS
             document.getElementById('maxTime').innerText = maxDuration > 0 ? `${maxDuration} хв` : "---";
             document.getElementById('maxTimeDate').innerText = maxDurationDate;
-            
             document.getElementById('maxDist').innerText = maxDistance > 0 ? `${maxDistance} м` : "---";
             document.getElementById('maxDistDate').innerText = maxDistanceDate;
 
-            // Best Day
             const bestDayEntry = Object.entries(flightsPerDay).sort((a,b) => b[1] - a[1])[0];
             if (bestDayEntry) {
                 document.getElementById('bestDay').innerText = bestDayEntry[0];
@@ -241,7 +331,6 @@
                 document.getElementById('bestDayCount').innerText = "";
             }
 
-            // 3. DRONES & BATTERIES
             const droneCont = document.getElementById('droneRating');
             const sortedDrones = Object.entries(droneStats).sort((a,b) => b[1]-a[1]);
             const maxD = sortedDrones.length > 0 ? sortedDrones[0][1] : 1;
@@ -260,26 +349,20 @@
                     <span class="text-xs font-black ${data.cycles > 150 ? 'text-red-500' : 'text-white'}">${data.cycles}</span>
                 </div>`).join('') : '<div class="text-center text-slate-600 text-[10px]">Дані АКБ відсутні</div>';
 
-            // 4. LOGBOOK TABLE (ДЕТАЛЬНИЙ)
+            // Журнал
             const logBody = document.getElementById('logbookBody');
             if (filtered.length === 0) {
                 logBody.innerHTML = '<tr><td colspan="5" class="py-10 text-center text-slate-600 text-[10px] font-bold uppercase">Журнал порожній за цей період</td></tr>';
             } else {
-                // Сортуємо від нових до старих
                 const sortedLog = filtered.sort((a,b) => b.id - a.id);
-                
                 logBody.innerHTML = sortedLog.map(f => {
-                    // Форматування дати
                     const dateParts = f.date ? f.date.split('-') : [];
                     const shortDate = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}` : f.date;
-                    
                     const droneShort = f.drone ? f.drone.split(' (')[0] : "БпЛА";
                     let sn = "---";
                     if (f.drone && f.drone.includes('S/N:')) {
                         sn = f.drone.split('S/N: ')[1].replace(')', '');
                     }
-
-                    // --- ВІЗУАЛІЗАЦІЯ ДЛЯ "ПОЛЬОТИ НЕ ЗДІЙСНЮВАЛИСЬ" ---
                     const isNoFly = f.result === "Польоти не здійснювались";
                     const rowClass = isNoFly ? "opacity-40 grayscale hover:grayscale-0 transition-all" : "hover:bg-slate-800/50";
                     const resultStyle = isNoFly 
@@ -294,16 +377,13 @@
                                 ${f.takeoff} - ${f.landing}
                             </div>
                         </td>
-                        
                         <td class="py-3 align-top">
                             <div class="font-bold text-xs uppercase text-slate-200">${droneShort}</div>
                             <div class="text-[9px] text-slate-500 font-mono truncate max-w-[80px]" title="${sn}">${sn}</div>
                         </td>
-
                         <td class="py-3 align-top">
                             <div class="text-xs font-medium text-slate-300 truncate max-w-[120px]" title="${f.route}">${f.route || "---"}</div>
                         </td>
-
                         <td class="py-3 align-top text-center">
                             <div class="text-[10px] font-bold text-blue-400">
                                 ${isNoFly ? '-' : f.duration + ' хв'}
@@ -313,7 +393,6 @@
                                 ${!isNoFly && f.battery_id ? '| ' + f.battery_id : ''}
                             </div>
                         </td>
-
                         <td class="py-3 align-top text-right pr-2">
                             <span class="inline-block px-2 py-1 rounded text-[10px] font-black uppercase ${resultStyle}">
                                 ${f.result}
