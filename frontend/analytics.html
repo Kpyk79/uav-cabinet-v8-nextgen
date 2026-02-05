@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Моя Аналітика</title>
+    <title>Моя Аналітика | UAV Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -161,11 +161,14 @@
             const selectedYear = document.getElementById('yearSelect').value;
             const targetPeriod = `${selectedYear}-${selectedMonth}`;
 
-            // Фільтр: Тільки мої польоти за вибраний місяць
+            // Фільтр: Всі записи поточного юзера за місяць
             const filtered = allFlights.filter(f => 
                 f.date && f.date.startsWith(targetPeriod) && 
                 f.operator === currentOp && f.unit === currentUnit
             );
+
+            // Фільтр: Тільки РЕАЛЬНІ польоти (для статистики)
+            const realFlights = filtered.filter(f => f.result !== "Польоти не здійснювались");
 
             // ЗМІННІ
             let totalMin = 0; 
@@ -176,40 +179,49 @@
             const batteries = {};
             const flightsPerDay = {};
 
+            // Проходимо по ВСІХ записах, щоб відобразити їх в журналі, але статистику рахуємо хитро
             filtered.forEach(f => {
-                const dur = parseInt(f.duration) || 0;
-                const dist = parseInt(f.distance) || 0;
+                const isNoFly = f.result === "Польоти не здійснювались";
+                
+                // Час додаємо тільки якщо це реальний політ
+                const dur = isNoFly ? 0 : (parseInt(f.duration) || 0);
+                const dist = isNoFly ? 0 : (parseInt(f.distance) || 0);
                 
                 totalMin += dur;
+                
                 if (f.result === "Затримання") detentions++;
                 
-                // Records Calculation
-                if (dur > maxDuration) { maxDuration = dur; maxDurationDate = f.date; }
-                if (dist > maxDistance) { maxDistance = dist; maxDistanceDate = f.date; }
-                
-                // Daily Activity
-                flightsPerDay[f.date] = (flightsPerDay[f.date] || 0) + 1;
+                // Якщо це реальний політ - рахуємо статистику рекордів та дронів
+                if (!isNoFly) {
+                    // Records Calculation
+                    if (dur > maxDuration) { maxDuration = dur; maxDurationDate = f.date; }
+                    if (dist > maxDistance) { maxDistance = dist; maxDistanceDate = f.date; }
+                    
+                    // Daily Activity
+                    flightsPerDay[f.date] = (flightsPerDay[f.date] || 0) + 1;
 
-                // Drone Stats
-                const model = f.drone ? f.drone.split(' (')[0] : "Інші";
-                droneStats[model] = (droneStats[model] || 0) + 1;
+                    // Drone Stats
+                    const model = f.drone ? f.drone.split(' (')[0] : "Інші";
+                    droneStats[model] = (droneStats[model] || 0) + 1;
 
-                // Battery Stats
-                if (f.battery_id) {
-                    const cyc = parseInt(f.battery_cycles) || 0;
-                    if (!batteries[f.battery_id] || cyc > batteries[f.battery_id].cycles) {
-                        batteries[f.battery_id] = { cycles: cyc, drone: model };
+                    // Battery Stats
+                    if (f.battery_id) {
+                        const cyc = parseInt(f.battery_cycles) || 0;
+                        if (!batteries[f.battery_id] || cyc > batteries[f.battery_id].cycles) {
+                            batteries[f.battery_id] = { cycles: cyc, drone: model };
+                        }
                     }
                 }
             });
 
             // 1. TOP STATS
-            document.getElementById('totalFlights').innerText = filtered.length;
+            // ВИКОРИСТОВУЄМО realFlights.length замість filtered.length
+            document.getElementById('totalFlights').innerText = realFlights.length;
             document.getElementById('totalDuration').innerText = `${Math.floor(totalMin/60)}г ${totalMin%60}хв`;
             document.getElementById('totalResults').innerText = detentions;
             
-            // Efficiency (Detentions / Flights)
-            const eff = filtered.length > 0 ? ((detentions / filtered.length) * 100).toFixed(1) : 0;
+            // Efficiency (Detentions / Real Flights)
+            const eff = realFlights.length > 0 ? ((detentions / realFlights.length) * 100).toFixed(1) : 0;
             document.getElementById('efficiencyRate').innerText = `${eff}%`;
 
             // 2. RECORDS
@@ -261,16 +273,21 @@
                     const dateParts = f.date ? f.date.split('-') : [];
                     const shortDate = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}` : f.date;
                     
-                    // Обрізка моделі дрона для компактності
                     const droneShort = f.drone ? f.drone.split(' (')[0] : "БпЛА";
-                    // Витягуємо серійник якщо є в дужках або окремо
                     let sn = "---";
                     if (f.drone && f.drone.includes('S/N:')) {
                         sn = f.drone.split('S/N: ')[1].replace(')', '');
                     }
 
+                    // --- ВІЗУАЛІЗАЦІЯ ДЛЯ "ПОЛЬОТИ НЕ ЗДІЙСНЮВАЛИСЬ" ---
+                    const isNoFly = f.result === "Польоти не здійснювались";
+                    const rowClass = isNoFly ? "opacity-40 grayscale hover:grayscale-0 transition-all" : "hover:bg-slate-800/50";
+                    const resultStyle = isNoFly 
+                        ? "text-slate-400 border border-slate-600 rounded px-1" 
+                        : (f.result === 'Затримання' ? 'bg-red-500/20 text-red-500 border border-red-500/30' : 'text-slate-500');
+
                     return `
-                    <tr class="border-b border-slate-800 hover:bg-slate-800/50 transition-colors group">
+                    <tr class="border-b border-slate-800 transition-colors group ${rowClass}">
                         <td class="py-3 pl-2 align-top">
                             <div class="font-bold text-white text-sm">${shortDate}</div>
                             <div class="text-[10px] text-slate-400 font-mono mt-1 bg-slate-800/60 inline-block px-1 rounded border border-slate-700">
@@ -288,12 +305,17 @@
                         </td>
 
                         <td class="py-3 align-top text-center">
-                            <div class="text-[10px] font-bold text-blue-400">${f.duration} хв</div>
-                            <div class="text-[9px] text-slate-500 mt-1">${f.distance ? f.distance + ' м' : ''} ${f.battery_id ? '| ' + f.battery_id : ''}</div>
+                            <div class="text-[10px] font-bold text-blue-400">
+                                ${isNoFly ? '-' : f.duration + ' хв'}
+                            </div>
+                            <div class="text-[9px] text-slate-500 mt-1">
+                                ${!isNoFly && f.distance ? f.distance + ' м' : ''} 
+                                ${!isNoFly && f.battery_id ? '| ' + f.battery_id : ''}
+                            </div>
                         </td>
 
                         <td class="py-3 align-top text-right pr-2">
-                            <span class="inline-block px-2 py-1 rounded text-[10px] font-black uppercase ${f.result === 'Затримання' ? 'bg-red-500/20 text-red-500 border border-red-500/30' : 'text-slate-500'}">
+                            <span class="inline-block px-2 py-1 rounded text-[10px] font-black uppercase ${resultStyle}">
                                 ${f.result}
                             </span>
                         </td>
@@ -306,5 +328,3 @@
     </script>
 </body>
 </html>
-
-
