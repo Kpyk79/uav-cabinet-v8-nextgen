@@ -115,11 +115,9 @@
                 const res = await fetch("/api/get_all_flights");
                 const data = await res.json();
                 
-                // Визначаємо підлеглі підрозділи
                 const myUnits = hierarchy[currentUnit] ? [currentUnit, ...hierarchy[currentUnit]] : [currentUnit];
                 const period = document.getElementById('dateFilter').value;
                 
-                // Фільтр за часом та підрозділом
                 const now = new Date();
                 filteredData = data.filter(f => {
                     if (!myUnits.includes(f.unit)) return false;
@@ -136,16 +134,21 @@
 
         function renderDashboard() {
             renderStats();
-            renderTimeChart(); // Новий графік
+            renderTimeChart();
             renderPilots();
-            renderResources(); // Дрони та АКБ
-            renderTactics();   // Маршрути
+            renderResources();
+            renderTactics();
         }
 
         function renderStats() {
+            // Фільтруємо реальні вильоти для коректної статистики
+            const realFlights = filteredData.filter(f => f.result !== "Польоти не здійснювались");
+            
             const time = filteredData.reduce((s, f) => s + (f.duration || 0), 0);
             const results = filteredData.filter(f => f.result === 'Затримання').length;
-            const avgDuration = filteredData.length > 0 ? Math.round(time / filteredData.length) : 0;
+            
+            // Середній час рахуємо від кількості реальних вильотів
+            const avgDuration = realFlights.length > 0 ? Math.round(time / realFlights.length) : 0;
             
             document.getElementById('statsGrid').innerHTML = `
                 <div class="glass p-5 border-l-4 border-blue-500">
@@ -154,7 +157,7 @@
                 </div>
                 <div class="glass p-5 border-l-4 border-green-500">
                     <div class="chief-label">Кількість вильотів</div>
-                    <div class="stat-value">${filteredData.length}</div>
+                    <div class="stat-value">${realFlights.length}</div>
                 </div>
                 <div class="glass p-5 border-l-4 border-purple-500">
                     <div class="chief-label">Сер. час польоту</div>
@@ -167,11 +170,11 @@
             `;
         }
 
-        // --- НОВЕ: Графік активності по годинах ---
         function renderTimeChart() {
             const hours = new Array(24).fill(0);
             filteredData.forEach(f => {
-                if(f.takeoff) {
+                // Враховуємо тільки реальні польоти
+                if(f.takeoff && f.result !== "Польоти не здійснювались") {
                     const h = parseInt(f.takeoff.split(':')[0]);
                     if(!isNaN(h)) hours[h]++;
                 }
@@ -180,29 +183,33 @@
             
             document.getElementById('timeChart').innerHTML = hours.map((val, i) => {
                 const h = (val / max) * 100;
-                // Підсвітка нічних годин (22-04) іншим кольором
                 const isNight = i >= 22 || i <= 4;
                 const bg = isNight ? 'bg-indigo-500' : 'bg-blue-500';
                 return `<div class="bar ${bg}" style="height: ${h}%" title="${i}:00 - ${val} вильотів"></div>`;
             }).join('');
         }
 
-        // --- ОНОВЛЕНО: Детальна картка пілота ---
         function renderPilots() {
             const pilots = {};
             let totalUnitTime = 0;
 
             filteredData.forEach(f => {
-                totalUnitTime += (f.duration || 0);
+                const dur = f.duration || 0;
+                totalUnitTime += dur;
+                
                 if (!pilots[f.operator]) pilots[f.operator] = { time: 0, flights: 0, unit: f.unit };
-                pilots[f.operator].time += (f.duration || 0);
-                pilots[f.operator].flights++;
+                
+                pilots[f.operator].time += dur;
+                
+                // Рахуємо виліт тільки якщо він відбувся
+                if (f.result !== "Польоти не здійснювались") {
+                    pilots[f.operator].flights++;
+                }
             });
 
             const sorted = Object.entries(pilots).sort((a,b) => b[1].time - a[1].time);
             
             document.getElementById('pilotsContainer').innerHTML = sorted.map(([name, data], index) => {
-                // Відсоток вкладу пілота в загальний наліт
                 const percent = totalUnitTime > 0 ? Math.round((data.time / totalUnitTime) * 100) : 0;
                 
                 return `
@@ -233,8 +240,11 @@
             // Дрони
             const drones = {};
             filteredData.forEach(f => {
-                const model = f.drone.split(' (')[0];
-                drones[model] = (drones[model] || 0) + 1;
+                // Враховуємо дрон тільки якщо він літав
+                if (f.result !== "Польоти не здійснювались") {
+                    const model = f.drone.split(' (')[0];
+                    drones[model] = (drones[model] || 0) + 1;
+                }
             });
             const sortedDrones = Object.entries(drones).sort((a,b) => b[1] - a[1]);
             
@@ -243,9 +253,9 @@
                     <span class="font-bold text-slate-300">${name}</span>
                     <span class="bg-blue-500/20 text-blue-400 px-2 rounded text-[10px] font-black">${count}</span>
                 </div>
-            `).join('');
+            `).join('') || '<div class="text-slate-700 italic text-center">Немає даних</div>';
 
-            // АКБ
+            // АКБ (тут можна показувати всі, бо знос все одно фіксується в базі, навіть якщо це був запис)
             const batteries = {};
             filteredData.forEach(f => {
                 if(f.battery_id) batteries[f.battery_id] = Math.max(batteries[f.battery_id] || 0, f.battery_cycles || 0);
@@ -253,7 +263,7 @@
             const critical = Object.entries(batteries)
                 .filter(([id, cyc]) => cyc > 0)
                 .sort((a,b) => b[1] - a[1])
-                .slice(0, 5); // Тільки топ 5
+                .slice(0, 5); 
 
             document.getElementById('batteryContainer').innerHTML = critical.map(([id, cyc]) => `
                 <div class="flex justify-between items-center p-2 ${cyc > 150 ? 'bg-red-500/10 border border-red-500/20' : 'bg-slate-800'} rounded-lg">
@@ -265,7 +275,11 @@
 
         function renderTactics() {
             const routes = {};
-            filteredData.forEach(f => { routes[f.route] = (routes[f.route] || 0) + 1; });
+            filteredData.forEach(f => { 
+                if (f.result !== "Польоти не здійснювались") {
+                    routes[f.route] = (routes[f.route] || 0) + 1; 
+                }
+            });
             const topRoutes = Object.entries(routes).sort((a,b) => b[1] - a[1]).slice(0, 5);
 
             document.getElementById('routeContainer').innerHTML = topRoutes.map(([name, count]) => `
@@ -276,7 +290,7 @@
                 <div class="w-full bg-slate-800 h-1 rounded-full mb-2">
                     <div class="bg-orange-500 h-full rounded-full" style="width: ${(count/filteredData.length)*100}%"></div>
                 </div>
-            `).join('');
+            `).join('') || '<div class="text-slate-700 italic text-center">Немає даних</div>';
         }
 
         function exportToExcel() {
@@ -300,7 +314,6 @@
             XLSX.writeFile(wb, `Звіт_${currentUnit}_${document.getElementById('dateFilter').value}.xlsx`);
         }
 
-        // Запуск
         init();
     </script>
 </body>
