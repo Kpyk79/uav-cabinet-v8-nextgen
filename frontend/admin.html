@@ -25,7 +25,7 @@
         .bg-active { background-color: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); }
         .bg-repair { background-color: #eab308; }
         .bg-lost { background-color: #ef4444; }
-        .bg-season { background-color: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); } /* Новий статус: Сезонне ТО */
+        .bg-season { background-color: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); }
     </style>
 </head>
 <body class="max-w-7xl mx-auto pb-20">
@@ -115,6 +115,18 @@
             <div id="personnelContainer" class="hidden mt-4 space-y-4 max-h-[400px] overflow-y-auto pr-2">
                 <div class="text-center py-5 text-slate-500 text-xs">Дані будуть доступні після завантаження журналу</div>
             </div>
+        </div>
+    </div>
+
+    <div class="card p-5 mb-6">
+        <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection('problemContainer', 'problemArrow')">
+            <h3 class="text-sm font-black uppercase text-red-400 flex items-center gap-2">
+                <i id="problemArrow" class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
+                <i class="fa-solid fa-triangle-exclamation ml-1"></i> Проблемні борти (Втрати / Ремонт)
+            </h3>
+        </div>
+        <div id="problemContainer" class="hidden mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div class="text-center text-xs text-slate-500 col-span-2">Очікування даних парку...</div>
         </div>
     </div>
 
@@ -236,6 +248,9 @@
                 });
 
                 globalFleetData = await Promise.all(promises); 
+                
+                // Після завантаження даних, рендеримо проблемні дрони
+                renderProblematicDrones();
 
                 globalFleetData.forEach(({ unit, drones }) => {
                     let dronesHtml = '';
@@ -244,7 +259,6 @@
                             let statusClass = 'bg-active';
                             let statusTitle = 'В строю';
                             
-                            // --- ОНОВЛЕНА ЛОГІКА СТАТУСІВ ---
                             if (d.status === 'Repair') { 
                                 statusClass = 'bg-repair'; 
                                 statusTitle = 'В ремонті'; 
@@ -281,6 +295,65 @@
             } catch (e) {
                 container.innerHTML = '<div class="text-center text-red-400 text-xs">Помилка завантаження парку</div>';
             }
+        }
+
+        // --- НОВА ФУНКЦІЯ: РЕНДЕР ПРОБЛЕМНИХ ДРОНІВ ---
+        function renderProblematicDrones() {
+            const container = document.getElementById('problemContainer');
+            let lostHtml = '';
+            let repairHtml = '';
+            let lostCount = 0;
+            let repairCount = 0;
+
+            globalFleetData.forEach(({ unit, drones }) => {
+                drones.forEach(d => {
+                    const sn = d.serial_number || 'S/N ---';
+                    const model = d.model;
+                    
+                    if (d.status === 'Lost' || d.status === 'Broken') {
+                        lostCount++;
+                        lostHtml += `
+                            <div class="flex justify-between items-center bg-slate-900/50 p-2 rounded mb-1 border-l-2 border-red-500 hover:bg-slate-800 transition-colors">
+                                <div>
+                                    <div class="text-[10px] font-bold text-slate-300">${model}</div>
+                                    <div class="text-[9px] text-slate-500 uppercase">${unit}</div>
+                                </div>
+                                <div class="text-[10px] font-mono text-red-400 font-bold tracking-wider">${sn}</div>
+                            </div>`;
+                    } else if (d.status === 'Repair') {
+                        repairCount++;
+                        repairHtml += `
+                            <div class="flex justify-between items-center bg-slate-900/50 p-2 rounded mb-1 border-l-2 border-yellow-500 hover:bg-slate-800 transition-colors">
+                                <div>
+                                    <div class="text-[10px] font-bold text-slate-300">${model}</div>
+                                    <div class="text-[9px] text-slate-500 uppercase">${unit}</div>
+                                </div>
+                                <div class="text-[10px] font-mono text-yellow-400 font-bold tracking-wider">${sn}</div>
+                            </div>`;
+                    }
+                });
+            });
+
+            container.innerHTML = `
+                <div class="bg-slate-800/40 rounded-xl p-4 border border-red-500/20">
+                    <h4 class="text-xs font-black uppercase text-red-500 mb-3 flex justify-between items-center">
+                        <span><i class="fa-solid fa-skull-crossbones mr-2"></i>Втрачено / Пошкоджено</span>
+                        <span class="bg-red-500/20 px-2 py-0.5 rounded text-[10px] text-red-300 font-bold">${lostCount}</span>
+                    </h4>
+                    <div class="max-h-[300px] overflow-y-auto pr-1 space-y-1 custom-scrollbar">
+                        ${lostHtml || '<div class="text-center text-[10px] text-slate-600 py-4 italic">Список порожній</div>'}
+                    </div>
+                </div>
+                <div class="bg-slate-800/40 rounded-xl p-4 border border-yellow-500/20">
+                    <h4 class="text-xs font-black uppercase text-yellow-500 mb-3 flex justify-between items-center">
+                        <span><i class="fa-solid fa-screwdriver-wrench mr-2"></i>В ремонті</span>
+                        <span class="bg-yellow-500/20 px-2 py-0.5 rounded text-[10px] text-yellow-300 font-bold">${repairCount}</span>
+                    </h4>
+                    <div class="max-h-[300px] overflow-y-auto pr-1 space-y-1 custom-scrollbar">
+                        ${repairHtml || '<div class="text-center text-[10px] text-slate-600 py-4 italic">Список порожній</div>'}
+                    </div>
+                </div>
+            `;
         }
 
         function exportPersonnelToExcel() {
@@ -331,7 +404,7 @@
                 if (drones.length > 0) {
                     drones.forEach(d => {
                         let s = d.status || "Active";
-                        if (s === "Season") s = "Season TO"; // Відображаємо гарно в звіті
+                        if (s === "Season") s = "Season TO"; 
                         if (s === "Broken") s = "Broken/Lost";
                         sheetData.push([unit, d.model, d.serial_number || "---", s]);
                     });
