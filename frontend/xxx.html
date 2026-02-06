@@ -21,9 +21,12 @@
         /* Стилі для списків */
         .info-card { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.5rem; padding: 0.5rem; margin-bottom: 0.5rem; }
         .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        
+        /* СТАТУСИ */
         .bg-active { background-color: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); }
         .bg-repair { background-color: #eab308; }
         .bg-lost { background-color: #ef4444; }
+        .bg-season { background-color: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); } /* Новий статус */
     </style>
 </head>
 <body class="max-w-6xl mx-auto pb-20">
@@ -237,8 +240,19 @@
                     dronesHtml = drones.map(d => {
                         let statusClass = 'bg-active';
                         let statusTitle = 'В строю';
-                        if (d.status === 'Repair') { statusClass = 'bg-repair'; statusTitle = 'В ремонті'; }
-                        if (d.status === 'Lost') { statusClass = 'bg-lost'; statusTitle = 'Втрачено'; }
+                        
+                        // ОНОВЛЕНА ЛОГІКА СТАТУСІВ
+                        if (d.status === 'Repair') { 
+                            statusClass = 'bg-repair'; 
+                            statusTitle = 'В ремонті'; 
+                        } else if (d.status === 'Season') { 
+                            statusClass = 'bg-season'; 
+                            statusTitle = 'Сезонне ТО'; 
+                        } else if (d.status === 'Lost' || d.status === 'Broken') { 
+                            statusClass = 'bg-lost'; 
+                            statusTitle = 'Втрачено/Пошкоджено'; 
+                        }
+
                         return `
                             <div class="info-card flex justify-between items-center text-[11px]">
                                 <div class="flex items-center gap-2 overflow-hidden">
@@ -327,7 +341,11 @@
             globalFleetData.forEach(({ unit, drones }) => {
                 if (drones.length > 0) {
                     drones.forEach(d => {
-                        sheetData.push([unit, d.model, d.serial_number || "---", d.status || "Active"]);
+                        // ФОРМАТУВАННЯ СТАТУСІВ ДЛЯ EXCEL
+                        let s = d.status || "Active";
+                        if (s === "Season") s = "Season TO";
+                        if (s === "Broken") s = "Broken/Lost";
+                        sheetData.push([unit, d.model, d.serial_number || "---", s]);
                     });
                 } else {
                      sheetData.push([unit, "Немає техніки", "", ""]);
