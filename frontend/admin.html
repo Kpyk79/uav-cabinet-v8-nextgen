@@ -1,300 +1,462 @@
-import os
-import httpx
-import json
-from datetime import datetime
-from typing import Optional, List
-
-from fastapi import FastAPI, HTTPException, Form, UploadFile, File, Query
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from supabase import create_client, Client
-from dotenv import load_dotenv
-
-# --- CONFIG & SETUP ---
-load_dotenv()
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
-
-app = FastAPI(title="UAV Command System v10.6")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8532620253:AAEY7ug33Ru6VS4EZeXQPqOPiMx3fB49y-Q")
-TELEGRAM_CHAT_ID = "627363301"
-
-URL = os.environ.get("SUPABASE_URL")
-KEY = os.environ.get("SUPABASE_KEY")
-
-if not URL or not KEY:
-    raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in .env file")
-
-supabase: Client = create_client(URL, KEY)
-
-UNITS = [
-    'впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"', 
-    'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"', 
-    'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"', 
-    'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"', 
-    'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"', 
-    'віпс "Кучурган"', 'віпс "Лиманське"', "Група ВОПРтаПБпПС"
-]
-
-# --- MODELS ---
-
-class FlightEntry(BaseModel):
-    date: str
-    shift_time: str
-    operator: str
-    unit: str
-    drone: str
-    takeoff: str
-    landing: str
-    duration: Optional[float] = 0.0
-    distance: Optional[float] = 0.0
-    battery_cycles: Optional[float] = 0.0
-    result: Optional[str] = "Без ознак порушення"
-    weather: Optional[str] = "Нормальні"
-    conditions: Optional[str] = "Норма"
-    route: Optional[str] = "Не вказано"
-    battery_id: Optional[str] = ""
-
-class AnnouncementUpdate(BaseModel):
-    text: str
-    is_active: bool
-
-class StatusUpdate(BaseModel):
-    id: int
-    status: str
-
-# --- HELPERS ---
-
-def calculate_duration(t1: str, t2: str):
-    try:
-        fmt = "%H:%M"
-        start = datetime.strptime(t1.strip(), fmt)
-        end = datetime.strptime(t2.strip(), fmt)
-        diff = (end - start).total_seconds() / 60
-        if diff < 0: diff += 1440
-        return int(diff)
-    except:
-        return 0
-
-# --- API ROUTES ---
-
-# 1. Отримати оголошення
-@app.get("/api/get_announcement")
-async def get_announcement():
-    res = supabase.table("app_settings").select("*").eq("id", 1).execute()
-    if res.data:
-        return res.data[0]
-    return {"is_announcement_active": False, "announcement_text": ""}
-
-# 2. Оновити оголошення
-@app.post("/api/update_announcement")
-async def update_announcement(data: AnnouncementUpdate):
-    try:
-        supabase.table("app_settings").update({
-            "announcement_text": data.text,
-            "is_announcement_active": data.is_active
-        }).eq("id", 1).execute()
-        return {"status": "ok"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# 3. Отримати дрони підрозділу (ВИПРАВЛЕНО: Залишив версію з select("*"))
-@app.get("/api/get_unit_drones")
-async def get_unit_drones(unit: str = Query(...)):
-    # Важливо брати *, щоб отримати ID та Status для адмінки флоту
-    res = supabase.table("drones").select("*").eq("unit", unit).execute()
-    return res.data
-
-# 4. Оновити статус дрона
-@app.post("/api/update_drone_status")
-async def update_drone_status(data: StatusUpdate):
-    try:
-        res = supabase.table("drones").update({"status": data.status}).eq("id", data.id).execute()
-        return {"status": "ok"}
-    except Exception as e:
-        print(f"Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# 5. Додати новий дрон
-@app.post("/api/add_new_drone")
-async def add_new_drone(data: dict):
-    try:
-        res = supabase.table("drones").insert({
-            "unit": data['unit'],
-            "model": data['model'],
-            "serial_number": data['serial_number'],
-            "status": "Active"
-        }).execute()
-        return res.data
-    except Exception as e:
-        print(f"Error adding drone: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# 6. Видалити дрон
-@app.delete("/api/delete_drone/{id}")
-async def delete_drone(id: int):
-    try:
-        supabase.table("drones").delete().eq("id", id).execute()
-        return {"status": "ok"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# 7. Додати політ
-@app.post("/api/add_flight")
-async def add_flight(entry: FlightEntry):
-    try:
-        data = entry.dict()
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel | UAV Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { background: #0f172a; color: white; font-family: 'Inter', sans-serif; padding: 20px; }
+        .card { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; }
+        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; border-radius: 0.5rem; padding: 0.5rem; width: 100%; outline: none; transition: all 0.2s; font-size: 13px; }
+        .input-dark:focus { border-color: #22c55e; box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2); }
+        .label-mini { font-size: 10px; text-transform: uppercase; font-weight: 700; color: #94a3b8; margin-bottom: 4px; display: block; }
+        .tech-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .tech-table th { background: #1e293b; color: #94a3b8; font-size: 10px; text-transform: uppercase; font-weight: 800; padding: 1rem; text-align: left; border-bottom: 1px solid #334155; }
+        .tech-table td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+        .tech-tag { font-size: 10px; font-weight: 900; text-transform: uppercase; padding: 0.25rem 0.5rem; border-radius: 0.375rem; background: rgba(255,255,255,0.05); }
         
-        # --- ЛОГІКА ДЛЯ "ПОЛЬОТИ НЕ ЗДІЙСНЮВАЛИСЬ" ---
-        if entry.result == "Польоти не здійснювались":
-            # Якщо польотів не було, примусово обнуляємо показники
-            data["duration"] = 0
-            data["distance"] = 0
-            data["battery_cycles"] = 0
-        else:
-            # Інакше рахуємо як зазвичай
-            data["duration"] = str(calculate_duration(entry.takeoff, entry.landing))
-        # ---------------------------------------------
-        
-        if "id" in data: del data["id"]
-        
-        res = supabase.table("flights").insert(data).execute()
-        return {"status": "success", "data": res.data}
-    except Exception as e:
-        print(f"Database Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        .info-card { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.5rem; padding: 0.5rem; margin-bottom: 0.5rem; }
+        .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .bg-active { background-color: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); }
+        .bg-repair { background-color: #eab308; }
+        .bg-lost { background-color: #ef4444; }
+        .bg-season { background-color: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); } /* Стиль для Сезонного ТО */
+    </style>
+</head>
+<body class="max-w-7xl mx-auto pb-20">
 
-# 8. Телеграм публікація
-@app.post("/api/publish_with_telegram")
-async def publish_report(report_text: str = Form(...), images: List[UploadFile] = File(None)):
-    try:
-        async with httpx.AsyncClient() as client:
-            if not images:
-                await client.post(
-                    f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
-                    data={"chat_id": TELEGRAM_CHAT_ID, "text": report_text, "parse_mode": "HTML"}
-                )
-            else:
-                media = []
-                files = {}
-                for i, img in enumerate(images):
-                    file_id = f"pic{i}"
-                    img_content = await img.read()
-                    files[file_id] = (img.filename, img_content)
-                    
-                    media_item = {
-                        "type": "photo",
-                        "media": f"attach://{file_id}",
-                        "parse_mode": "HTML"
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-black italic text-green-500 uppercase tracking-tighter">Admin Panel</h1>
+            <p class="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">UAV Command System Center</p>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="nav('/')" class="bg-slate-800 p-3 rounded-xl text-slate-400 hover:text-white transition-all">
+                <i class="fa-solid fa-house"></i>
+            </button>
+            <button onclick="exportAllToExcel()" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-xl text-slate-900 font-black uppercase text-xs shadow-lg shadow-green-500/20 transition-all">
+                <i class="fa-solid fa-file-excel mr-2"></i> Експорт Журналу
+            </button>
+            <button onclick="nav('/admin_analytics')" class="bg-orange-600 hover:bg-orange-500 px-4 py-2 rounded-xl text-white font-black uppercase text-xs shadow-lg shadow-orange-500/20 transition-all">
+                <i class="fa-solid fa-chart-pie mr-2"></i> Аналітика
+            </button>
+        </div>
+    </div>
+
+    <div class="card p-6 mb-6 border-l-4 border-purple-500 bg-slate-800/50">
+        <h3 class="text-sm font-black uppercase text-purple-400 mb-4 flex items-center">
+            <i class="fa-solid fa-bullhorn mr-2"></i>Налаштування оголошення
+        </h3>
+        <div class="flex flex-col gap-4">
+            <textarea id="adminMsgText" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white h-20 focus:border-purple-500 outline-none transition-colors font-mono" placeholder="Введіть текст оголошення для пілотів..."></textarea>
+            <div class="flex items-center justify-between">
+                <label class="flex items-center gap-3 cursor-pointer select-none group">
+                    <div class="relative">
+                        <input type="checkbox" id="adminMsgActive" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 group-hover:bg-slate-600"></div>
+                    </div>
+                    <span class="text-xs font-bold uppercase text-slate-300 group-hover:text-white transition-colors">Активувати показ на головній</span>
+                </label>
+                <button onclick="saveAnnouncement()" class="bg-purple-600 hover:bg-purple-500 px-6 py-2 rounded-xl text-white font-black uppercase text-xs shadow-lg shadow-purple-500/20 transition-all active:scale-95">
+                    <i class="fa-solid fa-floppy-disk mr-2"></i> Зберегти
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="card p-5 h-fit">
+            <div class="flex flex-wrap justify-between items-center cursor-pointer select-none gap-2" onclick="toggleSection('fleetContainer', 'fleetArrow')">
+                <h3 class="text-sm font-black uppercase text-blue-400 flex items-center gap-2">
+                    <i id="fleetArrow" class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
+                    <i class="fa-solid fa-plane-up ml-1"></i> Парк БпЛА
+                </h3>
+                <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                    <select id="adminFleetSelect" class="bg-slate-900 border border-slate-600 text-[10px] rounded px-2 py-1 outline-none text-slate-300 max-w-[150px] cursor-pointer hover:border-blue-500 transition-colors">
+                        <option value="">Оберіть підрозділ...</option>
+                    </select>
+                    <button onclick="exportFleetToExcel()" class="text-[10px] bg-green-700 hover:bg-green-600 px-3 py-1 rounded text-white transition-all shadow-lg shadow-green-900/20" title="Експорт списку БпЛА">
+                        <i class="fa-solid fa-file-excel"></i>
+                    </button>
+                    <button onclick="goToEditFleet()" class="text-[10px] bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-white transition-all shadow-lg shadow-blue-900/20" title="Редагувати парк обраного підрозділу">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button onclick="loadFleet()" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-white transition-all">
+                        <i class="fa-solid fa-sync"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="fleetContainer" class="hidden mt-4 space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                <div class="text-center py-5 text-slate-500 text-xs animate-pulse">Завантаження...</div>
+            </div>
+        </div>
+
+        <div class="card p-5 h-fit">
+            <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection('personnelContainer', 'personnelArrow')">
+                <h3 class="text-sm font-black uppercase text-yellow-500 flex items-center gap-2">
+                    <i id="personnelArrow" class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
+                    <i class="fa-solid fa-users ml-1"></i> Особовий Склад
+                </h3>
+                <div class="flex gap-2" onclick="event.stopPropagation()">
+                     <button onclick="exportPersonnelToExcel()" class="text-[10px] bg-green-700 hover:bg-green-600 px-3 py-1 rounded text-white transition-all shadow-lg shadow-green-900/20" title="Експорт списку О/С">
+                        <i class="fa-solid fa-file-excel"></i>
+                    </button>
+                    <div class="text-[10px] text-slate-500 font-bold uppercase self-center px-1">Active</div>
+                </div>
+            </div>
+            <div id="personnelContainer" class="hidden mt-4 space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                <div class="text-center py-5 text-slate-500 text-xs">Дані будуть доступні після завантаження журналу</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-5 mb-6">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-xs font-black uppercase text-slate-400 flex items-center gap-2">
+                <i class="fa-solid fa-filter text-green-500"></i> Фільтрація даних
+            </h3>
+            <button onclick="resetFilters()" class="text-[10px] text-slate-500 hover:text-white uppercase font-bold transition-colors">
+                <i class="fa-solid fa-rotate-left mr-1"></i> Скинути
+            </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
+            <div><label class="label-mini">Дата з</label><input type="date" id="filterDateFrom" oninput="filterData()" class="input-dark"></div>
+            <div><label class="label-mini">Дата по</label><input type="date" id="filterDateTo" oninput="filterData()" class="input-dark"></div>
+            <div><label class="label-mini">Час зльоту з</label><input type="time" id="filterTimeFrom" oninput="filterData()" class="input-dark"></div>
+            <div><label class="label-mini">Час зльоту по</label><input type="time" id="filterTimeTo" oninput="filterData()" class="input-dark"></div>
+            <div><label class="label-mini">Підрозділ</label><input type="text" id="filterUnit" oninput="filterData()" placeholder="Введіть назву..." class="input-dark"></div>
+            <div><label class="label-mini">Пілот (Прізвище)</label><input type="text" id="filterOp" oninput="filterData()" placeholder="Введіть прізвище..." class="input-dark"></div>
+        </div>
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="tech-table">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Підрозділ</th>
+                        <th>Оператор</th>
+                        <th>Тип БпЛА</th>
+                        <th>Час (Зліт-Пос)</th>
+                        <th>Наліт</th>
+                        <th>Результат</th>
+                        <th class="text-right">Дії</th> 
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+        <div id="noDataMessage" class="hidden text-center py-10 text-slate-500 text-xs uppercase font-bold">
+            Записів не знайдено
+        </div>
+    </div>
+
+    <script>
+        let allFlights = [];
+        let globalFleetData = []; 
+
+        function nav(path) {
+            const token = new URLSearchParams(window.location.search).get('token');
+            window.location.href = token ? `${path}?token=${token}` : path;
+        }
+
+        async function loadAllFlights() {
+            try {
+                const res = await fetch("/api/get_all_flights");
+                allFlights = await res.json();
+                renderTable(allFlights);
+                renderPersonnel(allFlights); 
+            } catch (e) { console.error(e); }
+        }
+
+        function toggleSection(containerId, arrowId) {
+            const container = document.getElementById(containerId);
+            const arrow = document.getElementById(arrowId);
+            container.classList.toggle('hidden');
+            if (container.classList.contains('hidden')) {
+                arrow.classList.remove('rotate-90');
+            } else {
+                arrow.classList.add('rotate-90');
+            }
+        }
+
+        function goToEditFleet() {
+            const unit = document.getElementById('adminFleetSelect').value;
+            if (!unit) {
+                alert("Будь ласка, оберіть підрозділ зі списку для редагування!");
+                return;
+            }
+            const token = new URLSearchParams(window.location.search).get('token');
+            let targetUrl = `/fleet?unit=${encodeURIComponent(unit)}`;
+            if (token) {
+                targetUrl += `&token=${token}`;
+            }
+            window.location.href = targetUrl;
+        }
+
+        async function loadFleet() {
+            const container = document.getElementById('fleetContainer');
+            const select = document.getElementById('adminFleetSelect');
+            try {
+                const resOpt = await fetch("/api/get_options");
+                const options = await resOpt.json();
+                const units = options.units || [];
+                const currentSelection = select.value;
+                select.innerHTML = '<option value="">Оберіть підрозділ...</option>';
+                units.forEach(u => {
+                    const option = document.createElement('option');
+                    option.value = u;
+                    option.text = u;
+                    select.appendChild(option);
+                });
+                if (currentSelection) select.value = currentSelection;
+                if(units.length === 0) {
+                    container.innerHTML = '<div class="text-center text-slate-500 text-xs">Список підрозділів порожній</div>';
+                    return;
+                }
+                container.innerHTML = ''; 
+                const promises = units.map(async (unit) => {
+                    try {
+                        const resDrones = await fetch(`/api/get_unit_drones?unit=${encodeURIComponent(unit)}`);
+                        return { unit, drones: await resDrones.json() };
+                    } catch (e) { return { unit, drones: [] }; }
+                });
+                globalFleetData = await Promise.all(promises); 
+                globalFleetData.forEach(({ unit, drones }) => {
+                    let dronesHtml = '';
+                    if (drones.length > 0) {
+                        dronesHtml = drones.map(d => {
+                            let statusClass = 'bg-active';
+                            let statusTitle = 'В строю';
+                            if (d.status === 'Repair') { statusClass = 'bg-repair'; statusTitle = 'В ремонті'; }
+                            else if (d.status === 'Season') { statusClass = 'bg-season'; statusTitle = 'Сезонне ТО'; }
+                            else if (d.status === 'Lost' || d.status === 'Broken') { statusClass = 'bg-lost'; statusTitle = 'Втрачено'; }
+                            return `
+                                <div class="info-card flex justify-between items-center text-[11px]">
+                                    <div class="flex items-center gap-2 overflow-hidden">
+                                        <span class="status-dot ${statusClass}" title="${statusTitle}"></span>
+                                        <span class="font-bold text-slate-200 truncate">${d.model}</span>
+                                    </div>
+                                    <span class="font-mono text-slate-500 text-[9px]">${d.serial_number || 'S/N ---'}</span>
+                                </div>`;
+                        }).join('');
+                    } else {
+                        dronesHtml = '<div class="text-center text-[10px] text-slate-600 italic py-2">Немає закріплених бортів</div>';
                     }
-                    if i == 0:
-                        media_item["caption"] = report_text
-                    media.append(media_item)
+                    const unitCard = `
+                        <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition-colors">
+                            <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-700/50">
+                                <h4 class="text-xs font-black uppercase text-slate-300 truncate pr-2" title="${unit}">${unit}</h4>
+                                <span class="bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded text-[10px] font-bold">${drones.length} шт</span>
+                            </div>
+                            <div class="space-y-1">${dronesHtml}</div>
+                        </div>`;
+                    container.insertAdjacentHTML('beforeend', unitCard);
+                });
+            } catch (e) {
+                container.innerHTML = '<div class="text-center text-red-400 text-xs">Помилка завантаження парку</div>';
+            }
+        }
 
-                await client.post(
-                    f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMediaGroup",
-                    data={"chat_id": TELEGRAM_CHAT_ID, "media": json.dumps(media)},
-                    files=files
-                )
-        return {"status": "ok"}
-    except Exception as e:
-        print(f"Telegram API Error: {e}")
-        return {"status": "error", "message": str(e)}
+        function exportPersonnelToExcel() {
+            if (allFlights.length === 0) return alert("Немає даних для експорту");
+            const unitMap = {};
+            allFlights.forEach(f => {
+                const u = f.unit || "Не вказано";
+                const op = f.operator || "Невідомий";
+                const dur = parseInt(f.duration) || 0;
+                if (!unitMap[u]) unitMap[u] = {};
+                if (!unitMap[u][op]) unitMap[u][op] = { flights: 0, time: 0 };
+                if(f.result !== "Польоти не здійснювались") {
+                    unitMap[u][op].flights++;
+                    unitMap[u][op].time += dur;
+                }
+            });
+            const sheetData = [["ЗВІТ: Особовий склад (Пілоти)"], [], ["Підрозділ", "Прізвище", "К-сть вильотів", "Наліт (хв)", "Наліт (год)"]];
+            Object.entries(unitMap).forEach(([unitName, pilotsObj]) => {
+                 Object.entries(pilotsObj).forEach(([name, stats]) => {
+                     const hours = (stats.time / 60).toFixed(1);
+                     sheetData.push([unitName, name, stats.flights, stats.time, hours]);
+                 });
+            });
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            ws['!cols'] = [{wch: 25}, {wch: 25}, {wch: 15}, {wch: 15}, {wch: 15}];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Personnel");
+            XLSX.writeFile(wb, `Personnel_Report_${new Date().toLocaleDateString()}.xlsx`);
+        }
 
-@app.get("/api/get_options")
-async def get_options():
-    return {
-        "units": UNITS, 
-        "weather": ["Нормальні", "Складні умови", "Несприятливі умови"], 
-        "flight_modes": ["Normal", "АТТІ"], 
-        "results": ["Без ознак порушення", "Затримання", "Польоти не здійснювались"]
-    }
+        function exportFleetToExcel() {
+            if (globalFleetData.length === 0) return alert("Дані про парк техніки ще не завантажені або порожні");
+            const sheetData = [["ЗВІТ: Парк БпЛА"], [], ["Підрозділ", "Модель БпЛА", "Серійний номер", "Статус"]];
+            globalFleetData.forEach(({ unit, drones }) => {
+                if (drones.length > 0) {
+                    drones.forEach(d => {
+                        let s = d.status || "Active";
+                        if(s === "Season") s = "Season TO";
+                        sheetData.push([unit, d.model, d.serial_number || "---", s]);
+                    });
+                } else {
+                     sheetData.push([unit, "Немає техніки", "", ""]);
+                }
+            });
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            ws['!cols'] = [{wch: 25}, {wch: 30}, {wch: 25}, {wch: 15}];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Fleet");
+            XLSX.writeFile(wb, `Fleet_Report_${new Date().toLocaleDateString()}.xlsx`);
+        }
 
-@app.get("/api/get_all_flights")
-async def get_all_flights():
-    all_data = []
-    limit = 1000
-    start = 0
-    
-    while True:
-        # Запитуємо дані частинами (від start до start + 999)
-        res = supabase.table("flights").select("*").order("id", desc=True).range(start, start + limit - 1).execute()
-        
-        batch = res.data
-        if not batch:
-            break
-            
-        all_data.extend(batch)
-        
-        # Якщо повернулося менше 1000 записів, значить це остання порція
-        if len(batch) < limit:
-            break
-            
-        # Зсуваємо вказівник для наступного запиту
-        start += limit
-        
-    return all_data
+        function renderPersonnel(flights) {
+            const container = document.getElementById('personnelContainer');
+            if (flights.length === 0) {
+                container.innerHTML = '<div class="text-center text-slate-500 text-xs">Немає даних про польоти</div>';
+                return;
+            }
+            const unitMap = {};
+            flights.forEach(f => {
+                const u = f.unit || "Не вказано";
+                const op = f.operator || "Невідомий";
+                const dur = parseInt(f.duration) || 0;
+                if (!unitMap[u]) unitMap[u] = {};
+                if (!unitMap[u][op]) unitMap[u][op] = { flights: 0, time: 0 };
+                if(f.result !== "Польоти не здійснювались") {
+                    unitMap[u][op].flights++;
+                    unitMap[u][op].time += dur;
+                }
+            });
+            container.innerHTML = '';
+            Object.entries(unitMap).forEach(([unitName, pilotsObj]) => {
+                const pilotsList = Object.entries(pilotsObj).sort((a,b) => b[1].flights - a[1].flights);
+                const pilotsHtml = pilotsList.map(([name, stats]) => `
+                    <div class="info-card flex justify-between items-center text-[11px]">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-user text-slate-500"></i>
+                            <span class="font-bold text-slate-200">${name}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="text-slate-500 font-mono text-[9px] bg-slate-900 px-1 rounded border border-slate-700">${stats.flights} вил.</span>
+                            <span class="text-blue-400 font-mono text-[9px] bg-blue-900/20 px-1 rounded border border-blue-500/20">${Math.floor(stats.time/60)}г ${stats.time%60}хв</span>
+                        </div>
+                    </div>`).join('');
+                const unitBlock = `
+                    <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition-colors">
+                        <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-700/50">
+                            <h4 class="text-xs font-black uppercase text-slate-300 truncate pr-2" title="${unitName}">${unitName}</h4>
+                            <span class="bg-yellow-600/20 text-yellow-500 px-2 py-0.5 rounded text-[10px] font-bold">${pilotsList.length} чол</span>
+                        </div>
+                        <div class="space-y-1">${pilotsHtml}</div>
+                    </div>`;
+                container.insertAdjacentHTML('beforeend', unitBlock);
+            });
+        }
 
-@app.delete("/api/delete_flight/{id}")
-async def delete_flight(id: int):
-    
-    supabase.table("flights").delete().eq("id", id).execute()
-    return {"status": "deleted"}
+        async function loadAdminAnnouncement() {
+            try {
+                const res = await fetch('/api/get_announcement');
+                const data = await res.json();
+                document.getElementById('adminMsgText').value = data.announcement_text || "";
+                document.getElementById('adminMsgActive').checked = data.is_announcement_active;
+            } catch (e) { console.error(e); }
+        }
 
-# --- PAGE ROUTES ---
+        async function saveAnnouncement() {
+            const text = document.getElementById('adminMsgText').value;
+            const isActive = document.getElementById('adminMsgActive').checked;
+            if(!text && isActive) return alert("Введіть текст оголошення!");
+            try {
+                const res = await fetch('/api/update_announcement', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ text: text, is_active: isActive })
+                });
+                if(res.ok) alert("Налаштування оголошення оновлено!");
+            } catch (e) { alert("Помилка з'єднання!"); }
+        }
 
-@app.get("/")
-async def read_index():
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+        async function deleteFlight(id) {
+            if(!confirm("Ви впевнені, що хочете видалити цей запис?")) return;
+            try {
+                const res = await fetch(`/api/delete_flight/${id}`, { method: 'DELETE' });
+                if(res.ok) {
+                    allFlights = allFlights.filter(f => f.id !== id);
+                    filterData();
+                    renderPersonnel(allFlights); 
+                } else { alert("Помилка при видаленні."); }
+            } catch (e) { alert("Помилка з'єднання."); }
+        }
 
-@app.get("/dashboard")
-async def read_dashboard():
-    return FileResponse(os.path.join(FRONTEND_DIR, "dashboard.html"))
+        function filterData() {
+            const dFrom = document.getElementById('filterDateFrom').value;
+            const dTo = document.getElementById('filterDateTo').value;
+            const tFrom = document.getElementById('filterTimeFrom').value;
+            const tTo = document.getElementById('filterTimeTo').value;
+            const sUnit = document.getElementById('filterUnit').value.toLowerCase();
+            const sOp = document.getElementById('filterOp').value.toLowerCase();
+            const filtered = allFlights.filter(f => {
+                if (dFrom && f.date < dFrom) return false;
+                if (dTo && f.date > dTo) return false;
+                if (tFrom && f.takeoff < tFrom) return false;
+                if (tTo && f.takeoff > tTo) return false;
+                if (sUnit && !f.unit.toLowerCase().includes(sUnit)) return false;
+                if (sOp && !f.operator.toLowerCase().includes(sOp)) return false;
+                return true;
+            });
+            renderTable(filtered);
+        }
 
-@app.get("/request")
-async def read_request():
-    return FileResponse(os.path.join(FRONTEND_DIR, "request.html"))
+        function resetFilters() {
+            document.querySelectorAll('.input-dark').forEach(i => i.value = '');
+            renderTable(allFlights);
+        }
 
-@app.get("/admin")
-async def read_admin():
-    return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
+        function renderTable(flights) {
+            const tbody = document.getElementById('tableBody');
+            const noData = document.getElementById('noDataMessage');
+            if (flights.length === 0) {
+                tbody.innerHTML = '';
+                noData.classList.remove('hidden');
+                return;
+            }
+            noData.classList.add('hidden');
+            tbody.innerHTML = flights.map(f => {
+                const dateF = f.date && f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date;
+                return `
+                <tr class="hover:bg-white/5 transition-colors group">
+                    <td class="font-mono text-slate-400 text-xs">${dateF}</td>
+                    <td class="font-bold text-green-500">${f.unit}</td>
+                    <td class="font-medium">${f.operator}</td>
+                    <td class="text-slate-300 text-xs uppercase">${f.drone}</td>
+                    <td class="font-mono text-slate-400">${f.takeoff} - ${f.landing}</td>
+                    <td class="font-black">${f.duration} <span class="text-[10px] text-slate-500">хв</span></td>
+                    <td><span class="tech-tag ${f.result === 'Затримання' ? 'text-red-400' : 'text-slate-400'}">${f.result || '---'}</span></td>
+                    <td class="text-right"><button onclick="deleteFlight(${f.id})" class="text-slate-600 hover:text-red-500 transition-colors p-2"><i class="fa-solid fa-trash"></i></button></td>
+                </tr>`;
+            }).join('');
+        }
 
-@app.get("/analytics")
-async def read_analytics():
-    return FileResponse(os.path.join(FRONTEND_DIR, "analytics.html"))
+        function exportAllToExcel() {
+            if (allFlights.length === 0) return alert("Немає даних для експорту");
+            const sheetData = [["ЖУРНАЛ обліку польотів (ЗАГАЛЬНИЙ)"], [], ["№", "Дата", "Вид БпЛА", "Ділянка", "Час", "", "Трив.", "Підрозділ", "ПІБ", "АКБ", "Цикли"], ["", "", "", "", "Зліт", "Пос.", "хв.", "", "", "", ""]];
+            allFlights.forEach((f, i) => {
+                const dateFormatted = f.date && f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date;
+                sheetData.push([i + 1, dateFormatted, f.drone, f.route || "---", f.takeoff, f.landing, f.duration, f.unit, f.operator, f.battery_id || "", f.battery_cycles || ""]);
+            });
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Log");
+            XLSX.writeFile(wb, `Admin_Journal_${new Date().toLocaleDateString()}.xlsx`);
+        }
 
-@app.get("/handbook")
-async def read_handbook():
-    return FileResponse(os.path.join(FRONTEND_DIR, "handbook.html"))
-
-# ВИПРАВЛЕНО: залишено один правильний route
-@app.get("/fleet")
-async def read_fleet():
-    return FileResponse(os.path.join(FRONTEND_DIR, "fleet_management.html"))
-
-@app.get("/admin_analytics")
-async def read_admin_analytics():
-    return FileResponse(os.path.join(FRONTEND_DIR, "admin_analytics.html"))
-
-@app.get("/xxx")
-async def read_xxx():
-    return FileResponse(os.path.join(FRONTEND_DIR, "xxx.html"))
-
-# Підключаємо статику в кінці, щоб вона не перекривала API
-app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8001)
+        window.onload = async () => {
+            loadFleet();
+            await loadAllFlights();
+            await loadAdminAnnouncement();
+        };
+    </script>
+</body>
+</html>
