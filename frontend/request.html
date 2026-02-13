@@ -190,6 +190,7 @@
             const formatDate = (dateStr) => dateStr.split('-').reverse().join('.');
 
             const msg = `
+Прошу узгодити заявку:            
 1. Заявник: в/ч 2196 2 ПРИКЗ (ДПСУ) ${document.getElementById('reqUnit').value}
 2. Тип БпЛА: ${selectedDrones.join(', ')}
 3. Дата здійснення польоту: ${formatDate(document.getElementById('dateStart').value)} - ${formatDate(document.getElementById('dateEnd').value)}
@@ -212,5 +213,6 @@
     </script>
 </body>
 </html>
+
 
 
