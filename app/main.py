@@ -28,8 +28,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8532620253:AAEY7ug33Ru6VS4EZeXQPqOPiMx3fB49y-Q")
+TELEGRAM_CHAT_ID = "627363301"
 
 URL = os.environ.get("SUPABASE_URL")
 KEY = os.environ.get("SUPABASE_KEY")
@@ -45,7 +45,7 @@ UNITS = [
     'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"', 
     'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"', 
     'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"', 
-    'віпс "Кучурган"', 'віпс "Лиманське"', "Група ВОПРтаПБпПС", "ВЗФБпАК та ЗПБпС"
+    'віпс "Кучурган"', 'віпс "Лиманське"', "Група ВОПРтаПБпПС"
 ]
 
 # --- MODELS ---
@@ -222,18 +222,34 @@ async def get_options():
         "results": ["Без ознак порушення", "Затримання", "Польоти не здійснювались"]
     }
 
-@app.get("/api/get_my_flights")
-async def get_my_flights(unit: str, operator: str):
-    res = supabase.table("flights").select("*").eq("unit", unit).eq("operator", operator).order("id", desc=True).execute()
-    return res.data
-
 @app.get("/api/get_all_flights")
 async def get_all_flights():
-    res = supabase.table("flights").select("*").order("id", desc=True).execute()
-    return res.data
+    all_data = []
+    limit = 1000
+    start = 0
+    
+    while True:
+        # Запитуємо дані частинами (від start до start + 999)
+        res = supabase.table("flights").select("*").order("id", desc=True).range(start, start + limit - 1).execute()
+        
+        batch = res.data
+        if not batch:
+            break
+            
+        all_data.extend(batch)
+        
+        # Якщо повернулося менше 1000 записів, значить це остання порція
+        if len(batch) < limit:
+            break
+            
+        # Зсуваємо вказівник для наступного запиту
+        start += limit
+        
+    return all_data
 
 @app.delete("/api/delete_flight/{id}")
 async def delete_flight(id: int):
+    
     supabase.table("flights").delete().eq("id", id).execute()
     return {"status": "deleted"}
 
@@ -282,5 +298,3 @@ app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8001)
-
-
