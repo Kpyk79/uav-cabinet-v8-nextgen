@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Технічна допомога | UAV Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+
+        body {
+            background: #0f172a;
+            font-family: 'Inter', sans-serif;
+            color: white;
+            padding: 8px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-container {
+            height: calc(100vh - 120px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .messages-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            max-width: 85%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: #2563eb;
+            color: white;
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        .message.ai {
+            align-self: flex-start;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .input-area {
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.8);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .typing-indicator {
+            font-size: 10px;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+            display: none;
+        }
+
+        /* Custom scrollbar */
+        .messages-area::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .messages-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .messages-area::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body class="max-w-4xl mx-auto">
+
+    <div class="flex justify-between items-center mb-4 pt-4 px-2">
+        <div class="flex items-center gap-4">
+            <button onclick="nav('/')"
+                class="bg-slate-800 p-2 rounded-lg text-slate-400 hover:text-white transition-all">
+                <i class="fa-solid fa-house text-sm"></i>
+            </button>
+            <h1 class="text-xl font-black uppercase italic text-blue-500 tracking-tighter">Технічна допомога (AI)</h1>
+        </div>
+    </div>
+
+    <div class="glass rounded-2xl overflow-hidden chat-container flex flex-col">
+        <div id="messagesArea" class="messages-area flex flex-col">
+            <div class="message ai">
+                Вітаю! Я ваш інтелектуальний помічник UAV Pro. Чим можу допомогти вам сьогодні? Ви можете запитати про
+                роботу системи, ведення журналу або обслуговування дронів.
+            </div>
+        </div>
+
+        <div id="typingIndicator" class="px-4 typing-indicator">
+            <i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Асистент друкує...
+        </div>
+
+        <div id="imagePreviewContainer" class="px-4 pb-2 hidden">
+            <div class="relative w-20 h-20 rounded-lg overflow-hidden border border-blue-500/50">
+                <img id="imagePreview" src="" class="w-full h-full object-cover">
+                <button onclick="clearImage()"
+                    class="absolute top-0 right-0 bg-red-600 text-white p-1 text-[10px] rounded-bl-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <div class="flex gap-2 items-center">
+                <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="handleImageSelect(this)">
+                <button onclick="document.getElementById('imageInput').click()"
+                    class="text-slate-400 hover:text-blue-500 transition-all text-xl px-1">
+                    <i class="fa-solid fa-image"></i>
+                </button>
+                <input type="text" id="userInput" placeholder="Введіть ваше запитання..."
+                    class="flex-grow bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-all text-white">
+                <button onclick="sendMessage()" id="sendBtn"
+                    class="bg-blue-600 hover:bg-blue-500 p-3 rounded-xl transition-all active:scale-95">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = window.location.origin + "/api";
+        const msgArea = document.getElementById('messagesArea');
+        const input = document.getElementById('userInput');
+        const typing = document.getElementById('typingIndicator');
+        const imageInput = document.getElementById('imageInput');
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        const previewImg = document.getElementById('imagePreview');
+
+        let selectedImage = null;
+
+        function nav(path) {
+            const token = new URLSearchParams(window.location.search).get('token');
+            window.location.href = token ? `${path}?token=${token}` : path;
+        }
+
+        function handleImageSelect(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    previewImg.src = e.target.result;
+                    previewContainer.classList.remove('hidden');
+                    selectedImage = input.files[0];
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function clearImage() {
+            selectedImage = null;
+            imageInput.value = '';
+            previewContainer.classList.add('hidden');
+            previewImg.src = '';
+        }
+
+        async function sendMessage() {
+            const text = input.value.trim();
+            if (!text && !selectedImage) return;
+
+            if (selectedImage) {
+                addMessage(text || "[Зображення]", 'user', previewImg.src);
+            } else {
+                addMessage(text, 'user');
+            }
+
+            input.value = '';
+            const currentImage = selectedImage;
+            clearImage();
+
+            typing.style.display = 'block';
+            msgArea.scrollTop = msgArea.scrollHeight;
+
+            try {
+                const fd = new FormData();
+                fd.append('message', text);
+                if (currentImage) {
+                    fd.append('image', currentImage);
+                }
+
+                const res = await fetch(API + "/chat", {
+                    method: 'POST',
+                    body: fd
+                });
+
+                const data = await res.json();
+
+                setTimeout(() => {
+                    typing.style.display = 'none';
+                    addMessage(data.reply, 'ai');
+                }, 500);
+
+            } catch (e) {
+                console.error(e);
+                typing.style.display = 'none';
+                addMessage("Вибачте, сталася помилка з'єднання з сервером.", 'ai');
+            }
+        }
+
+        function addMessage(text, side, imageUrl = null) {
+            const div = document.createElement('div');
+            div.className = `message ${side}`;
+
+            if (imageUrl) {
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.className = "rounded-lg mb-2 max-w-full h-auto";
+                div.appendChild(img);
+            }
+
+            if (text) {
+                const span = document.createElement('span');
+                span.innerText = text;
+                div.appendChild(span);
+            }
+
+            msgArea.appendChild(div);
+            msgArea.scrollTop = msgArea.scrollHeight;
+        }
+
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+
+</html>

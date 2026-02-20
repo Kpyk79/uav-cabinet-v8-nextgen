@@ -1,26 +1,90 @@
 <!DOCTYPE html>
 <html lang="uk">
+
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UAV Workstation | Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); min-height: 100vh; font-family: 'Inter', sans-serif; color: white; padding: 8px; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .label-style { font-size: 9px; text-transform: uppercase; font-weight: 800; color: #94a3b8; margin-bottom: 0.1rem; display: block; }
-        input, select, textarea { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.5rem; font-size: 14px !important; width: 100%; outline: none; transition: all 0.2s; }
-        input:focus { border-color: #22c55e !important; }
-        .btn-green { background: #16a34a; font-weight: 900; text-transform: uppercase; }
-        .cus-box { background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.75rem; padding: 8px; }
-        @keyframes popIn { 0% { opacity: 0; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
-        .animate-pop { animation: popIn 0.3s ease-out forwards; }
+
+        body {
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            color: white;
+            padding: 8px;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .label-style {
+            font-size: 9px;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: #94a3b8;
+            margin-bottom: 0.1rem;
+            display: block;
+        }
+
+        input,
+        select,
+        textarea {
+            background: #0f172a !important;
+            color: white !important;
+            border: 1px solid #334155 !important;
+            border-radius: 0.5rem;
+            font-size: 14px !important;
+            width: 100%;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        input:focus {
+            border-color: #22c55e !important;
+        }
+
+        .btn-green {
+            background: #16a34a;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .cus-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 0.75rem;
+            padding: 8px;
+        }
+
+        @keyframes popIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .animate-pop {
+            animation: popIn 0.3s ease-out forwards;
+        }
     </style>
 </head>
+
 <body class="flex items-center justify-center">
 
-    <div id="announcementCard" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
+    <div id="announcementCard"
+        class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
         <div class="glass w-full max-w-sm p-6 rounded-2xl border-l-4 border-yellow-500 shadow-2xl relative animate-pop">
             <div class="flex justify-between items-start mb-4">
                 <h2 class="text-lg font-black text-yellow-500 uppercase tracking-wider flex items-center">
@@ -30,8 +94,10 @@
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <div id="announcementText" class="text-sm text-slate-200 leading-relaxed font-mono mb-6 whitespace-pre-wrap"></div>
-            <button onclick="closeAnnouncement()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-black uppercase py-3 rounded-xl transition-all shadow-lg active:scale-95">
+            <div id="announcementText"
+                class="text-sm text-slate-200 leading-relaxed font-mono mb-6 whitespace-pre-wrap"></div>
+            <button onclick="closeAnnouncement()"
+                class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-black uppercase py-3 rounded-xl transition-all shadow-lg active:scale-95">
                 Зрозуміло
             </button>
         </div>
@@ -50,75 +116,120 @@
             <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
                 <div id="userBadge" class="text-[10px] font-black text-green-500 uppercase italic"></div>
                 <div class="flex gap-2">
-                    <button onclick="nav('/request')" class="p-2 bg-purple-500/20 text-purple-400 rounded-lg border border-purple-500/30 hover:bg-purple-500/40 transition-all"><i class="fa-solid fa-file-signature"></i></button>
-                    <button onclick="nav('/dashboard')" class="p-2 bg-blue-500/20 text-blue-400 rounded-lg"><i class="fa-solid fa-journal-whills"></i></button>
-                    <button onclick="nav('/analytics')" class="p-2 bg-orange-500/20 text-orange-400 rounded-lg border border-orange-500/30" title="Аналітика"><i class="fa-solid fa-chart-line"></i></button>
-                    <button onclick="nav('/handbook')" class="p-2 bg-teal-500/20 text-teal-400 rounded-lg border border-teal-500/30" title="Довідник"><i class="fa-solid fa-book-open"></i></button>
-                    <button onclick="logout()" class="p-2 bg-red-500/20 text-red-400 rounded-lg"><i class="fa-solid fa-power-off"></i></button>
+                    <button onclick="nav('/request')"
+                        class="p-2 bg-purple-500/20 text-purple-400 rounded-lg border border-purple-500/30 hover:bg-purple-500/40 transition-all"><i
+                            class="fa-solid fa-file-signature"></i></button>
+                    <button onclick="nav('/dashboard')" class="p-2 bg-blue-500/20 text-blue-400 rounded-lg"><i
+                            class="fa-solid fa-journal-whills"></i></button>
+                    <button onclick="nav('/analytics')"
+                        class="p-2 bg-orange-500/20 text-orange-400 rounded-lg border border-orange-500/30"
+                        title="Аналітика"><i class="fa-solid fa-chart-line"></i></button>
+                    <button onclick="nav('/handbook')"
+                        class="p-2 bg-teal-500/20 text-teal-400 rounded-lg border border-teal-500/30"
+                        title="Довідник"><i class="fa-solid fa-book-open"></i></button>
+                    <button onclick="nav('/support')"
+                        class="p-2 bg-blue-500/20 text-blue-400 rounded-lg border border-blue-500/30"
+                        title="Технічна допомога"><i class="fa-solid fa-headset"></i></button>
+                    <button onclick="logout()" class="p-2 bg-red-500/20 text-red-400 rounded-lg"><i
+                            class="fa-solid fa-power-off"></i></button>
                 </div>
             </div>
 
             <form id="flightForm" class="space-y-3">
                 <div class="grid grid-cols-2 gap-2">
-                    <div><label class="label-style">Дата</label><input type="date" id="date" class="p-2" oninput="saveState(this.id)"></div>
+                    <div><label class="label-style">Дата</label><input type="date" id="date" class="p-2"
+                            oninput="saveState(this.id)"></div>
                     <div><label class="label-style">Час польотного завдання</label>
                         <div class="flex gap-1">
-                            <input type="time" id="s1" value="08:00" class="p-2 text-center" oninput="saveState(this.id)">
-                            <input type="time" id="s2" value="20:00" class="p-2 text-center" oninput="saveState(this.id)">
+                            <input type="time" id="s1" value="08:00" class="p-2 text-center"
+                                oninput="saveState(this.id)">
+                            <input type="time" id="s2" value="20:00" class="p-2 text-center"
+                                oninput="saveState(this.id)">
                         </div>
                     </div>
                 </div>
-                <div><label class="label-style">БпЛА</label><select id="drone" class="p-2 text-green-400 font-bold" onchange="saveState(this.id)"><option>Завантаження...</option></select></div>
-                <div><label class="label-style">Маршрут</label><input type="text" id="route" class="p-2" oninput="saveState(this.id)"></div>
+                <div><label class="label-style">БпЛА</label><select id="drone" class="p-2 text-green-400 font-bold"
+                        onchange="saveState(this.id)">
+                        <option>Завантаження...</option>
+                    </select></div>
+                <div><label class="label-style">Маршрут</label><input type="text" id="route" class="p-2"
+                        oninput="saveState(this.id)"></div>
                 <div class="grid grid-cols-2 gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800 text-center">
-                    <div><label class="label-style text-green-500">Зліт</label><input type="tel" id="t1" placeholder="09:30" class="p-1 text-lg font-mono text-green-400 text-center bg-transparent border-none" oninput="saveState(this.id)"></div>
-                    <div><label class="label-style text-red-500">Посадка</label><input type="tel" id="t2" placeholder="10:15" class="p-1 text-lg font-mono text-red-400 text-center bg-transparent border-none" oninput="saveState(this.id)"></div>
+                    <div><label class="label-style text-green-500">Зліт</label><input type="tel" id="t1"
+                            placeholder="09:30"
+                            class="p-1 text-lg font-mono text-green-400 text-center bg-transparent border-none"
+                            oninput="saveState(this.id)"></div>
+                    <div><label class="label-style text-red-500">Посадка</label><input type="tel" id="t2"
+                            placeholder="10:15"
+                            class="p-1 text-lg font-mono text-red-400 text-center bg-transparent border-none"
+                            oninput="saveState(this.id)"></div>
                 </div>
                 <div class="grid grid-cols-3 gap-2">
-                    <div><label class="label-style">Дист.(м)</label><input type="number" id="dist" inputmode="numeric" class="p-2" oninput="saveState(this.id)"></div>
-                    <div><label class="label-style">№ АКБ</label><input type="text" id="akb" class="p-2" oninput="saveState(this.id)"></div>
-                    <div><label class="label-style">Цикли</label><input type="number" id="cyc" inputmode="numeric" class="p-2" oninput="saveState(this.id)"></div>
+                    <div><label class="label-style">Дист.(м)</label><input type="number" id="dist" inputmode="numeric"
+                            class="p-2" oninput="saveState(this.id)"></div>
+                    <div><label class="label-style">№ АКБ</label><input type="text" id="akb" class="p-2"
+                            oninput="saveState(this.id)"></div>
+                    <div><label class="label-style">Цикли</label><input type="number" id="cyc" inputmode="numeric"
+                            class="p-2" oninput="saveState(this.id)"></div>
                 </div>
                 <div class="grid grid-cols-3 gap-2 border-b border-slate-800 pb-3">
-                    <div><label class="label-style">Погодні умови</label><select id="weather" class="p-2 text-[10px]" onchange="saveState(this.id)"></select></div>
-                    <div><label class="label-style">Умови польоту</label><select id="mode" class="p-2 text-[10px]" onchange="saveState(this.id)"></select></div>
-                    <div><label class="label-style text-orange-400">Результат</label><select id="result" class="p-2 text-[10px] text-orange-400 font-bold" onchange="saveState(this.id)"></select></div>
+                    <div><label class="label-style">Погодні умови</label><select id="weather" class="p-2 text-[10px]"
+                            onchange="saveState(this.id)"></select></div>
+                    <div><label class="label-style">Умови польоту</label><select id="mode" class="p-2 text-[10px]"
+                            onchange="saveState(this.id)"></select></div>
+                    <div><label class="label-style text-orange-400">Результат</label><select id="result"
+                            class="p-2 text-[10px] text-orange-400 font-bold" onchange="saveState(this.id)"></select>
+                    </div>
                 </div>
                 <div class="bg-slate-900/40 p-3 rounded-xl border border-dashed border-slate-700">
                     <label class="label-style">Скріншоти / Фото донесення</label>
                     <input type="file" id="photos" multiple accept="image/*" class="text-[10px] text-slate-500">
                 </div>
-                
+
                 <div class="flex gap-2">
-                    <button type="button" id="submitBtn" onclick="addToDraft()" class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Додати в чернетку</button>
-                    <button type="button" id="cancelBtn" onclick="cancelEdit()" class="hidden w-1/3 bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-bold uppercase text-xs transition-all text-slate-300">Скасувати</button>
+                    <button type="button" id="submitBtn" onclick="addToDraft()"
+                        class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Додати
+                        в чернетку</button>
+                    <button type="button" id="cancelBtn" onclick="cancelEdit()"
+                        class="hidden w-1/3 bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-bold uppercase text-xs transition-all text-slate-300">Скасувати</button>
                 </div>
             </form>
         </div>
 
         <div class="lg:w-1/2 glass p-4 rounded-[1.5rem] flex flex-col">
-            <h2 class="text-[11px] font-black uppercase text-slate-500 mb-2 italic">Чернетка (<span id="draftCount">0</span>)</h2>
+            <h2 class="text-[11px] font-black uppercase text-slate-500 mb-2 italic">Чернетка (<span
+                    id="draftCount">0</span>)</h2>
             <div id="draftList" class="flex-grow space-y-2 overflow-y-auto max-h-[250px] mb-4"></div>
 
             <div class="grid grid-cols-2 gap-2 mb-4">
                 <div class="cus-box">
-                    <div class="flex justify-between mb-1"><span class="text-[8px] font-black uppercase text-green-500 tracking-tighter">До 00:00</span><button onclick="copyText('cusBefore')" class="text-[8px] text-blue-400 font-bold">Копіювати</button></div>
-                    <textarea id="cusBefore" readonly class="w-full bg-transparent p-1 text-[10px] h-14 text-slate-400 font-mono outline-none resize-none"></textarea>
+                    <div class="flex justify-between mb-1"><span
+                            class="text-[8px] font-black uppercase text-green-500 tracking-tighter">До
+                            00:00</span><button onclick="copyText('cusBefore')"
+                            class="text-[8px] text-blue-400 font-bold">Копіювати</button></div>
+                    <textarea id="cusBefore" readonly
+                        class="w-full bg-transparent p-1 text-[10px] h-14 text-slate-400 font-mono outline-none resize-none"></textarea>
                 </div>
                 <div class="cus-box">
-                    <div class="flex justify-between mb-1"><span class="text-[8px] font-black uppercase text-blue-500 tracking-tighter">Після 00:00</span><button onclick="copyText('cusAfter')" class="text-[8px] text-blue-400 font-bold">Копіювати</button></div>
-                    <textarea id="cusAfter" readonly class="w-full bg-transparent p-1 text-[10px] h-14 text-slate-400 font-mono outline-none resize-none"></textarea>
+                    <div class="flex justify-between mb-1"><span
+                            class="text-[8px] font-black uppercase text-blue-500 tracking-tighter">Після
+                            00:00</span><button onclick="copyText('cusAfter')"
+                            class="text-[8px] text-blue-400 font-bold">Копіювати</button></div>
+                    <textarea id="cusAfter" readonly
+                        class="w-full bg-transparent p-1 text-[10px] h-14 text-slate-400 font-mono outline-none resize-none"></textarea>
                 </div>
             </div>
 
-            <button id="publishBtn" onclick="publishAll()" disabled class="w-full btn-green py-4 rounded-xl text-slate-900 mt-auto font-black uppercase shadow-xl">Опублікувати донесення</button>
+            <button id="publishBtn" onclick="publishAll()" disabled
+                class="w-full btn-green py-4 rounded-xl text-slate-900 mt-auto font-black uppercase shadow-xl">Опублікувати
+                донесення</button>
         </div>
     </div>
 
     <script>
         const API = window.location.origin + "/api";
         let draft = [];
-        let editingId = null; 
+        let editingId = null;
 
         function nav(path) {
             const token = new URLSearchParams(window.location.search).get('token');
@@ -129,8 +240,8 @@
             try {
                 if (sessionStorage.getItem('announcement_seen')) return;
                 const res = await fetch(API + "/get_announcement");
-                if(!res.ok) return;
-                
+                if (!res.ok) return;
+
                 const data = await res.json();
                 if (data.is_announcement_active && data.announcement_text) {
                     document.getElementById('announcementText').innerText = data.announcement_text;
@@ -145,9 +256,9 @@
         }
 
         function saveState(id) {
-            if(!editingId) {
+            if (!editingId) {
                 const el = document.getElementById(id);
-                if(el) localStorage.setItem('saved_' + id, el.value);
+                if (el) localStorage.setItem('saved_' + id, el.value);
             }
         }
 
@@ -176,13 +287,13 @@
         const timeIds = ['t1', 't2', 's1', 's2'];
         timeIds.forEach(id => {
             const el = document.getElementById(id);
-            if(el) el.addEventListener('blur', function() { 
-                this.value = formatTimeInput(this.value); 
-                saveState(id); 
+            if (el) el.addEventListener('blur', function () {
+                this.value = formatTimeInput(this.value);
+                saveState(id);
             });
         });
 
-        window.onload = async function() {
+        window.onload = async function () {
             checkAnnouncement();
 
             const res = await fetch(API + "/get_options");
@@ -196,7 +307,7 @@
 
             const u = localStorage.getItem('uav_unit'), o = localStorage.getItem('uav_op');
             if (u && o) {
-                document.getElementById('loginUnit').value = u; 
+                document.getElementById('loginUnit').value = u;
                 document.getElementById('loginOp').value = o;
                 document.getElementById('userBadge').innerText = u + " | " + o;
                 showMain(u);
@@ -209,18 +320,18 @@
         async function showMain(unit) {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('mainScreen').classList.remove('hidden');
-            
+
             const resD = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(unit));
             const allDrones = await resD.json();
 
             const activeDrones = allDrones.filter(d => !d.status || d.status === 'Active');
 
-            document.getElementById('drone').innerHTML = activeDrones.map(d => 
+            document.getElementById('drone').innerHTML = activeDrones.map(d =>
                 '<option value="' + d.model + ' (S/N: ' + d.serial_number + ')">' + d.model + ' [' + d.serial_number + ']</option>'
             ).join('');
-            
+
             const savedDrone = localStorage.getItem('saved_drone');
-            if(savedDrone) document.getElementById('drone').value = savedDrone;
+            if (savedDrone) document.getElementById('drone').value = savedDrone;
         }
 
         function saveAuth() {
@@ -233,10 +344,10 @@
             const flight = draft.find(f => f.id === id);
             if (!flight) return;
 
-            document.getElementById('date').value = flight.date.split('.').reverse().join('-'); 
+            document.getElementById('date').value = flight.date.split('.').reverse().join('-');
             if (flight.shift_time) {
                 const parts = flight.shift_time.split('-');
-                if(parts.length === 2) {
+                if (parts.length === 2) {
                     document.getElementById('s1').value = parts[0];
                     document.getElementById('s2').value = parts[1];
                 }
@@ -256,16 +367,16 @@
             const btn = document.getElementById('submitBtn');
             btn.innerText = "Зберегти зміни";
             btn.classList.remove('bg-blue-600');
-            btn.classList.add('bg-orange-500'); 
-            
+            btn.classList.add('bg-orange-500');
+
             document.getElementById('cancelBtn').classList.remove('hidden');
         }
 
         function cancelEdit() {
             editingId = null;
             clearForm();
-            restoreFields(); 
-            
+            restoreFields();
+
             const btn = document.getElementById('submitBtn');
             btn.innerText = "Додати в чернетку";
             btn.classList.add('bg-blue-600');
@@ -285,7 +396,7 @@
         function addToDraft() {
             const takeoffInput = document.getElementById('t1');
             const landingInput = document.getElementById('t2');
-            
+
             if (!takeoffInput || !landingInput || !takeoffInput.value || !landingInput.value) {
                 return alert("Спочатку вкажіть ЧАС зльоту та посадки!");
             }
@@ -296,7 +407,7 @@
             };
 
             let dateVal = getVal('date', '');
-            if(dateVal.includes('-')) {
+            if (dateVal.includes('-')) {
                 dateVal = dateVal.split('-').reverse().join('.');
             } else if (!dateVal) {
                 dateVal = new Date().toLocaleDateString('uk-UA');
@@ -342,7 +453,7 @@
                 localStorage.removeItem('saved_dist');
             }
 
-            localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); 
+            localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
             renderDraft();
         }
 
@@ -379,23 +490,23 @@
                     line += " - Польоти не здійснювались";
                 }
                 line += "\n";
-                
+
                 if (f.landing < f.takeoff || f.takeoff < "08:00") {
-                    a += line; 
+                    a += line;
                 } else {
-                    b += line; 
+                    b += line;
                 }
             });
-            document.getElementById('cusBefore').value = b || "---"; 
+            document.getElementById('cusBefore').value = b || "---";
             document.getElementById('cusAfter').value = a || "---";
         }
         // ------------------------
 
-        function removeFromDraft(id) { 
+        function removeFromDraft(id) {
             if (editingId === id) cancelEdit();
-            draft = draft.filter(f => f.id !== id); 
-            localStorage.setItem('uav_draft_cache', JSON.stringify(draft)); 
-            renderDraft(); 
+            draft = draft.filter(f => f.id !== id);
+            localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
+            renderDraft();
         }
 
         function copyText(id) {
@@ -405,23 +516,23 @@
 
         async function publishAll() {
             if (draft.length === 0) return;
-            const btn = document.getElementById('publishBtn'); 
-            btn.disabled = true; 
+            const btn = document.getElementById('publishBtn');
+            btn.disabled = true;
             btn.innerText = "НАДСИЛАННЯ...";
 
             const first = draft[0];
             const currentShift = (document.getElementById('s1')?.value || "08:00") + "-" + (document.getElementById('s2')?.value || "20:00");
             const currentRoute = document.getElementById('route')?.value || "Не вказано";
-            
+
             let report = "<b>Донесення:</b> " + first.unit + "\n" +
-                         "<b>Пілот:</b> " + first.operator + "\n" +
-                         "<b>Дата:</b> " + first.date + "\n" +
-                         "<b>Час завдання:</b> " + currentShift + "\n" +
-                         "<b>БпЛА:</b> " + first.drone + "\n" +
-                         "<b>Маршрут:</b> " + currentRoute + "\n" +
-                         "━━━━━━━━━━━━━━━\n" +
-                         "<b>Вильоти:</b>\n";
-            
+                "<b>Пілот:</b> " + first.operator + "\n" +
+                "<b>Дата:</b> " + first.date + "\n" +
+                "<b>Час завдання:</b> " + currentShift + "\n" +
+                "<b>БпЛА:</b> " + first.drone + "\n" +
+                "<b>Маршрут:</b> " + currentRoute + "\n" +
+                "━━━━━━━━━━━━━━━\n" +
+                "<b>Вильоти:</b>\n";
+
             draft.forEach((f, i) => {
                 report += (i + 1) + ". " + f.takeoff + "-" + f.landing + " (" + f.duration + " хв)\n";
                 let statusParts = [];
@@ -441,8 +552,8 @@
                         dbDate = f.date || new Date().toISOString().split('T')[0];
                     }
 
-                    const toDb = { 
-                        ...f, 
+                    const toDb = {
+                        ...f,
                         date: dbDate,
                         duration: Math.floor(Number(f.duration)) || 0,
                         distance: Math.floor(Number(f.distance)) || 0,
@@ -450,14 +561,14 @@
                     };
                     delete toDb.id;
 
-                    await fetch(API + "/add_flight", { 
-                        method: 'POST', 
-                        headers: {'Content-Type': 'application/json'}, 
-                        body: JSON.stringify(toDb) 
+                    await fetch(API + "/add_flight", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(toDb)
                     });
                 }
-                
-                const fd = new FormData(); 
+
+                const fd = new FormData();
                 fd.append('report_text', report);
                 const ph = document.getElementById('photos');
                 if (ph && ph.files.length > 0) {
@@ -465,25 +576,26 @@
                 }
 
                 const resT = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
-                if ((await resT.json()).status === "ok") { 
-                    alert("Успішно опубліковано!"); 
-                    draft = []; 
-                    localStorage.removeItem('uav_draft_cache'); 
+                if ((await resT.json()).status === "ok") {
+                    alert("Успішно опубліковано!");
+                    draft = [];
+                    localStorage.removeItem('uav_draft_cache');
                     Object.keys(localStorage).forEach(key => {
                         if (key.startsWith('saved_')) localStorage.removeItem(key);
                     });
-                    location.reload(); 
+                    location.reload();
                 }
-            } catch (e) { 
-                alert("Помилка при відправці!"); 
+            } catch (e) {
+                alert("Помилка при відправці!");
                 console.error(e);
-            } finally { 
-                btn.disabled = false; 
-                btn.innerText = "Опублікувати донесення"; 
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Опублікувати донесення";
             }
         }
 
-        function logout() { if(confirm("Вийти?")) { localStorage.clear(); location.reload(); } }
+        function logout() { if (confirm("Вийти?")) { localStorage.clear(); location.reload(); } }
     </script>
 </body>
+
 </html>
