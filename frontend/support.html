@@ -193,6 +193,9 @@
             typing.style.display = 'block';
             msgArea.scrollTop = msgArea.scrollHeight;
 
+            const aiMsgDiv = addMessage("", 'ai');
+            const aiMsgSpan = aiMsgDiv.querySelector('span');
+
             try {
                 const fd = new FormData();
                 fd.append('message', text);
@@ -205,17 +208,28 @@
                     body: fd
                 });
 
-                const data = await res.json();
+                if (!res.ok) throw new Error("Server error");
 
-                setTimeout(() => {
-                    typing.style.display = 'none';
-                    addMessage(data.reply, 'ai');
-                }, 500);
+                typing.style.display = 'none';
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let fullText = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    fullText += chunk;
+                    aiMsgSpan.innerText = fullText;
+                    msgArea.scrollTop = msgArea.scrollHeight;
+                }
 
             } catch (e) {
                 console.error(e);
                 typing.style.display = 'none';
-                addMessage("Вибачте, сталася помилка з'єднання з сервером.", 'ai');
+                aiMsgSpan.innerText = "Вибачте, сталася помилка з'єднання з сервером.";
             }
         }
 
@@ -230,14 +244,13 @@
                 div.appendChild(img);
             }
 
-            if (text) {
-                const span = document.createElement('span');
-                span.innerText = text;
-                div.appendChild(span);
-            }
+            const span = document.createElement('span');
+            span.innerText = text;
+            div.appendChild(span);
 
             msgArea.appendChild(div);
             msgArea.scrollTop = msgArea.scrollHeight;
+            return div;
         }
 
         input.addEventListener('keypress', (e) => {
