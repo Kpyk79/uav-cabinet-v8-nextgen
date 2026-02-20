@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional, List
 
 from fastapi import FastAPI, HTTPException, Form, UploadFile, File, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -310,50 +310,47 @@ class ChatMessage(BaseModel):
 
 @app.post("/api/chat")
 async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = File(None)):
-    try:
-        user_msg = message.strip()
-        system_prompt = os.environ.get("AI_SYSTEM_PROMPT", "Ти — терміновий технічний асистент та інструктор із БпЛА (DJI, Autel), РЕБ/РЕР та систем «Дельта»/«Кропива». Твій пріоритет — миттєва допомога оператору. БАЗА ЗНАНЬ: 1. Прошивка «1001» (v42/43): команди в полі «Name» (About) з комою: «gps_off,», «leds_off,», «tof_off,», «lost_1000,», «bat_land_on,». Cine = антиспуфінг. Після АКБ перемикай Normal->Cine. Не перезавантажуй пульт при втраті зв'язку. 2. TinySA Ultra: моніторинг 2.4/5.8ГГц та GPS L1/L2. При РЕБ: маневр 10-20м, екранування, відхід перпендикулярно загрозі. Failsafe тільки на «Hover». 3. Безпека: зліт >200м від позицій. При тривозі — ручний режим, зниження висоти, візуальне повернення. Формула пошуку Sn=VnxT. Контроль банок АКБ. 4. Документація: знаєш стандарти «Польотного завдання» та «Донесення» ДПСУ. ПРАВИЛА КОМУНІКАЦІЇ: 1. Пиши коротко, як людина в чаті, без вступів. 2. Ліміт відповіді — 200 символів. 3. Став лише ОДНЕ конкретне уточнююче питання з контексту за раз. 4. Надавай чіткий алгоритм дій першим реченням. 5. Якщо треба глянути помилку: «Скинь фото з описом текстом, інакше не прочитаю». 6. Навігація: тільки чіткі назви меню.")
-        
-        if ai_client:
+    user_msg = message.strip()
+    system_prompt = os.environ.get("AI_SYSTEM_PROMPT", "Ти — терміновий технічний асистент та інструктор із БпЛА (DJI, Autel), РЕБ/РЕР та систем «Дельта»/«Кропива». Твій пріоритет — миттєва допомога оператору. БАЗА ЗНАНЬ: 1. Прошивка «1001» (v42/43): команди в полі «Name» (About) з комою: «gps_off,», «leds_off,», «tof_off,», «lost_1000,», «bat_land_on,». Cine = антиспуфінг. Після АКБ перемикай Normal->Cine. Не перезавантажуй пульт при втраті зв'язку. 2. TinySA Ultra: моніторинг 2.4/5.8ГГц та GPS L1/L2. При РЕБ: маневр 10-20м, екранування, відхід перпендикулярно загрозі. Failsafe тільки на «Hover». 3. Безпека: зліт >200м від позицій. При тривозі — ручний режим, зниження висоти, візуальне повернення. Формула пошуку Sn=VnxT. Контроль банок АКБ. 4. Документація: знаєш стандарти «Польотного завдання» та «Донесення» ДПСУ. ПРАВИЛА КОМУНІКАЦІЇ: 1. Пиши коротко, як людина в чаті, без вступів. 2. Ліміт відповіді — 200 символів. 3. Став лише ОДНЕ конкретне уточнююче питання з контексту за раз. 4. Надавай чіткий алгоритм дій першим реченням. 5. Якщо треба глянути помилку: «Скинь фото з описом текстом, інакше не прочитаю». 6. Навігація: тільки чіткі назви меню.")
+    
+    async def generate_response():
+        try:
+            if not ai_client:
+                yield "Дякую за запитання! Будь ласка, налаштуйте API-ключ Gemini у файлі .env."
+                return
+
             contents = [user_msg]
-            
             if image:
                 image_bytes = await image.read()
-                contents.append(types.Part.from_bytes(
-                    data=image_bytes,
-                    mime_type=image.content_type
-                ))
+                contents.append(types.Part.from_bytes(data=image_bytes, mime_type=image.content_type))
             
             model_name = os.environ.get("GEMINI_MODEL_NAME", "gemini-flash-latest")
-            response = await ai_client.aio.models.generate_content(
-                model=model_name,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_prompt
-                )
-            )
-            reply = response.text
-        else:
-            # Мокап-відповіді
-            reply = "Дякую за запитання! Для отримання повноцінної відповіді, будь ласка, налаштуйте API-ключ Gemini у файлі .env."
             
-        return {"reply": reply}
-    except Exception as e:
-        print(f"AI Error: {e}")
-        # fallback to a lighter model if the main one fails (e.g. quota or name error)
-        try:
-            if ai_client:
-                # Try gemini-2.0-flash-lite which often has more free quota
-                response = await ai_client.aio.models.generate_content(
+            try:
+                response = await ai_client.aio.models.generate_content_stream(
+                    model=model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(system_instruction=system_prompt)
+                )
+                async for chunk in response:
+                    if chunk.text:
+                        yield chunk.text
+            except Exception as e:
+                print(f"Primary Model Error: {e}")
+                # Fallback
+                response = await ai_client.aio.models.generate_content_stream(
                     model="gemini-2.0-flash-lite",
                     contents=contents,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_prompt
-                    )
+                    config=types.GenerateContentConfig(system_instruction=system_prompt)
                 )
-                return {"reply": response.text}
-        except: pass
-        raise HTTPException(status_code=500, detail="Сервіс ШІ тимчасово недоступний (високе навантаження або вичерпано ліміти). Спробуйте пізніше або змініть модель у .env.")
+                async for chunk in response:
+                    if chunk.text:
+                        yield chunk.text
+        except Exception as e:
+            print(f"AI Stream Error: {e}")
+            yield "Сервіс ШІ тимчасово недоступний (високе навантаження або вичерпано ліміти)."
+
+    return StreamingResponse(generate_response(), media_type="text/plain")
 
 # Підключаємо статику в кінці, щоб вона не перекривала API
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
