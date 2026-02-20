@@ -325,7 +325,7 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
                 ))
             
             model_name = os.environ.get("GEMINI_MODEL_NAME", "gemini-flash-latest")
-            response = ai_client.models.generate_content(
+            response = await ai_client.aio.models.generate_content(
                 model=model_name,
                 contents=contents,
                 config=types.GenerateContentConfig(
@@ -344,7 +344,7 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
         try:
             if ai_client:
                 # Try gemini-2.0-flash-lite which often has more free quota
-                response = ai_client.models.generate_content(
+                response = await ai_client.aio.models.generate_content(
                     model="gemini-2.0-flash-lite",
                     contents=contents,
                     config=types.GenerateContentConfig(
