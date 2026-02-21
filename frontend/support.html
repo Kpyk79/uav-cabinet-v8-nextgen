@@ -74,7 +74,6 @@
             display: none;
         }
 
-        /* Custom scrollbar */
         .messages-area::-webkit-scrollbar {
             width: 4px;
         }
@@ -105,7 +104,8 @@
     <div class="glass rounded-2xl overflow-hidden chat-container flex flex-col">
         <div id="messagesArea" class="messages-area flex flex-col">
             <div class="message ai">
-                Вітаю! Я ваш інтелектуальний помічник UAV Pro. Чим можу допомогти вам сьогодні?
+                Вітаю! Я ваш інтелектуальний помічник UAV Pro. Чим можу допомогти вам сьогодні? Ви можете надіслати свої
+                координати для аналізу погоди та топографії.
             </div>
         </div>
 
@@ -125,12 +125,19 @@
 
         <div class="input-area">
             <div class="flex gap-2 items-center">
+                <button onclick="getUserLocation()"
+                    class="text-slate-400 hover:text-green-500 transition-all text-xl px-1"
+                    title="Додати мої координати">
+                    <i class="fa-solid fa-location-crosshairs"></i>
+                </button>
+
                 <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="handleImageSelect(this)">
                 <button onclick="document.getElementById('imageInput').click()"
                     class="text-slate-400 hover:text-blue-500 transition-all text-xl px-1">
                     <i class="fa-solid fa-image"></i>
                 </button>
-                <input type="text" id="userInput" placeholder="Введіть ваше запитання..."
+
+                <input type="text" id="userInput" placeholder="Введіть запитання або координати (напр. 48.46, 35.04)..."
                     class="flex-grow bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-all text-white">
                 <button onclick="sendMessage()" id="sendBtn"
                     class="bg-blue-600 hover:bg-blue-500 p-3 rounded-xl transition-all active:scale-95">
@@ -154,6 +161,24 @@
         function nav(path) {
             const token = new URLSearchParams(window.location.search).get('token');
             window.location.href = token ? `${path}?token=${token}` : path;
+        }
+
+        // Нова функція для отримання координат пілота
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude.toFixed(5);
+                        const lon = pos.coords.longitude.toFixed(5);
+                        const currentText = input.value.trim();
+                        input.value = currentText ? `${currentText} ${lat}, ${lon}` : `${lat}, ${lon}`;
+                        input.focus();
+                    },
+                    (err) => alert("Не вдалося отримати локацію. Перевірте дозволи браузера на GPS.")
+                );
+            } else {
+                alert("Ваш браузер не підтримує геолокацію.");
+            }
         }
 
         function handleImageSelect(input) {
