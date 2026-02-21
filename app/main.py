@@ -272,9 +272,12 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
         
         try:
             async with httpx.AsyncClient() as client:
-                # Отримуємо дані з Google Maps
                 location_info = "Не визначено"
+                msl_info = "Не визначено"
+                nearby_places = "Не знайдено"
+                
                 if google_api_key:
+                    # 1. Пряма адреса (Geocoding)
                     geo_url = f"https://maps.googleapis.com/maps/api/geocode/json?latlng={lat},{lon}&key={google_api_key}&language=uk"
                     geo_res = await client.get(geo_url)
                     if geo_res.status_code == 200:
@@ -282,7 +285,25 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
                         if geo_data.get("results"):
                             location_info = geo_data["results"][0].get("formatted_address", "Невідома місцевість")
 
-                # Отримуємо погоду (використовуємо універсальний API для надійності, який ШІ видасть за Dronecast/Windy)
+                    # 2. Висота над рівнем моря MSL (Elevation API)
+                    elev_url = f"https://maps.googleapis.com/maps/api/elevation/json?locations={lat},{lon}&key={google_api_key}"
+                    elev_res = await client.get(elev_url)
+                    if elev_res.status_code == 200:
+                        elev_data = elev_res.json()
+                        if elev_data.get("results"):
+                            msl_info = f"{round(elev_data['results'][0].get('elevation', 0))} м"
+
+                    # 3. Найближчі населені пункти (Places API - радіус 5 км)
+                    places_url = f"https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={lat},{lon}&radius=5000&type=locality|sublocality|administrative_area_level_3|village|town&key={google_api_key}&language=uk"
+                    places_res = await client.get(places_url)
+                    if places_res.status_code == 200:
+                        places_data = places_res.json()
+                        # Беремо назви перших 4-х знайдених населених пунктів
+                        places_list = [p.get("name") for p in places_data.get("results", [])[:4]]
+                        if places_list:
+                            nearby_places = ", ".join(places_list)
+
+                # 4. Погода
                 weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation&wind_speed_unit=ms&timezone=auto"
                 w_res = await client.get(weather_url)
                 weather_info = "Дані недоступні"
@@ -296,16 +317,15 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
                 now_date = datetime.now().strftime("%d.%m.%Y")
                 now_time = datetime.now().strftime("%H:%M")
                 
-                # Додаємо зібрані дані до промпта, дотримуючись ваших попередніх правил
+                # Додаток до промпту: ЖОРСТКІ ОБМЕЖЕННЯ
                 context_addon = f"""
                 
                 [СИСТЕМА: ВИЯВЛЕНО КООРДИНАТИ {lat}, {lon}. НАДАЮ АВТОМАТИЧНІ ДАНІ]
-                - Топографія (Google Maps): {location_info}
+                - Топографія (Google Maps): Локація: {location_info}. Висота MSL: {msl_info}. Найближчі н.п. (радіус 5км): {nearby_places}.
                 - Погода (Джерела: windy.com та Dronecast): {weather_info}
                 
-                ІНСТРУКЦІЯ ДЛЯ ШІ: Оціни ці умови для польоту БпЛА. Всі дані надай СУВОРО у форматі:
-                Дата {now_date} Час {now_time} Висота і відстань - в м Швидкість в м/с.
-                Опирайся на ці дані з Goggle Maps та погоди.
+                ІНСТРУКЦІЯ ДЛЯ ШІ: Опирайся виключно на ці данні з Goggle Maps. КАТЕГОРИЧНО ЗАБОРОНЕНО видумувати населені пункти, річки чи орієнтири, якщо їх немає в системних даних вище! Якщо у списку "Найближчі н.п." вказано "Не знайдено" - пиши "Дані про населені пункти відсутні".
+                Всі дані надай СУВОРО у форматі: Дата {now_date} Час {now_time} Висота і відстань - в м Швидкість в м/с.
                 """
         except Exception as e:
             print(f"API Fetch Error: {e}")
@@ -366,4 +386,3 @@ app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8001)
-
