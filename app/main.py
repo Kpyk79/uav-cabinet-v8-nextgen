@@ -295,39 +295,54 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
                         if elev_data.get("results"):
                             msl_info = f"{round(elev_data['results'][0].get('elevation', 0))} м"
 
-                    # 3. Найближчі населені пункти (Places API - радіус 5 км)
-                    places_url = f"https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={lat},{lon}&radius=5000&type=locality|sublocality|administrative_area_level_3|village|town&key={google_api_key}&language=uk"
+                    # 3. Найближчі орієнтири (Places API - прибрано жорсткі фільтри для кращого пошуку)
+                    places_url = f"https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={lat},{lon}&radius=5000&key={google_api_key}&language=uk"
                     places_res = await client.get(places_url)
                     if places_res.status_code == 200:
                         places_data = places_res.json()
-                        # Беремо назви перших 4-х знайдених населених пунктів
-                        places_list = [p.get("name") for p in places_data.get("results", [])[:4]]
+                        places_list = [p.get("name") for p in places_data.get("results", [])[:5]]
                         if places_list:
                             nearby_places = ", ".join(places_list)
 
-                # 4. Погода
-                weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation&wind_speed_unit=ms&timezone=auto"
+                # 4. Погода (Додано вологість та витягування напрямку вітру)
+                weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms&timezone=auto"
                 w_res = await client.get(weather_url)
                 weather_info = "Дані недоступні"
                 if w_res.status_code == 200:
                     w_data = w_res.json().get("current", {})
                     temp = w_data.get("temperature_2m", "-")
+                    hum = w_data.get("relative_humidity_2m", "-")
                     wind = w_data.get("wind_speed_10m", "-")
                     gusts = w_data.get("wind_gusts_10m", "-")
-                    weather_info = f"Температура {temp}°C, Вітер {wind} м/с (пориви до {gusts} м/с)"
+                    wind_dir = w_data.get("wind_direction_10m", "-")
+                    weather_info = f"Температура: {temp}°C, Вологість: {hum}%, Вітер: {wind} м/с (пориви {gusts} м/с), Напрямок вітру: {wind_dir}°"
+
+                # 5. Магнітні бурі (K-index) з офіційного API NOAA (США)
+                k_index = "Невідомо"
+                try:
+                    noaa_url = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"
+                    noaa_res = await client.get(noaa_url, timeout=3.0)
+                    if noaa_res.status_code == 200:
+                        noaa_data = noaa_res.json()
+                        if len(noaa_data) > 1:
+                            k_index = noaa_data[-1][1] # Беремо найсвіжіший Kp індекс
+                except Exception as e:
+                    print(f"NOAA K-index Error: {e}")
 
                 now_date = datetime.now().strftime("%d.%m.%Y")
                 now_time = datetime.now().strftime("%H:%M")
                 
-                # Додаток до промпту: ЖОРСТКІ ОБМЕЖЕННЯ
+                # Додаток до промпту: ЖОРСТКІ ІНСТРУКЦІЇ
                 context_addon = f"""
                 
                 [СИСТЕМА: ВИЯВЛЕНО КООРДИНАТИ {lat}, {lon}. НАДАЮ АВТОМАТИЧНІ ДАНІ]
-                - Топографія (Google Maps): Локація: {location_info}. Висота MSL: {msl_info}. Найближчі н.п. (радіус 5км): {nearby_places}.
-                - Погода (Джерела: windy.com та Dronecast): {weather_info}
+                - Топографія: Адреса: {location_info}. Висота MSL: {msl_info}. Орієнтири (5км): {nearby_places}.
+                - Метео: {weather_info}. K-index: {k_index}.
                 
-                ІНСТРУКЦІЯ ДЛЯ ШІ: Опирайся виключно на ці данні з Goggle Maps. КАТЕГОРИЧНО ЗАБОРОНЕНО видумувати населені пункти, річки чи орієнтири, якщо їх немає в системних даних вище! Якщо у списку "Найближчі н.п." вказано "Не знайдено" - пиши "Дані про населені пункти відсутні".
-                Всі дані надай СУВОРО у форматі: Дата {now_date} Час {now_time} Висота і відстань - в м Швидкість в м/с.
+                ІНСТРУКЦІЯ ДЛЯ ШІ ЩОДО ФОРМАТУВАННЯ ЗВІТУ:
+                1. РЕЛЬЄФ: Якщо рельєф не вказано прямо, проаналізуй висоту {msl_info} та адресу і зроби логічний висновок (напр. "Рівнина", "Височина", "Міська забудова"). НЕ ПИШИ "Дані відсутні".
+                2. НАПРЯМОК ВІТРУ: Конвертуй азимут вітру в сторони світу (Пн, Пд, Зх, Сх) і вкажи, куди буде зносити дрон (ЗНЕСЕННЯ ATTI).
+                3. Заповни всі дані без винятків.
                 """
         except Exception as e:
             print(f"API Fetch Error: {e}")
