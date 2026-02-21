@@ -253,6 +253,8 @@ async def read_fleet(): return FileResponse(os.path.join(FRONTEND_DIR, "fleet_ma
 async def read_admin_analytics(): return FileResponse(os.path.join(FRONTEND_DIR, "admin_analytics.html"))
 @app.get("/support")
 async def read_support(): return FileResponse(os.path.join(FRONTEND_DIR, "support.html"))
+@app.get("/xxx")
+async def read_xxx(): return FileResponse(os.path.join(FRONTEND_DIR, "xxx.html"))
 
 # --- 9. API для ШІ-чату з Інтеграцією Google Maps та Weather API ---
 class ChatMessage(BaseModel):
