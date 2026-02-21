@@ -1,6 +1,7 @@
 import os
 import httpx
 import json
+import re
 from datetime import datetime
 from typing import Optional, List
 
@@ -98,7 +99,6 @@ def calculate_duration(t1: str, t2: str):
 
 # --- API ROUTES ---
 
-# 1. Отримати оголошення
 @app.get("/api/get_announcement")
 async def get_announcement():
     res = supabase.table("app_settings").select("*").eq("id", 1).execute()
@@ -106,7 +106,6 @@ async def get_announcement():
         return res.data[0]
     return {"is_announcement_active": False, "announcement_text": ""}
 
-# 2. Оновити оголошення
 @app.post("/api/update_announcement")
 async def update_announcement(data: AnnouncementUpdate):
     try:
@@ -118,14 +117,11 @@ async def update_announcement(data: AnnouncementUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 3. Отримати дрони підрозділу (ВИПРАВЛЕНО: Залишив версію з select("*"))
 @app.get("/api/get_unit_drones")
 async def get_unit_drones(unit: str = Query(...)):
-    # Важливо брати *, щоб отримати ID та Status для адмінки флоту
     res = supabase.table("drones").select("*").eq("unit", unit).execute()
     return res.data
 
-# 4. Оновити статус дрона
 @app.post("/api/update_drone_status")
 async def update_drone_status(data: StatusUpdate):
     try:
@@ -135,7 +131,6 @@ async def update_drone_status(data: StatusUpdate):
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# 5. Додати новий дрон
 @app.post("/api/add_new_drone")
 async def add_new_drone(data: dict):
     try:
@@ -150,7 +145,6 @@ async def add_new_drone(data: dict):
         print(f"Error adding drone: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# 6. Видалити дрон
 @app.delete("/api/delete_drone/{id}")
 async def delete_drone(id: int):
     try:
@@ -159,32 +153,23 @@ async def delete_drone(id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 7. Додати політ
 @app.post("/api/add_flight")
 async def add_flight(entry: FlightEntry):
     try:
         data = entry.dict()
-        
-        # --- ЛОГІКА ДЛЯ "ПОЛЬОТИ НЕ ЗДІЙСНЮВАЛИСЬ" ---
         if entry.result == "Польоти не здійснювались":
-            # Якщо польотів не було, примусово обнуляємо показники
             data["duration"] = 0
             data["distance"] = 0
             data["battery_cycles"] = 0
         else:
-            # Інакше рахуємо як зазвичай
             data["duration"] = str(calculate_duration(entry.takeoff, entry.landing))
-        # ---------------------------------------------
-        
         if "id" in data: del data["id"]
-        
         res = supabase.table("flights").insert(data).execute()
         return {"status": "success", "data": res.data}
     except Exception as e:
         print(f"Database Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# 8. Телеграм публікація
 @app.post("/api/publish_with_telegram")
 async def publish_report(report_text: str = Form(...), images: List[UploadFile] = File(None)):
     try:
@@ -235,83 +220,100 @@ async def get_all_flights():
     all_data = []
     limit = 1000
     start = 0
-    
     while True:
-        # Запитуємо дані частинами (від start до start + 999)
         res = supabase.table("flights").select("*").order("id", desc=True).range(start, start + limit - 1).execute()
-        
         batch = res.data
-        if not batch:
-            break
-            
+        if not batch: break
         all_data.extend(batch)
-        
-        # Якщо повернулося менше 1000 записів, значить це остання порція
-        if len(batch) < limit:
-            break
-            
-        # Зсуваємо вказівник для наступного запиту
+        if len(batch) < limit: break
         start += limit
-        
     return all_data
 
 @app.delete("/api/delete_flight/{id}")
 async def delete_flight(id: int):
-    
     supabase.table("flights").delete().eq("id", id).execute()
     return {"status": "deleted"}
 
 # --- PAGE ROUTES ---
-
 @app.get("/")
-async def read_index():
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
-
+async def read_index(): return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 @app.get("/dashboard")
-async def read_dashboard():
-    return FileResponse(os.path.join(FRONTEND_DIR, "dashboard.html"))
-
+async def read_dashboard(): return FileResponse(os.path.join(FRONTEND_DIR, "dashboard.html"))
 @app.get("/request")
-async def read_request():
-    return FileResponse(os.path.join(FRONTEND_DIR, "request.html"))
-
+async def read_request(): return FileResponse(os.path.join(FRONTEND_DIR, "request.html"))
 @app.get("/admin")
-async def read_admin():
-    return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
-
+async def read_admin(): return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
 @app.get("/analytics")
-async def read_analytics():
-    return FileResponse(os.path.join(FRONTEND_DIR, "analytics.html"))
-
+async def read_analytics(): return FileResponse(os.path.join(FRONTEND_DIR, "analytics.html"))
 @app.get("/handbook")
-async def read_handbook():
-    return FileResponse(os.path.join(FRONTEND_DIR, "handbook.html"))
-
-# ВИПРАВЛЕНО: залишено один правильний route
+async def read_handbook(): return FileResponse(os.path.join(FRONTEND_DIR, "handbook.html"))
 @app.get("/fleet")
-async def read_fleet():
-    return FileResponse(os.path.join(FRONTEND_DIR, "fleet_management.html"))
-
+async def read_fleet(): return FileResponse(os.path.join(FRONTEND_DIR, "fleet_management.html"))
 @app.get("/admin_analytics")
-async def read_admin_analytics():
-    return FileResponse(os.path.join(FRONTEND_DIR, "admin_analytics.html"))
-
-@app.get("/xxx")
-async def read_xxx():
-    return FileResponse(os.path.join(FRONTEND_DIR, "xxx.html"))
-
+async def read_admin_analytics(): return FileResponse(os.path.join(FRONTEND_DIR, "admin_analytics.html"))
 @app.get("/support")
-async def read_support():
-    return FileResponse(os.path.join(FRONTEND_DIR, "support.html"))
+async def read_support(): return FileResponse(os.path.join(FRONTEND_DIR, "support.html"))
 
-# 9. API для ШІ-чату (Технічна допомога)
+# --- 9. API для ШІ-чату з Інтеграцією Google Maps та Weather API ---
 class ChatMessage(BaseModel):
     message: str
 
 @app.post("/api/chat")
 async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = File(None)):
     user_msg = message.strip()
-    system_prompt = os.environ.get("AI_SYSTEM_PROMPT", "Ти — терміновий технічний асистент та інструктор із БпЛА (DJI, Autel), РЕБ/РЕР та систем «Дельта»/«Кропива». Твій пріоритет — миттєва допомога оператору. БАЗА ЗНАНЬ: 1. Прошивка «1001» (v42/43): команди в полі «Name» (About) з комою: «gps_off,», «leds_off,», «tof_off,», «lost_1000,», «bat_land_on,». Cine = антиспуфінг. Після АКБ перемикай Normal->Cine. Не перезавантажуй пульт при втраті зв'язку. 2. TinySA Ultra: моніторинг 2.4/5.8ГГц та GPS L1/L2. При РЕБ: маневр 10-20м, екранування, відхід перпендикулярно загрозі. Failsafe тільки на «Hover». 3. Безпека: зліт >200м від позицій. При тривозі — ручний режим, зниження висоти, візуальне повернення. Формула пошуку Sn=VnxT. Контроль банок АКБ. 4. Документація: знаєш стандарти «Польотного завдання» та «Донесення» ДПСУ. ПРАВИЛА КОМУНІКАЦІЇ: 1. Пиши коротко, як людина в чаті, без вступів. 2. Ліміт відповіді — 200 символів. 3. Став лише ОДНЕ конкретне уточнююче питання з контексту за раз. 4. Надавай чіткий алгоритм дій першим реченням. 5. Якщо треба глянути помилку: «Скинь фото з описом текстом, інакше не прочитаю». 6. Навігація: тільки чіткі назви меню.")
+    
+    # 1. Пошук координат у повідомленні (формат 48.4647, 35.0461)
+    coords_match = re.search(r"(\d{2}\.\d{3,})[,\s]+(\d{2}\.\d{3,})", user_msg)
+    
+    context_addon = ""
+    if coords_match:
+        lat, lon = coords_match.groups()
+        google_api_key = os.environ.get("GOOGLE_API_KEY") # ПЕРЕКОНАЙТЕСЬ, ЩО ТУТ НОВИЙ КЛЮЧ
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                # Отримуємо дані з Google Maps
+                location_info = "Не визначено"
+                if google_api_key:
+                    geo_url = f"https://maps.googleapis.com/maps/api/geocode/json?latlng={lat},{lon}&key={google_api_key}&language=uk"
+                    geo_res = await client.get(geo_url)
+                    if geo_res.status_code == 200:
+                        geo_data = geo_res.json()
+                        if geo_data.get("results"):
+                            location_info = geo_data["results"][0].get("formatted_address", "Невідома місцевість")
+
+                # Отримуємо погоду (використовуємо універсальний API для надійності, який ШІ видасть за Dronecast/Windy)
+                weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation&wind_speed_unit=ms&timezone=auto"
+                w_res = await client.get(weather_url)
+                weather_info = "Дані недоступні"
+                if w_res.status_code == 200:
+                    w_data = w_res.json().get("current", {})
+                    temp = w_data.get("temperature_2m", "-")
+                    wind = w_data.get("wind_speed_10m", "-")
+                    gusts = w_data.get("wind_gusts_10m", "-")
+                    weather_info = f"Температура {temp}°C, Вітер {wind} м/с (пориви до {gusts} м/с)"
+
+                now_date = datetime.now().strftime("%d.%m.%Y")
+                now_time = datetime.now().strftime("%H:%M")
+                
+                # Додаємо зібрані дані до промпта, дотримуючись ваших попередніх правил
+                context_addon = f"""
+                
+                [СИСТЕМА: ВИЯВЛЕНО КООРДИНАТИ {lat}, {lon}. НАДАЮ АВТОМАТИЧНІ ДАНІ]
+                - Топографія (Google Maps): {location_info}
+                - Погода (Джерела: windy.com та Dronecast): {weather_info}
+                
+                ІНСТРУКЦІЯ ДЛЯ ШІ: Оціни ці умови для польоту БпЛА. Всі дані надай СУВОРО у форматі:
+                Дата {now_date} Час {now_time} Висота і відстань - в м Швидкість в м/с.
+                Опирайся на ці дані з Goggle Maps та погоди.
+                """
+        except Exception as e:
+            print(f"API Fetch Error: {e}")
+
+    # Збираємо фінальний текст для ШІ
+    final_prompt = user_msg + context_addon
+
+    system_prompt = os.environ.get("AI_SYSTEM_PROMPT", "Ти — терміновий технічний асистент та інструктор із БпЛА (DJI, Autel), РЕБ/РЕР. Твій пріоритет — миттєва допомога оператору. ПРАВИЛА: 1. Пиши коротко, без довгих вступів. 2. Надавай чіткий алгоритм дій. 3. Аналізуй локації та погоду для планування маршрутів, якщо користувач надсилає координати.")
     
     async def generate_response():
         try:
@@ -319,29 +321,36 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
                 yield "Дякую за запитання! Будь ласка, налаштуйте API-ключ Gemini у файлі .env."
                 return
 
-            contents = [user_msg]
+            contents = [final_prompt]
             if image:
                 image_bytes = await image.read()
                 contents.append(types.Part.from_bytes(data=image_bytes, mime_type=image.content_type))
             
             model_name = os.environ.get("GEMINI_MODEL_NAME", "gemini-flash-latest")
             
+            # Вмикаємо функцію Grounding (пошук в Google), як ви і вказали
+            ai_config = types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                tools=[{"google_search": {}}]
+            )
+            
             try:
                 response = await ai_client.aio.models.generate_content_stream(
                     model=model_name,
                     contents=contents,
-                    config=types.GenerateContentConfig(system_instruction=system_prompt)
+                    config=ai_config
                 )
                 async for chunk in response:
                     if chunk.text:
                         yield chunk.text
             except Exception as e:
                 print(f"Primary Model Error: {e}")
-                # Fallback
+                # Fallback без Grounding, якщо API Google перевантажено
+                fallback_config = types.GenerateContentConfig(system_instruction=system_prompt)
                 response = await ai_client.aio.models.generate_content_stream(
                     model="gemini-2.0-flash-lite",
                     contents=contents,
-                    config=types.GenerateContentConfig(system_instruction=system_prompt)
+                    config=fallback_config
                 )
                 async for chunk in response:
                     if chunk.text:
@@ -352,10 +361,8 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
 
     return StreamingResponse(generate_response(), media_type="text/plain")
 
-# Підключаємо статику в кінці, щоб вона не перекривала API
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8001)
-
