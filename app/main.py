@@ -21,6 +21,11 @@ load_dotenv()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
+# ДОДАЙТЕ ЦІ ТРИ РЯДКИ:
+KNOWLEDGE_DIR = os.path.join(BASE_DIR, "knowledge_base")
+os.makedirs(KNOWLEDGE_DIR, exist_ok=True)
+knowledge_files_cache = [] # Тут зберігатимуться завантажені документи
+
 app = FastAPI(title="UAV Command System v10.6")
 
 app.add_middleware(
@@ -56,6 +61,35 @@ UNITS = [
     'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"', 
     'віпс "Кучурган"', 'віпс "Лиманське"', "Група ВОПРтаПБпПС", "ВЗФБпАКтаЗПБпС"
 ]
+
+@app.on_event("startup")
+async def startup_event():
+    global knowledge_files_cache
+    if not ai_client: 
+        print("API ключ Gemini не знайдено. База знань не завантажена.")
+        return
+        
+    print("Синхронізація бази знань з Gemini...")
+    try:
+        # Отримуємо список файлів, які вже є в хмарі, щоб не дублювати
+        existing_files = {f.display_name: f for f in ai_client.files.list()}
+        
+        # Скануємо локальну папку
+        for filename in os.listdir(KNOWLEDGE_DIR):
+            if filename.lower().endswith(('.pdf', '.txt', '.docx')):
+                file_path = os.path.join(KNOWLEDGE_DIR, filename)
+                
+                if filename in existing_files:
+                    print(f"Файл {filename} вже є в базі Gemini.")
+                    knowledge_files_cache.append(existing_files[filename])
+                else:
+                    print(f"Завантаження {filename} до Gemini...")
+                    uploaded_file = ai_client.files.upload(file=file_path, config={'display_name': filename})
+                    knowledge_files_cache.append(uploaded_file)
+                    
+        print(f"База знань готова! Активних документів: {len(knowledge_files_cache)}")
+    except Exception as e:
+        print(f"Помилка ініціалізації бази знань: {e}")
 
 # --- MODELS ---
 
@@ -358,7 +392,14 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
                 yield "Дякую за запитання! Будь ласка, налаштуйте API-ключ Gemini у файлі .env."
                 return
 
-            contents = [final_prompt]
+            contents = []
+            
+            # 1. Додаємо всі PDF-мануали з бази знань
+            if knowledge_files_cache:
+                contents.extend(knowledge_files_cache)
+                
+            # 2. Додаємо сам запит користувача з координатами
+            contents.append(final_prompt)
             if image:
                 image_bytes = await image.read()
                 contents.append(types.Part.from_bytes(data=image_bytes, mime_type=image.content_type))
