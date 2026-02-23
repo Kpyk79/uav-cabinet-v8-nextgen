@@ -113,13 +113,25 @@ async def startup_event():
                         print(f"Файл {filename} вже є в базі Gemini.")
                         knowledge_files_cache.append(existing_files[filename])
                     else:
-                        print(f"Завантаження {filename} до Gemini...")
-                        uploaded_file = ai_client.files.upload(file=file_path, config={'display_name': filename})
-                        knowledge_files_cache.append(uploaded_file)
+                        try:
+                            print(f"Завантаження {filename} до Gemini...")
+                            # Спробуємо завантажити. Якщо display_name викликає помилку кодування, 
+                            # спробуємо використати ASCII-ім'я як запасний варіант.
+                            uploaded_file = ai_client.files.upload(file=file_path, config={'display_name': filename})
+                            knowledge_files_cache.append(uploaded_file)
+                        except UnicodeEncodeError:
+                            print(f"⚠️ Помилка кодування для {filename}. Спроба завантаження з безпечним ім'ям...")
+                            safe_name = f"doc_{hash(filename) % 10000}_{os.path.basename(file_path)}"
+                            # Якщо навіть basename проблемний, використовуємо просто хеш
+                            try:
+                                uploaded_file = ai_client.files.upload(file=file_path, config={'display_name': safe_name})
+                                knowledge_files_cache.append(uploaded_file)
+                            except Exception as inner_e:
+                                print(f"❌ Не вдалося завантажити {filename}: {inner_e}")
                         
             print(f"База знань готова! Активних документів: {len(knowledge_files_cache)}")
         except Exception as e:
-            print(f"Помилка ініціалізації бази знань: {e}")
+            print(f"⚠️ Загальна помилка ініціалізації бази знань: {e}")
     else:
         print("API ключ Gemini не знайдено. База знань не завантажена.")
 
@@ -149,6 +161,11 @@ class FlightEntry(BaseModel):
 class AnnouncementUpdate(BaseModel):
     text: str
     is_active: bool
+
+class AuthCheck(BaseModel):
+    unit: str
+    operator: str
+    password: str
 
 class StatusUpdate(BaseModel):
     id: int
@@ -249,6 +266,35 @@ async def add_new_drone(data: dict):
     except Exception as e:
         print(f"Error adding drone: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/check_auth")
+async def check_auth(data: AuthCheck):
+    """Перевіряє пароль або реєструє нового оператора під пароль."""
+    normalized_name = normalize_operator_name(data.operator)
+    try:
+        # Шукаємо існуючий пароль
+        res = supabase.table("operator_passwords").select("*").eq("unit", data.unit).eq("name", normalized_name).execute()
+        
+        if not res.data:
+            # Якщо запису немає - реєструємо (перший вхід)
+            supabase.table("operator_passwords").insert({
+                "unit": data.unit,
+                "name": normalized_name,
+                "password": data.password
+            }).execute()
+            return {"status": "ok", "message": "Зареєстровано новий профіль"}
+        
+        # Якщо запис є - перевіряємо пароль
+        stored_password = res.data[0].get('password')
+        if stored_password == data.password:
+            return {"status": "ok", "message": "Успішний вхід"}
+        else:
+            return {"status": "error", "message": "Неправильний пароль для цього прізвища"}
+            
+    except Exception as e:
+        print(f"Auth error: {e}")
+        # Якщо таблиці не існує - можливо, треба повідомити користувача або створити її
+        raise HTTPException(status_code=500, detail="Помилка авторизації (можливо, відсутня таблиця operator_passwords)")
 
 @app.delete("/api/delete_drone/{id}")
 async def delete_drone(id: int):
