@@ -231,6 +231,41 @@
         let draft = [];
         let editingId = null;
 
+        function normalizeOperatorName(name) {
+            if (!name) return "";
+            // Список звань для видалення
+            const ranks = [
+                "солдат", "сержант", "лейтенант", "капітан", "майор", "підполковник", "полковник",
+                "мл. с-нт", "ст. с-нт", "мл.", "ст.", "с-нт", "лт", "кпт", "м-р", "п-к", "ген",
+                "рядовий", "старшина", "прапорщик"
+            ];
+            let res = name;
+            ranks.forEach(rank => {
+                const escapedRank = rank.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp("\\b" + escapedRank + "\\.?\\s*", "gi");
+                res = res.replace(regex, "");
+            });
+            // Видаляємо ініціали (А.Б. або А. Б. або Прізвище А.)
+            res = res.replace(/\b[А-ЯЁІЇЄA-Z]\.\s*/gi, "");
+            res = res.replace(/\s+[А-ЯЁІЇЄA-Z](\.|$)/gi, "");
+            // Чистимо зайві символи
+            res = res.trim().replace(/^[\s._,-]+|[\s._,-]+$/g, "");
+            // Беремо лише перше слово (прізвище)
+            const words = res.split(/\s+/);
+            if (words.length > 0 && words[0]) {
+                res = words[0];
+                res = res.charAt(0).toUpperCase() + res.slice(1).toLowerCase();
+            }
+            return res;
+        }
+
+        const loginOpInput = document.getElementById('loginOp');
+        if (loginOpInput) {
+            loginOpInput.addEventListener('blur', function () {
+                this.value = normalizeOperatorName(this.value);
+            });
+        }
+
         function nav(path) {
             const token = new URLSearchParams(window.location.search).get('token');
             window.location.href = token ? `${path}?token=${token}` : path;
