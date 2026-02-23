@@ -107,7 +107,10 @@
         <div class="space-y-3">
             <div><label class="label-style italic">Підрозділ</label><select id="loginUnit" class="p-3"></select></div>
             <div><label class="label-style italic">Прізвище</label><input type="text" id="loginOp" class="p-3"></div>
-            <button onclick="saveAuth()" class="w-full btn-green py-4 rounded-xl text-slate-900 mt-2">Увійти</button>
+            <div><label class="label-style italic">Пароль (для ідентифікації)</label><input type="password"
+                    id="loginPass" class="p-3" placeholder="••••••••"></div>
+            <button id="loginBtn" onclick="saveAuth()"
+                class="w-full btn-green py-4 rounded-xl text-slate-900 mt-2">Увійти</button>
         </div>
     </div>
 
@@ -369,10 +372,39 @@
             if (savedDrone) document.getElementById('drone').value = savedDrone;
         }
 
-        function saveAuth() {
-            localStorage.setItem('uav_unit', document.getElementById('loginUnit').value);
-            localStorage.setItem('uav_op', document.getElementById('loginOp').value);
-            location.reload();
+        async function saveAuth() {
+            const unit = document.getElementById('loginUnit').value;
+            const op = document.getElementById('loginOp').value;
+            const pass = document.getElementById('loginPass').value;
+            const btn = document.getElementById('loginBtn');
+
+            if (!op || !pass) return alert("Введіть прізвище та пароль!");
+
+            btn.disabled = true;
+            btn.innerText = "ПЕРЕВІРКА...";
+
+            try {
+                const res = await fetch(API + "/check_auth", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ unit, operator: op, password: pass })
+                });
+                const data = await res.json();
+
+                if (data.status === "ok") {
+                    localStorage.setItem('uav_unit', unit);
+                    localStorage.setItem('uav_op', normalizeOperatorName(op)); // Зберігаємо вже нормалізоване
+                    location.reload();
+                } else {
+                    alert(data.message || "Помилка авторизації");
+                }
+            } catch (e) {
+                alert("Помилка з'єднання з сервером");
+                console.error(e);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Увійти";
+            }
         }
 
         function editDraft(id) {
