@@ -1,24 +1,78 @@
 <!DOCTYPE html>
 <html lang="uk">
+
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Подання заявки | UAV Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); min-height: 100vh; font-family: 'Inter', sans-serif; color: white; padding: 12px; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; }
-        .label-style { font-size: 9px; text-transform: uppercase; font-weight: 800; color: #94a3b8; margin-bottom: 0.2rem; display: block; }
-        input, select { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.75rem !important; padding: 0.75rem !important; width: 100%; outline: none; font-size: 14px; }
-        input:focus { border-color: #a855f7 !important; box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2); }
-        .drone-item { background: rgba(15, 23, 42, 0.6); border: 1px solid #334155; border-radius: 0.75rem; padding: 0.5rem 0.75rem; display: flex; align-items: center; gap: 10px; cursor: pointer; }
-        .drone-item input:checked + span { color: #a855f7; font-weight: bold; }
+
+        body {
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            color: white;
+            padding: 12px;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+        }
+
+        .label-style {
+            font-size: 9px;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: #94a3b8;
+            margin-bottom: 0.2rem;
+            display: block;
+        }
+
+        input,
+        select {
+            background: #0f172a !important;
+            color: white !important;
+            border: 1px solid #334155 !important;
+            border-radius: 0.75rem !important;
+            padding: 0.75rem !important;
+            width: 100%;
+            outline: none;
+            font-size: 14px;
+        }
+
+        input:focus {
+            border-color: #a855f7 !important;
+            box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+        }
+
+        .drone-item {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid #334155;
+            border-radius: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .drone-item input:checked+span {
+            color: #a855f7;
+            font-weight: bold;
+        }
     </style>
 </head>
+
 <body class="max-w-lg mx-auto">
     <div class="flex justify-between items-center mb-6">
-        <button onclick="window.location.href='/'" class="glass p-3 rounded-xl hover:bg-slate-800"><i class="fa-solid fa-chevron-left text-slate-400"></i></button>
+        <button onclick="window.location.href='/'" class="glass p-3 rounded-xl hover:bg-slate-800"><i
+                class="fa-solid fa-chevron-left text-slate-400"></i></button>
         <div class="text-center">
             <h1 class="text-xl font-black uppercase italic tracking-wider text-purple-400">Створення заявки</h1>
             <div class="text-[8px] uppercase font-bold text-slate-500 tracking-widest">Flight Permission System</div>
@@ -85,7 +139,7 @@
                 <option>-</option>
             </select>
         </div>
-        
+
         <div class="pt-2 border-t border-slate-700/50">
             <label class="label-style">10. Контактна особа</label>
             <div class="grid grid-cols-2 gap-3">
@@ -94,7 +148,8 @@
             </div>
         </div>
 
-        <button onclick="sendApplication()" class="w-full bg-purple-600 hover:bg-purple-500 py-4 rounded-2xl font-black uppercase text-sm tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all">
+        <button onclick="sendApplication()"
+            class="w-full bg-purple-600 hover:bg-purple-500 py-4 rounded-2xl font-black uppercase text-sm tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all">
             Відправити заявку <i class="fa-solid fa-paper-plane ml-2"></i>
         </button>
     </div>
@@ -102,10 +157,41 @@
     <script>
         const API = window.location.origin + "/api";
 
-        window.onload = async function() {
+        function normalizeOperatorName(name) {
+            if (!name) return "";
+            const ranks = [
+                "солдат", "сержант", "лейтенант", "капітан", "майор", "підполковник", "полковник",
+                "мл. с-нт", "ст. с-нт", "мл.", "ст.", "с-нт", "лт", "кпт", "м-р", "п-к", "ген",
+                "рядовий", "старшина", "прапорщик"
+            ];
+            let res = name;
+            ranks.forEach(rank => {
+                const escapedRank = rank.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp("\\b" + escapedRank + "\\.?\\s*", "gi");
+                res = res.replace(regex, "");
+            });
+            res = res.replace(/\b[А-ЯЁІЇЄA-Z]\.\s*/gi, "");
+            res = res.replace(/\s+[А-ЯЁІЇЄA-Z](\.|$)/gi, "");
+            res = res.trim().replace(/^[\s._,-]+|[\s._,-]+$/g, "");
+            const words = res.split(/\s+/);
+            if (words.length > 0 && words[0]) {
+                res = words[0];
+                res = res.charAt(0).toUpperCase() + res.slice(1).toLowerCase();
+            }
+            return res;
+        }
+
+        const reqContactInput = document.getElementById('reqContact');
+        if (reqContactInput) {
+            reqContactInput.addEventListener('blur', function () {
+                this.value = normalizeOperatorName(this.value);
+            });
+        }
+
+        window.onload = async function () {
             const unit = localStorage.getItem('uav_unit');
             const op = localStorage.getItem('uav_op');
-            
+
             // Відновлення базових налаштувань
             document.getElementById('cusPhone').value = localStorage.getItem('cus_phone') || "";
             document.getElementById('cusMessenger').value = localStorage.getItem('cus_mess') || "whatsapp";
@@ -127,7 +213,7 @@
             document.getElementById('reqUnit').innerHTML = opt.units.map(u => `<option ${u === unit ? 'selected' : ''}>${u}</option>`).join('');
 
             loadDrones(unit);
-            
+
             // Історія маршрутів
             const hist = JSON.parse(localStorage.getItem('req_route_hist') || "[]");
             document.getElementById('routeHistory').innerHTML = hist.map(r => `<option value="${r}">`).join('');
@@ -140,7 +226,7 @@
         async function loadDrones(unit) {
             const res = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(unit));
             const drones = await res.json();
-            
+
             // Отримуємо збережені дрони
             const savedDrones = JSON.parse(localStorage.getItem('req_selected_drones') || "[]");
 
@@ -158,16 +244,16 @@
         function sendApplication() {
             const phone = document.getElementById('cusPhone').value.replace(/\+/g, '');
             const messenger = document.getElementById('cusMessenger').value;
-            
+
             // Отримуємо список дронів
             const selectedDrones = Array.from(document.querySelectorAll('input[name="drones"]:checked')).map(cb => cb.value);
-            if(selectedDrones.length === 0) return alert("Оберіть хоча б один БпЛА!");
+            if (selectedDrones.length === 0) return alert("Оберіть хоча б один БпЛА!");
 
             // --- ЗБЕРЕЖЕННЯ ВСІХ ПОЛІВ ---
             localStorage.setItem('cus_phone', phone);
             localStorage.setItem('cus_mess', messenger);
             localStorage.setItem('my_phone', document.getElementById('reqMyPhone').value);
-            
+
             localStorage.setItem('req_time_start', document.getElementById('timeStart').value);
             localStorage.setItem('req_time_end', document.getElementById('timeEnd').value);
             localStorage.setItem('req_route', document.getElementById('reqRoute').value);
@@ -203,16 +289,14 @@
 10. Контактна особа: ${document.getElementById('reqContact').value}, тел: ${document.getElementById('reqMyPhone').value}`;
 
             const encoded = encodeURIComponent(msg);
-            if(messenger === 'whatsapp') {
+            if (messenger === 'whatsapp') {
                 window.location.href = `https://wa.me/${phone}?text=${encoded}`;
             } else {
                 window.location.href = `sgnl://send?text=${encoded}${phone ? '&number=' + phone : ''}`;
-                setTimeout(() => { if(!document.hidden) window.location.href = `https://signal.me/#p/${phone}`; }, 1000);
+                setTimeout(() => { if (!document.hidden) window.location.href = `https://signal.me/#p/${phone}`; }, 1000);
             }
         }
     </script>
 </body>
+
 </html>
-
-
-
