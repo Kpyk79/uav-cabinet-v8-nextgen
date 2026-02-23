@@ -57,39 +57,75 @@ UNITS = [
     'впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"', 
     'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"', 
     'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"', 
-    'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"', 
+    'віпс "Павлівка"', 'віпс "Велика Михайлівка"', 'віпс "Слов\'яносербка"', 
     'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"', 
     'віпс "Кучурган"', 'віпс "Лиманське"', "Група ВОПРтаПБпПС", "ВЗФБпАКтаЗПБпС"
 ]
 
+async def cleanup_database_names():
+    """Знаходить і виправляє ненормалізовані імена операторів у всій базі даних."""
+    print("Запуск очищення імен операторів у базі даних...")
+    try:
+        # 1. Отримуємо всі записи польотів (тільки поле operator)
+        # Примітка: для великих баз краще використовувати розширені запити, 
+        # але для поточного об'єму достатньо простого перебору унікальних значень.
+        res = supabase.table("flights").select("operator").execute()
+        if not res.data: return
+        
+        # 2. Знаходимо унікальні імена, які потребують виправлення
+        unique_operators = set(item['operator'] for item in res.data if item.get('operator'))
+        
+        updates_count = 0
+        for original_name in unique_operators:
+            normalized_name = normalize_operator_name(original_name)
+            
+            if original_name != normalized_name:
+                # 3. Оновлюємо всі рядки з цим ім'ям
+                print(f"  Нормалізація: '{original_name}' -> '{normalized_name}'")
+                supabase.table("flights").update({"operator": normalized_name}).eq("operator", original_name).execute()
+                updates_count += 1
+        
+        if updates_count > 0:
+            print(f"Очищення завершено. Виправлено типів імен: {updates_count}")
+        else:
+            print("База даних вже нормалізована.")
+            
+    except Exception as e:
+        print(f"Помилка під час очищення бази: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     global knowledge_files_cache
-    if not ai_client: 
-        print("API ключ Gemini не знайдено. База знань не завантажена.")
-        return
-        
-    print("Синхронізація бази знань з Gemini...")
-    try:
-        # Отримуємо список файлів, які вже є в хмарі, щоб не дублювати
-        existing_files = {f.display_name: f for f in ai_client.files.list()}
-        
-        # Скануємо локальну папку
-        for filename in os.listdir(KNOWLEDGE_DIR):
-            if filename.lower().endswith(('.pdf', '.txt', '.docx')):
-                file_path = os.path.join(KNOWLEDGE_DIR, filename)
-                
-                if filename in existing_files:
-                    print(f"Файл {filename} вже є в базі Gemini.")
-                    knowledge_files_cache.append(existing_files[filename])
-                else:
-                    print(f"Завантаження {filename} до Gemini...")
-                    uploaded_file = ai_client.files.upload(file=file_path, config={'display_name': filename})
-                    knowledge_files_cache.append(uploaded_file)
+    
+    # 1. Синхронізація бази знань
+    if ai_client: 
+        print("Синхронізація бази знань з Gemini...")
+        try:
+            # Отримуємо список файлів, які вже є в хмарі, щоб не дублювати
+            existing_files = {f.display_name: f for f in ai_client.files.list()}
+            
+            # Скануємо локальну папку
+            for filename in os.listdir(KNOWLEDGE_DIR):
+                if filename.lower().endswith(('.pdf', '.txt', '.docx')):
+                    file_path = os.path.join(KNOWLEDGE_DIR, filename)
                     
-        print(f"База знань готова! Активних документів: {len(knowledge_files_cache)}")
-    except Exception as e:
-        print(f"Помилка ініціалізації бази знань: {e}")
+                    if filename in existing_files:
+                        print(f"Файл {filename} вже є в базі Gemini.")
+                        knowledge_files_cache.append(existing_files[filename])
+                    else:
+                        print(f"Завантаження {filename} до Gemini...")
+                        uploaded_file = ai_client.files.upload(file=file_path, config={'display_name': filename})
+                        knowledge_files_cache.append(uploaded_file)
+                        
+            print(f"База знань готова! Активних документів: {len(knowledge_files_cache)}")
+        except Exception as e:
+            print(f"Помилка ініціалізації бази знань: {e}")
+    else:
+        print("API ключ Gemini не знайдено. База знань не завантажена.")
+
+    # 2. Очищення та нормалізація імен у базі (Запуск у фоні, щоб не затримувати старт)
+    import asyncio
+    asyncio.create_task(cleanup_database_names())
 
 # --- MODELS ---
 
@@ -130,6 +166,41 @@ def calculate_duration(t1: str, t2: str):
         return int(diff)
     except:
         return 0
+
+def normalize_operator_name(name: str) -> str:
+    """Нормалізує ім'я оператора: прибирає звання, ініціали та зайві знаки, залишаючи лише прізвище."""
+    if not name: return "Невідомо"
+    
+    # Список звань та скорочень для видалення
+    ranks = [
+        r"солдат", r"сержант", r"лейтенант", r"капітан", r"майор", r"підполковник", r"полковник",
+        r"мл\.?\s*с-нт", r"ст\.?\s*с-нт", r"мл\.", r"ст\.", r"с-нт", r"лт", r"кпт", r"м\-р", r"п\-к", r"ген",
+        r"рядовий", r"старшина", r"прапорщик"
+    ]
+    
+    # 1. Прибираємо звання (регістронезалежно)
+    res_name = name
+    for rank in ranks:
+        res_name = re.sub(rf'\b{rank}\b\.?\s*', '', res_name, flags=re.IGNORECASE)
+    
+    # 2. Прибираємо ініціали (напр. "О.Г.", "О. Г.", "Гонцов О.")
+    # Видаляємо поодинокі букви з крапками або без
+    res_name = re.sub(r'\b[А-ЯЁA-Z]\.\s*', '', res_name)
+    res_name = re.sub(r'\s+[А-ЯЁA-Z](\.|$)', '', res_name)
+    
+    # 3. Прибираємо зайві знаки
+    res_name = res_name.strip(' ._,-')
+    
+    # 4. Беремо лише перше слово (зазвичай це прізвище після очищення)
+    words = res_name.split()
+    if words:
+        res_name = words[0]
+    
+    # 5. Вирівнюємо регістр
+    if res_name:
+        res_name = res_name.capitalize()
+    
+    return res_name or "Невідомо"
 
 # --- API ROUTES ---
 
@@ -191,6 +262,9 @@ async def delete_drone(id: int):
 async def add_flight(entry: FlightEntry):
     try:
         data = entry.dict()
+        # Нормалізація імені оператора перед збереженням
+        data["operator"] = normalize_operator_name(data.get("operator", ""))
+        
         if entry.result == "Польоти не здійснювались":
             data["duration"] = 0
             data["distance"] = 0
