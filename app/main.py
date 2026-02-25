@@ -280,6 +280,19 @@ async def update_drone_status(data: StatusUpdate):
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+class BatteryUpdate(BaseModel):
+    id: int
+    battery_count: int
+
+@app.post("/api/update_drone_battery")
+async def update_drone_battery(data: BatteryUpdate):
+    try:
+        supabase.table("drones").update({"battery_count": data.battery_count}).eq("id", data.id).execute()
+        return {"status": "ok"}
+    except Exception as e:
+        print(f"Error updating battery count: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/add_new_drone")
 async def add_new_drone(data: dict):
     try:
