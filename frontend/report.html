@@ -1,201 +1,600 @@
 <!DOCTYPE html>
 <html lang="uk">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Генератор Донесення | UAV Command System</title>
+    <title>UAV System | Генератор Звітів</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
-    <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background: #0f172a; color: white; font-family: 'Inter', sans-serif; padding: 20px; }
-        .card { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; }
-        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; border-radius: 0.5rem; padding: 0.5rem; width: 100%; outline: none; transition: all 0.2s; font-size: 13px; }
-        .input-dark:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
-        .label-mini { font-size: 10px; text-transform: uppercase; font-weight: 700; color: #94a3b8; margin-bottom: 4px; display: block; }
-        textarea.input-dark { min-height: 450px; font-family: monospace; font-size: 12px; white-space: pre-wrap; }
-        .photo-preview { width: 60px; height: 60px; object-fit: cover; border-radius: 0.5rem; border: 1px solid #3b82f6; }
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --bg-dark: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(circle at 0% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 1.25rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .input-premium {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 0.75rem;
+            padding: 0.625rem 1rem;
+            width: 100%;
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.875rem;
+        }
+
+        .input-premium:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .label-premium {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-premium {
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-premium:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-premium:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(51, 65, 85, 0.8);
+        }
+
+        .spinner {
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            width: 1rem;
+            height: 1rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        .photo-preview {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 0.75rem;
+            border: 2px solid var(--primary);
+            transition: transform 0.2s;
+        }
+
+        .photo-preview:hover {
+            transform: scale(1.1);
+        }
     </style>
 </head>
-<body class="max-w-7xl mx-auto pb-20">
 
-    <div class="flex justify-between items-center mb-6 px-2">
-        <div>
-            <h1 class="text-3xl font-black italic text-blue-500 uppercase tracking-tighter">Звітність</h1>
-            <p class="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Автоматичне формування бойового донесення</p>
-        </div>
-        <button onclick="nav('/')" class="bg-slate-800 p-3 rounded-xl text-slate-400 hover:text-white transition-all">
-            <i class="fa-solid fa-house"></i>
-        </button>
-    </div>
-
-    <div class="card p-5 mb-6 bg-slate-800/80">
-        <h3 class="text-xs font-black uppercase text-blue-400 mb-3 flex items-center"><i class="fa-solid fa-database mr-2"></i>Дані з журналу</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8 px-2">
             <div>
-                <label class="label-mini">Дата для пошуку в базі</label>
-                <input type="date" id="searchDate" class="input-dark">
+                <h1
+                    class="text-4xl font-extrabold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 uppercase">
+                    Звітність
+                </h1>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 opacity-70">
+                    Автоматизоване бойове донесення
+                </p>
             </div>
-            <div>
-                <label class="label-mini">Ділянка (Підрозділ)</label>
-                <select id="searchUnit" class="input-dark" onchange="generateReport()">
-                    <option value="">Оберіть підрозділ...</option>
-                </select>
-            </div>
-            <div class="flex items-end">
-                <button onclick="generateReport()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-xs p-3 rounded-lg shadow-lg shadow-blue-500/20 transition-all active:scale-95">
-                    <i class="fa-solid fa-rotate mr-2"></i> Оновити текст
-                </button>
-            </div>
-        </div>
-    </div>
+            <button onclick="nav('/')" class="glass-card p-3 text-slate-400 hover:text-white transition-colors group">
+                <i class="fa-solid fa-house group-hover:scale-110 transition-transform"></i>
+            </button>
+        </header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="card p-5 space-y-4 h-fit">
-            <div class="flex justify-between items-center border-b border-slate-700 pb-2 mb-2">
-                <h3 class="text-sm font-black uppercase text-slate-400">Дані для шаблону</h3>
-                <span class="text-[9px] text-green-500 uppercase font-bold"><i class="fa-solid fa-cloud-arrow-down mr-1"></i>Автозбереження</span>
-            </div>
-            
-            <div>
-                <label class="label-mini">Шапка донесення</label>
-                <textarea id="reportHeader" rows="3" class="input-dark !min-h-[80px]" oninput="saveLocal(); generateReport()" placeholder="Начальнику відділу..."></textarea>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-4">
-                <div><label class="label-mini">Текст дати (у звіті)</label><input type="text" id="reportDate" oninput="generateReport()" placeholder="напр. 10-11.09.2025" class="input-dark"></div>
-                <div><label class="label-mini">Маршрут</label><input type="text" id="reportRoute" oninput="generateReport()" placeholder="Введіть маршрут..." class="input-dark"></div>
-            </div>
-
-            <div><label class="label-mini">Командир екіпажу (Посада, Звання, ПІБ)</label><input type="text" id="reportCmd" oninput="saveLocal(); generateReport()" class="input-dark"></div>
-            <div><label class="label-mini">Оператори (Звання, ПІБ)</label><input type="text" id="reportOps" oninput="saveLocal(); generateReport()" class="input-dark"></div>
-            
-            <div class="border-t border-slate-700 pt-3">
-                <label class="label-mini text-sky-400"><i class="fa-solid fa-cloud mr-1"></i>Погода по маршруту</label>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-                    <div>
-                        <label class="label-mini">Температура (°С)</label>
-                        <input type="text" id="weatherTemp" placeholder="+16" oninput="saveLocal(); generateReport()" class="input-dark text-center">
-                    </div>
-                    <div>
-                        <label class="label-mini">Видимість (км)</label>
-                        <input type="text" id="weatherVis" placeholder="8-10" oninput="saveLocal(); generateReport()" class="input-dark text-center">
-                    </div>
-                    <div>
-                        <label class="label-mini">Напрямок вітру (º)</label>
-                        <input type="number" id="weatherWindDir" placeholder="55" oninput="saveLocal(); generateReport()" class="input-dark text-center">
-                    </div>
-                    <div>
-                        <label class="label-mini">Вітер (м/с)</label>
-                        <input type="number" id="weatherWindSpeed" placeholder="6" oninput="saveLocal(); generateReport()" class="input-dark text-center">
-                    </div>
+        <!-- Search Section -->
+        <section class="glass-card p-6 mb-8">
+            <h3 class="text-xs font-black uppercase text-blue-400 mb-6 flex items-center tracking-widest">
+                <i class="fa-solid fa-magnifying-glass mr-2"></i> Джерело даних
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="label-premium">Виберіть дату</label>
+                    <input type="date" id="searchDate" class="input-premium">
                 </div>
-            </div>
-            
-            <div class="border-t border-slate-700 pt-3">
-                <label class="label-mini text-yellow-500">Результати польотів</label>
-                <select id="resultType" class="input-dark mb-2" onchange="toggleResultInput(); generateReport()">
-                    <option value="none">Під час польотів порушень ОПДК не виявлено.</option>
-                    <option value="detained">Виявлено та затримано правопорушника/-ів.</option>
-                </select>
-                <div id="detainedCountWrapper" class="hidden">
-                    <label class="label-mini">Кількість затриманих</label>
-                    <input type="number" id="detainedCount" min="1" value="1" class="input-dark" oninput="generateReport()">
+                <div>
+                    <label class="label-premium">Виберіть підрозділ</label>
+                    <select id="searchUnit" class="input-premium" onchange="generateReport()">
+                        <option value="">Завантаження...</option>
+                    </select>
                 </div>
-            </div>
-
-            <div class="border-t border-slate-700 pt-3">
-                <label class="label-mini text-blue-400"><i class="fa-solid fa-camera mr-1"></i>Фотодокументування</label>
-                <input type="file" id="reportImages" multiple accept="image/*" class="text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 transition-all cursor-pointer" onchange="previewImages()">
-                <div id="imagePreviewContainer" class="flex gap-2 flex-wrap mt-3"></div>
-            </div>
-        </div>
-        
-        <div class="card p-5 flex flex-col">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
-                <h3 class="text-sm font-black uppercase text-slate-400">Готове донесення</h3>
-                <div class="flex gap-2 flex-wrap justify-end">
-                    <button onclick="copyReport()" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded text-white transition-all uppercase font-bold">
-                        <i class="fa-regular fa-copy mr-1"></i> Копіювати
-                    </button>
-                    <button onclick="downloadWord()" class="text-[10px] bg-green-600 hover:bg-green-500 px-3 py-2 rounded text-white transition-all uppercase font-bold shadow-lg shadow-green-500/20">
-                        <i class="fa-solid fa-file-word mr-1"></i> DOCX
-                    </button>
-                    <button onclick="sendToTelegram()" id="btnSendTG" class="text-[10px] bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded text-white transition-all uppercase font-bold shadow-lg shadow-blue-500/20">
-                        <i class="fa-brands fa-telegram mr-1"></i> Відправити
+                <div class="flex items-end">
+                    <button onclick="loadInitData(true)" class="btn-premium w-full shadow-emerald-500/20">
+                        <i class="fa-solid fa-rotate"></i> Оновити дані
                     </button>
                 </div>
             </div>
-            <textarea id="finalReport" class="input-dark flex-grow leading-relaxed"></textarea>
+        </section>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Left Side: Config -->
+            <div class="glass-card p-6 space-y-6">
+                <div class="flex justify-between items-center border-b border-white/10 pb-4">
+                    <h3 class="text-sm font-black uppercase text-slate-300 tracking-wider">Параметри звіту</h3>
+                    <div id="saveStatus"
+                        class="flex items-center gap-1.5 text-[10px] text-emerald-400 uppercase font-bold opacity-0 transition-opacity">
+                        <i class="fa-solid fa-check-circle"></i> Збережено
+                    </div>
+                </div>
+
+                <div>
+                    <label class="label-premium">Шапка донесення</label>
+                    <textarea id="reportHeader" rows="3" class="input-premium !min-h-[100px] font-medium"
+                        oninput="triggerSave(); generateReport()" placeholder="Кому дописуємо звіт..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                        <label class="label-premium">Дата у форматі звіту</label>
+                        <input type="text" id="reportDate" oninput="generateReport()" placeholder="12.02.2026"
+                            class="input-premium">
+                    </div>
+                    <div>
+                        <label class="label-premium">Маршрут польотів</label>
+                        <input type="text" id="reportRoute" oninput="generateReport()"
+                            placeholder="н.п. Альфа - н.п. Бета" class="input-premium">
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="label-premium">Командир екіпажу (Посада, ПІБ)</label>
+                        <input type="text" id="reportCmd" oninput="triggerSave(); generateReport()"
+                            class="input-premium">
+                    </div>
+                    <div>
+                        <label class="label-premium">Оператори (Звання, ПІБ)</label>
+                        <input type="text" id="reportOps" oninput="triggerSave(); generateReport()"
+                            class="input-premium">
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-white/5">
+                    <label class="label-premium text-sky-400 flex items-center">
+                        <i class="fa-solid fa-cloud-sun mr-2"></i> Метеоумови
+                    </label>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
+                        <div>
+                            <label class="label-mini text-[9px] uppercase font-bold text-slate-500 mb-1 block">Темп.
+                                °С</label>
+                            <input type="text" id="weatherTemp" placeholder="+10"
+                                oninput="triggerSave(); generateReport()" class="input-premium text-center">
+                        </div>
+                        <div>
+                            <label class="label-mini text-[9px] uppercase font-bold text-slate-500 mb-1 block">Вид.
+                                км</label>
+                            <input type="text" id="weatherVis" placeholder="10"
+                                oninput="triggerSave(); generateReport()" class="input-premium text-center">
+                        </div>
+                        <div>
+                            <label class="label-mini text-[9px] uppercase font-bold text-slate-500 mb-1 block">Напр.
+                                º</label>
+                            <input type="number" id="weatherWindDir" placeholder="180"
+                                oninput="triggerSave(); generateReport()" class="input-premium text-center">
+                        </div>
+                        <div>
+                            <label class="label-mini text-[9px] uppercase font-bold text-slate-500 mb-1 block">Швидк.
+                                м/с</label>
+                            <input type="number" id="weatherWindSpeed" placeholder="3"
+                                oninput="triggerSave(); generateReport()" class="input-premium text-center">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-white/5">
+                    <label class="label-premium text-yellow-500">Результат виконання</label>
+                    <select id="resultType" class="input-premium mt-1" onchange="toggleResultInput(); generateReport()">
+                        <option value="none">Порушень не виявлено</option>
+                        <option value="detained">Затримано правопорушників</option>
+                    </select>
+                    <div id="detainedCountWrapper" class="hidden mt-4 animate-fadeIn">
+                        <label class="label-premium">Кількість осіб</label>
+                        <input type="number" id="detainedCount" min="1" value="1" class="input-premium"
+                            oninput="generateReport()">
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-white/5">
+                    <label class="label-premium text-blue-400 flex items-center"><i class="fa-solid fa-camera mr-2"></i>
+                        Фотоматеріали</label>
+                    <div class="flex items-center gap-4 mt-2">
+                        <label
+                            class="cursor-pointer bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 py-3 px-6 rounded-xl border border-blue-500/30 transition-all flex-grow text-center text-xs font-bold uppercase tracking-widest">
+                            <i class="fa-solid fa-upload mr-2"></i> Вибрати фото
+                            <input type="file" id="reportImages" multiple accept="image/*" class="hidden"
+                                onchange="previewImages()">
+                        </label>
+                    </div>
+                    <div id="imagePreviewContainer" class="flex gap-4 flex-wrap mt-6"></div>
+                </div>
+            </div>
+
+            <!-- Right Side: Preview -->
+            <div class="glass-card p-6 flex flex-col min-h-[600px]">
+                <div class="flex flex-wrap justify-between items-center mb-6 gap-4 border-b border-white/10 pb-4">
+                    <h3 class="text-sm font-black uppercase text-slate-300 tracking-wider">Попередній перегляд</h3>
+                    <div class="flex gap-2">
+                        <button onclick="copyReport()" class="btn-premium btn-secondary !p-3 shadow-none"
+                            title="Копіювати текст">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                        <button onclick="downloadWord()" id="btnDownload" class="btn-premium shadow-emerald-500/30">
+                            <i class="fa-solid fa-file-word"></i>
+                            <span id="btnDownloadText">Скачати DOCX</span>
+                        </button>
+                    </div>
+                </div>
+                <textarea id="finalReport"
+                    class="input-premium flex-grow !bg-transparent !border-none !shadow-none resize-none leading-relaxed text-sm scrollbar-thin overflow-y-auto"
+                    readonly></textarea>
+
+                <div
+                    class="mt-6 flex justify-between items-center text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                    <span>Система UAV Command</span>
+                    <button onclick="downloadTestDoc()" class="hover:text-blue-400 transition-colors">Тестування
+                        сервера</button>
+                </div>
+            </div>
         </div>
     </div>
 
+    <!-- Scripts -->
     <script>
         let allFlights = [];
-        let selectedFiles = [];
+        let saveTimeout;
 
         function nav(path) {
             const token = new URLSearchParams(window.location.search).get('token');
             window.location.href = token ? `${path}?token=${token}` : path;
         }
 
-        // Оновлено для збереження нових полів погоди
-        function loadLocal() {
-            const fields = ['reportHeader', 'reportCmd', 'reportOps', 'weatherTemp', 'weatherVis', 'weatherWindDir', 'weatherWindSpeed'];
-            fields.forEach(f => {
-                const saved = localStorage.getItem(f);
-                if (saved) document.getElementById(f).value = saved;
-            });
-            if(!document.getElementById('reportHeader').value) {
-                document.getElementById('reportHeader').value = "Начальнику відділу організації повітряної розвідки та протидії безпілотним повітряним суднам штабу\nпідполковнику        Армену МКРТЧЯН";
-            }
+        function triggerSave() {
+            clearTimeout(saveTimeout);
+            const status = document.getElementById('saveStatus');
+            status.style.opacity = '1';
+            saveTimeout = setTimeout(() => {
+                saveLocal();
+                setTimeout(() => { status.style.opacity = '0'; }, 1000);
+            }, 500);
         }
 
-        function saveLocal() {
-            const fields = ['reportHeader', 'reportCmd', 'reportOps', 'weatherTemp', 'weatherVis', 'weatherWindDir', 'weatherWindSpeed'];
-            fields.forEach(f => {
-                localStorage.setItem(f, document.getElementById(f).value);
-            });
-        }
+        async function loadInitData(isRefresh = false) {
+            console.log("loadInitData: Starting...");
+            if (!isRefresh) loadLocal();
 
-        async function loadInitData() {
-            loadLocal();
+            const unitSelect = document.getElementById('searchUnit');
+            unitSelect.innerHTML = '<option value="">Синхронізація...</option>';
+
             try {
-                const resOpt = await fetch("/api/get_options");
+                const [resOpt, resFlights] = await Promise.all([
+                    fetch("/api/get_options"),
+                    fetch("/api/get_all_flights")
+                ]);
+
+                if (!resOpt.ok || !resFlights.ok) throw new Error("API Connection Error");
+
                 const options = await resOpt.json();
-                const unitSelect = document.getElementById('searchUnit');
+                allFlights = await resFlights.json();
+
+                // Populate Units
+                unitSelect.innerHTML = '<option value="">Оберіть підрозділ...</option>';
                 options.units.forEach(u => {
                     const opt = document.createElement('option');
                     opt.value = u; opt.text = u;
                     unitSelect.appendChild(opt);
                 });
 
-                const resFlights = await fetch("/api/get_all_flights");
-                allFlights = await resFlights.json();
-                
-                document.getElementById('searchDate').valueAsDate = new Date();
-                generateReport(); // Генеруємо одразу з завантаженими з LocalStorage даними
-            } catch(e) { console.error("Помилка завантаження даних:", e); }
+                // Auto-fill from URL
+                const params = new URLSearchParams(window.location.search);
+                const pDate = params.get('date');
+                const pUnit = params.get('unit');
+                const pRoute = params.get('route');
+
+                if (pDate) document.getElementById('searchDate').value = pDate;
+                else if (!document.getElementById('searchDate').value) document.getElementById('searchDate').valueAsDate = new Date();
+
+                if (pUnit) unitSelect.value = pUnit;
+                if (pRoute) document.getElementById('reportRoute').value = pRoute;
+
+                generateReport();
+                console.log("loadInitData: Success");
+            } catch (e) {
+                console.error("Initialization Failed:", e);
+                alert("Помилка підключення до сервера: " + e.message);
+            }
+        }
+
+        function generateReport() {
+            const date = document.getElementById('searchDate').value;
+            const unit = document.getElementById('searchUnit').value;
+            const route = document.getElementById('reportRoute').value || "...";
+            const cmd = document.getElementById('reportCmd').value || "...";
+            const ops = document.getElementById('reportOps').value || "...";
+            const header = document.getElementById('reportHeader').value;
+
+            const rDate = document.getElementById('reportDate').value || (date ? date.split('-').reverse().join('.') : "___");
+
+            // Filter
+            const filtered = allFlights.filter(f => f.date === date && f.unit === unit && f.result !== "Польоти не здійснювались");
+
+            let flightsBlock = "";
+            const uniqueDrones = new Set();
+            const stats = {};
+
+            filtered.forEach(f => {
+                const op = f.operator || "Невідомий";
+                const dr = f.drone || "БпЛА";
+                uniqueDrones.add(dr);
+
+                if (!stats[op]) stats[op] = { count: 0, drones: {} };
+                stats[op].count++;
+                if (!stats[op].drones[dr]) stats[op].drones[dr] = [];
+                stats[op].drones[dr].push(`${f.takeoff || '--'} - ${f.landing || '--'} (${f.distance || 0} м)`);
+            });
+
+            Object.entries(stats).forEach(([op, data]) => {
+                flightsBlock += `${op} — ${data.count} польотів\n`;
+                Object.entries(data.drones).forEach(([drone, times]) => {
+                    flightsBlock += `${drone}\n${times.join('\n')}\n`;
+                });
+                flightsBlock += "\n";
+            });
+
+            if (!flightsBlock) flightsBlock = "Польоти за вказаний період відсутні.\n\n";
+
+            const temp = document.getElementById('weatherTemp').value || "0";
+            const vis = document.getElementById('weatherVis').value || "0";
+            const wDir = document.getElementById('weatherWindDir').value || "0";
+            const wSpd = document.getElementById('weatherWindSpeed').value || "0";
+            const weather = `температура ${temp}°С, видимість ${vis} км, хмарність 2-3 бали, вітер ${wDir}º / ${wSpd} м/с, небезпечних явищ не виявлено.`;
+
+            const resType = document.getElementById('resultType').value;
+            const resultMsg = resType === 'detained'
+                ? `Виявлено та затримано ${document.getElementById('detainedCount').value || 1} правопорушників.`
+                : "Порушень ОПДК не виявлено.";
+
+            const dronesList = Array.from(uniqueDrones).join(', ') || "____";
+
+            const template = `${header}\n\nДОНЕСЕННЯ ПРО ПОЛІТ\n\nДата: ${rDate}\nДілянка: ${unit || '___'}\n\n${flightsBlock}Маршрут: ${route}\nБпАК: ${dronesList}\n\nСклад екіпажу:\nКомандир: ${cmd}\nОператори: ${ops}\n\nРезультати:\n${resultMsg}\n\nМетеоумови: ${weather}\n\nСтан техніки: БпАК справний, відмов не зафіксовано.\n\nКомандир зовнішнього екіпажу:\n${cmd}`;
+
+            document.getElementById('finalReport').value = template;
+        }
+
+        function downloadWord() {
+            const btn = document.getElementById('btnDownload');
+            const unit = document.getElementById('searchUnit').value || "ЗВІТ";
+            const date = document.getElementById('searchDate').value || "ДАТА";
+            const route = document.getElementById('reportRoute').value || "...";
+            const cmd = document.getElementById('reportCmd').value || "...";
+            const ops = document.getElementById('reportOps').value || "...";
+            const header = document.getElementById('reportHeader').value;
+            const rDate = document.getElementById('reportDate').value || (date ? date.split('-').reverse().join('.') : "___");
+
+            // Збирання даних польотів для таблиці
+            const filtered = allFlights.filter(f => f.date === date && f.unit === unit && f.result !== "Польоти не здійснювались");
+            const stats = {};
+            const uniqueDrones = new Set();
+
+            filtered.forEach(f => {
+                const op = f.operator || "Невідомий";
+                const dr = f.drone || "БпЛА";
+                uniqueDrones.add(dr);
+
+                // Create a unique key for operator + drone combi
+                const key = `${op}_${dr}`;
+                if (!stats[key]) {
+                    stats[key] = { name: op, drone: dr, count: 0, details: [] };
+                }
+                stats[key].count++;
+                stats[key].details.push(`${f.takeoff || '--'} - ${f.landing || '--'} (${f.distance || 0} м)`);
+            });
+
+            const flightsData = Object.values(stats).map(item => ({
+                operator: item.name,
+                drone: item.drone,
+                count: parseInt(item.count) || 0,
+                details: item.details.join("; ")
+            }));
+
+            // Погода
+            const temp = document.getElementById('weatherTemp').value || "0";
+            const vis = document.getElementById('weatherVis').value || "0";
+            const wDir = document.getElementById('weatherWindDir').value || "0";
+            const wSpd = document.getElementById('weatherWindSpeed').value || "0";
+            const weather = `температура повітря ${temp > 0 ? '+' + temp : temp}°C, польотна видимість ${vis} км, хмарність 2-3 бали вище висоти польоту, вітер ${wDir}º / ${wSpd} м/с, небезпечних явищ погоди не спостерігалось`;
+
+            // Результати
+            const resType = document.getElementById('resultType').value;
+            const resultMsg = resType === 'detained'
+                ? `Виявлено та затримано ${document.getElementById('detainedCount').value || 1} правопорушників.`
+                : "Під час польотів порушень ОПДК не виявлено.";
+
+            // Об'єкт для бекенду
+            const dronesList = Array.from(uniqueDrones).join(', ') || "____";
+
+            // Отримання фотографії (Base64)
+            let photoBase64 = null;
+            const previewImages = document.querySelectorAll('#imagePreviewContainer img');
+            if (previewImages.length > 0) {
+                photoBase64 = previewImages[0].src;
+            }
+
+            // Короткий формат командира
+            const cmdParts = cmd.split(' ');
+            const rank = cmdParts[0] || 'штаб-сержант';
+            const name = cmdParts.slice(1).join(' ') || 'Олександр ГВОЗДІЦЬКИЙ';
+            const commanderShort = `${rank}                                          ${name}`;
+
+            const reportData = {
+                header: header,
+                title: "ДОНЕСЕННЯ ПРО ПОЛІТ",
+                date: rDate,
+                unit: unit,
+                flights: flightsData,
+                result: resultMsg,
+                weather: weather,
+                commander: cmd,
+                route: route,
+                operators: ops,
+                drones_list: dronesList,
+                commander_short: commanderShort,
+                photo: photoBase64
+            };
+
+            const fileName = (`${unit}_${date}`).replace(/[\/\\?%*:|"<>]/g, '-') + ".docx";
+
+            btn.innerHTML = '<div class="spinner"></div> Форматування...';
+
+            setTimeout(() => {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/api/generate_docx';
+                form.target = '_blank';
+                form.style.display = 'none';
+
+                const dataInput = document.createElement('input');
+                dataInput.type = 'hidden';
+                dataInput.name = 'report_data';
+                dataInput.value = JSON.stringify(reportData);
+                form.appendChild(dataInput);
+
+                const fileInput = document.createElement('input');
+                fileInput.type = 'hidden';
+                fileInput.name = 'filename';
+                fileInput.value = fileName;
+                form.appendChild(fileInput);
+
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+
+                btn.innerHTML = '<i class="fa-solid fa-file-word"></i> Скачати DOCX';
+            }, 500);
+        }
+
+        function downloadTestDoc() {
+            const text = "ТЕСТОВИЙ ДОКУМЕНТ\nУкраїнська мова працює!\nUTF-8 Check: Привіт Світ!";
+
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/api/generate_docx';
+            form.style.display = 'none';
+
+            const textInput = document.createElement('input');
+            textInput.type = 'hidden';
+            textInput.name = 'text';
+            textInput.value = text;
+            form.appendChild(textInput);
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'hidden';
+            fileInput.name = 'filename';
+            fileInput.value = "ТЕСТ_УСПІХ.docx";
+            form.appendChild(fileInput);
+
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
         }
 
         function toggleResultInput() {
-            const type = document.getElementById('resultType').value;
             const wrap = document.getElementById('detainedCountWrapper');
-            if(type === 'detained') wrap.classList.remove('hidden');
-            else wrap.classList.add('hidden');
+            wrap.classList.toggle('hidden', document.getElementById('resultType').value !== 'detained');
         }
 
         function previewImages() {
-            const input = document.getElementById('reportImages');
             const container = document.getElementById('imagePreviewContainer');
             container.innerHTML = '';
-            selectedFiles = Array.from(input.files);
-            
-            selectedFiles.forEach(file => {
+            Array.from(document.getElementById('reportImages').files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const img = document.createElement('img');
@@ -207,161 +606,38 @@
             });
         }
 
-        function generateReport() {
-            const sDate = document.getElementById('searchDate').value;
-            const sUnit = document.getElementById('searchUnit').value;
-            
-            const filtered = allFlights.filter(f => f.date === sDate && f.unit === sUnit);
-            
-            const flightsByOp = {};
-            const uniqueDrones = new Set();
-            
-            filtered.forEach(f => {
-                if(f.result !== "Польоти не здійснювались") {
-                    const op = f.operator || "Невідомий оператор";
-                    if(!flightsByOp[op]) flightsByOp[op] = { total: 0, drones: {} };
-                    flightsByOp[op].total++;
-                    
-                    const droneName = f.drone || "Невідомий БпЛА";
-                    uniqueDrones.add(droneName);
-                    
-                    if(!flightsByOp[op].drones[droneName]) flightsByOp[op].drones[droneName] = [];
-                    
-                    const dist = f.distance ? f.distance : 0;
-                    flightsByOp[op].drones[droneName].push(`${f.takeoff || '--:--'} - ${f.landing || '--:--'} - ${dist} м`);
-                }
-            });
-
-            let flightsText = "";
-            Object.keys(flightsByOp).forEach(op => {
-                const data = flightsByOp[op];
-                flightsText += `${op} - ${data.total} польотів\n`;
-                Object.keys(data.drones).forEach(droneName => {
-                    flightsText += `${droneName}\n`;
-                    data.drones[droneName].forEach(flightLine => {
-                        flightsText += `${flightLine}\n`;
-                    });
-                });
-                flightsText += "\n";
-            });
-
-            if(flightsText === "") {
-                flightsText = "За вибраний період польотів не знайдено.\n\n";
-            }
-
-            const headerStr = document.getElementById('reportHeader').value;
-            const defaultDate = sDate ? sDate.split('-').reverse().join('.') : "__.__.____";
-            const reportDate = document.getElementById('reportDate').value || defaultDate;
-            const routeStr = document.getElementById('reportRoute').value || "Не вказано";
-            const cmdStr = document.getElementById('reportCmd').value || "Не вказано";
-            const opsStr = document.getElementById('reportOps').value || "Не вказано";
-            
-            // Формування рядка погоди з 4-х полів
-            const wTemp = document.getElementById('weatherTemp').value || "0";
-            const wVis = document.getElementById('weatherVis').value || "0";
-            const wDir = document.getElementById('weatherWindDir').value || "0";
-            const wSpeed = document.getElementById('weatherWindSpeed').value || "0";
-            const weatherStr = `температура повітря ${wTemp}°С, польотна видимість ${wVis} км, хмарність 2-3 бали вище висоти польоту, вітер ${wDir}º / ${wSpeed} м/с, небезпечних явищ погоди не спостерігалось.`;
-            
-            const resType = document.getElementById('resultType').value;
-            let resultStr = "Під час польотів порушень ОПДК не виявлено.";
-            if(resType === "detained") {
-                const count = document.getElementById('detainedCount').value || "1";
-                resultStr = `Виявлено та затримано ${count} правопорушника/-ів.`;
-            }
-
-            let dronesStr = Array.from(uniqueDrones).join(', ');
-            if(!dronesStr) dronesStr = "Не визначено";
-            
-            const unitLabel = sUnit || "___";
-
-            const template = `${headerStr}\n\nДонесення про політ\nДата вильотів : ${reportDate}\nДілянка : ${unitLabel}\nВильоти :\n\n${flightsText}Маршрут:   ${routeStr}\nБпАК : ${dronesStr}\nСклад екіпажу:\nкомандир зовнішнього екіпажу: ${cmdStr};\nоператор: ${opsStr}.\nРезультати:\n${resultStr}\n\nЗв'язок на кордоні підтримувався :\nз ПН, ОЧ ${unitLabel} по р/ст. по радіомережі;\nвідео-, фотодокументування здійснювалися штатною апаратурою БпАК.\n\nПогода по маршруту:  ${weatherStr}\nГотовність екіпажу та стан БпАК:  БпАК справний, недоліків у роботі техніки не виявлено.\nПоліт виконано в штатному режимі, відмов у системах керування та телеметрії не зафіксовано. Зауважень немає.\nДонесення склав\nКомандир зовнішнього екіпажу:\n${cmdStr}`;
-
-            document.getElementById('finalReport').value = template;
-        }
-
-        async function downloadWord() {
-            const text = document.getElementById('finalReport').value;
-            if (!text) return alert("Немає тексту для створення документа!");
-
-            const { Document, Packer, Paragraph, TextRun } = docx;
-
-            const paragraphs = text.split('\n').map(line => {
-                return new Paragraph({
-                    children: [
-                        new TextRun({
-                            text: line,
-                            font: "Times New Roman",
-                            size: 28, // 14pt (вимірюється у напівпунктах)
-                        })
-                    ],
-                    spacing: { after: 100 }
-                });
-            });
-
-            const doc = new Document({
-                sections: [{
-                    properties: {},
-                    children: paragraphs
-                }]
-            });
-
-            const blob = await Packer.toBlob(doc);
-            const dateStr = document.getElementById('reportDate').value || "нове";
-            const unitStr = document.getElementById('searchUnit').value || "підрозділ";
-            
-            saveAs(blob, `Донесення_${unitStr}_${dateStr}.docx`);
-        }
-
         function copyReport() {
-            const text = document.getElementById('finalReport').value;
-            if(!text) return;
-            navigator.clipboard.writeText(text).then(() => {
-                alert("Донесення скопійовано в буфер обміну!");
+            const t = document.getElementById('finalReport');
+            t.select();
+            navigator.clipboard.writeText(t.value).then(() => {
+                const btn = document.querySelector('[onclick="copyReport()"]');
+                const oldHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                btn.classList.add('!bg-emerald-600');
+                setTimeout(() => {
+                    btn.innerHTML = oldHtml;
+                    btn.classList.remove('!bg-emerald-600');
+                }, 1500);
             });
         }
 
-        async function sendToTelegram() {
-            const btn = document.getElementById('btnSendTG');
-            const text = document.getElementById('finalReport').value;
-            
-            if(!text) {
-                alert("Текст донесення порожній!");
-                return;
-            }
+        function saveLocal() {
+            const fields = ['reportHeader', 'reportCmd', 'reportOps', 'weatherTemp', 'weatherVis', 'weatherWindDir', 'weatherWindSpeed'];
+            fields.forEach(f => localStorage.setItem(f, document.getElementById(f).value));
+        }
 
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Відправка...';
-            btn.disabled = true;
-
-            const fd = new FormData();
-            fd.append("report_text", `<pre>${text}</pre>`);
-
-            selectedFiles.forEach(file => {
-                fd.append("images", file);
+        function loadLocal() {
+            ['reportHeader', 'reportCmd', 'reportOps', 'weatherTemp', 'weatherVis', 'weatherWindDir', 'weatherWindSpeed'].forEach(f => {
+                const val = localStorage.getItem(f);
+                if (val) document.getElementById(f).value = val;
             });
-
-            try {
-                const res = await fetch("/api/publish_with_telegram", {
-                    method: "POST",
-                    body: fd
-                });
-                if(res.ok) {
-                    alert("Донесення успішно відправлено в Telegram!");
-                    document.getElementById('reportImages').value = '';
-                    document.getElementById('imagePreviewContainer').innerHTML = '';
-                    selectedFiles = [];
-                } else {
-                    alert("Помилка відправки.");
-                }
-            } catch (e) {
-                alert("Помилка з'єднання.");
-            } finally {
-                btn.innerHTML = '<i class="fa-brands fa-telegram mr-1"></i> Відправити';
-                btn.disabled = false;
+            if (!document.getElementById('reportHeader').value) {
+                document.getElementById('reportHeader').value = "Начальнику відділу ОПР та ПБпПС штабу\nпідполковнику Армену МКРТЧЯН";
             }
         }
 
-        window.onload = loadInitData;
+        window.onload = () => loadInitData();
     </script>
 </body>
+
 </html>
