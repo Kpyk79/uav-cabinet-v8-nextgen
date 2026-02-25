@@ -120,19 +120,28 @@ async def startup_event():
             # Отримуємо список файлів, які вже є в хмарі, щоб не дублювати
             existing_files = {f.display_name: f for f in ai_client.files.list()}
             
+            # Gemini підтримує: PDF, TXT — DOCX не підтримується (Unsupported MIME type)
+            SUPPORTED_EXTENSIONS = ('.pdf', '.txt')
+            UNSUPPORTED_MIMES = ('wordprocessingml', 'officedocument')
+
             # Скануємо локальну папку
             for filename in os.listdir(KNOWLEDGE_DIR):
-                if filename.lower().endswith(('.pdf', '.txt', '.docx')):
+                if filename.lower().endswith(SUPPORTED_EXTENSIONS):
                     file_path = os.path.join(KNOWLEDGE_DIR, filename)
                     
                     if filename in existing_files:
                         existing = existing_files[filename]
-                        # Skip files that are not yet ACTIVE or have no usable content
+                        # Skip files with unsupported MIME types (e.g. DOCX)
+                        file_mime = getattr(existing, 'mime_type', '') or ''
+                        if any(bad in file_mime for bad in UNSUPPORTED_MIMES):
+                            print(f"⏭️ Файл {filename} має непідтримуваний тип '{file_mime}' — пропущено.")
+                            continue
+                        # Skip files that are not yet ACTIVE
                         file_state = getattr(existing, 'state', None)
-                        if file_state and str(file_state).upper() not in ('ACTIVE', 'FILE_STATE_ACTIVE'):
+                        if file_state and 'ACTIVE' not in str(file_state).upper():
                             print(f"⚠️ Файл {filename} має стан '{file_state}' — пропустити.")
                             continue
-                        print(f"Файл {filename} вже є в базі Gemini.")
+                        print(f"Файл {filename} вже є в базі Gemini ({file_state}).")
                         knowledge_files_cache.append(existing)
                     else:
                         try:
