@@ -464,7 +464,7 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
     context_addon = ""
     if coords_match:
         lat, lon = coords_match.groups()
-        google_api_key = os.environ.get("GOOGLE_API_KEY") # ПЕРЕКОНАЙТЕСЬ, ЩО ТУТ НОВИЙ КЛЮЧ
+        google_api_key = os.environ.get("MAPS_API_KEY") # ПЕРЕКОНАЙТЕСЬ, ЩО ТУТ НОВИЙ КЛЮЧ
         
         try:
             async with httpx.AsyncClient() as client:
