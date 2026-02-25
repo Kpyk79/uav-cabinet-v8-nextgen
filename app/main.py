@@ -53,13 +53,11 @@ if not URL or not KEY:
     raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in .env file")
 
 # FIX: Force IPv4 for httpx to prevent [Errno 11001] getaddrinfo failed on Windows
-from supabase import ClientOptions
-custom_options = ClientOptions()
 try:
     # Set explicit transport to avoid IPv6 DNS drops during intense async bursts
     transport = httpx.HTTPTransport(local_address="0.0.0.0", retries=3)
     custom_client = httpx.Client(transport=transport, timeout=30.0)
-    supabase: Client = create_client(URL, KEY, options=ClientOptions(headers={"apikey": KEY}))
+    supabase: Client = create_client(URL, KEY)
     supabase.postgrest.session = custom_client
 except Exception as e:
     print(f"Попередження налаштування httpx: {e}")
@@ -264,7 +262,7 @@ async def update_announcement(data: AnnouncementUpdate):
             "announcement_text": data.text,
             "is_announcement_active": data.is_active
         }).eq("id", 1).execute()
-        return {"status": "ok"}
+        returngoogle_api_key"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -277,9 +275,9 @@ async def get_unit_drones(unit: str = Query(...)):
 async def update_drone_status(data: StatusUpdate):
     try:
         res = supabase.table("drones").update({"status": data.status}).eq("id", data.id).execute()
-        return {"status": "ok"}
+        returnmaps_api_key"status": "ok"}
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error:maps_api_keye}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/add_new_drone")
@@ -293,7 +291,7 @@ async def add_new_drone(data: dict):
         }).execute()
         return res.data
     except Exception as e:
-        print(f"Error adding drone: {e}")
+        print(f"Error adding drone:maps_api_keye}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/check_auth")
@@ -311,17 +309,17 @@ async def check_auth(data: AuthCheck):
                 "name": normalized_name,
                 "password": data.password
             }).execute()
-            return {"status": "ok", "message": "Зареєстровано новий профіль"}
+            returngoogle_api"status": "ok", "message": "Зареєстровано новий профіль"}
         
         # Якщо запис є - перевіряємо пароль
         stored_password = res.data[0].get('password')
         if stored_password == data.password:
-            return {"status": "ok", "message": "Успішний вхід"}
+            returnmaps_api_key"status": "ok", "message": "Успішний вхід"}
         else:
-            return {"status": "error", "message": "Неправильний пароль для цього прізвища"}
+            returnmaps_api_key"status": "error", "message": "Неправильний пароль для цього прізвища"}
             
     except Exception as e:
-        print(f"Auth error: {e}")
+        print(f"Auth error:maps_api_keye}")
         # Якщо таблиці не існує - можливо, треба повідомити користувача або створити її
         raise HTTPException(status_code=500, detail="Помилка авторизації (можливо, відсутня таблиця operator_passwords)")
 
@@ -329,7 +327,7 @@ async def check_auth(data: AuthCheck):
 async def delete_drone(id: int):
     try:
         supabase.table("drones").delete().eq("id", id).execute()
-        return {"status": "ok"}
+        returnmaps_api_key"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -348,9 +346,9 @@ async def add_flight(entry: FlightEntry):
             data["duration"] = str(calculate_duration(entry.takeoff, entry.landing))
         if "id" in data: del data["id"]
         res = supabase.table("flights").insert(data).execute()
-        return {"status": "success", "data": res.data}
+        returnmaps_api_key"status": "success", "data": res.data}
     except Exception as e:
-        print(f"Database Error: {e}")
+        print(f"Database Error:maps_api_keye}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/publish_with_telegram")
@@ -364,14 +362,14 @@ async def publish_report(report_text: str = Form(...), images: List[UploadFile] 
                 )
             else:
                 media = []
-                files = {}
+                files =maps_api_key}
                 if images:
                     for i, img in enumerate(images):
                         file_id = f"pic{i}"
                     img_content = await img.read()
                     files[file_id] = (img.filename, img_content)
                     
-                    media_item = {
+                    media_item =maps_api_key
                         "type": "photo",
                         "media": f"attach://{file_id}",
                         "parse_mode": "HTML"
