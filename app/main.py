@@ -2,10 +2,12 @@ import os
 import httpx
 import json
 import re
+import uuid
 from datetime import datetime
 from typing import Optional, List
+from urllib.parse import quote
 
-from fastapi import FastAPI, HTTPException, Form, UploadFile, File, Query
+from fastapi import FastAPI, HTTPException, Form, UploadFile, File, Query, Response, BackgroundTasks
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +16,11 @@ from supabase import create_client, Client
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from io import BytesIO
+from docx import Document
+from docx.shared import Pt, Cm
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
 
 # --- CONFIG & SETUP ---
 load_dotenv()
@@ -45,7 +52,18 @@ KEY = os.environ.get("SUPABASE_KEY")
 if not URL or not KEY:
     raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in .env file")
 
-supabase: Client = create_client(URL, KEY)
+# FIX: Force IPv4 for httpx to prevent [Errno 11001] getaddrinfo failed on Windows
+from supabase import ClientOptions
+custom_options = ClientOptions()
+try:
+    # Set explicit transport to avoid IPv6 DNS drops during intense async bursts
+    transport = httpx.HTTPTransport(local_address="0.0.0.0", retries=3)
+    custom_client = httpx.Client(transport=transport, timeout=30.0)
+    supabase: Client = create_client(URL, KEY, options=ClientOptions(headers={"apikey": KEY}))
+    supabase.postgrest.session = custom_client
+except Exception as e:
+    print(f"Попередження налаштування httpx: {e}")
+    supabase: Client = create_client(URL, KEY)
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if GEMINI_API_KEY:
@@ -115,19 +133,30 @@ async def startup_event():
                     else:
                         try:
                             print(f"Завантаження {filename} до Gemini...")
-                            # Спробуємо завантажити. Якщо display_name викликає помилку кодування, 
-                            # спробуємо використати ASCII-ім'я як запасний варіант.
                             uploaded_file = ai_client.files.upload(file=file_path, config={'display_name': filename})
                             knowledge_files_cache.append(uploaded_file)
-                        except UnicodeEncodeError:
-                            print(f"⚠️ Помилка кодування для {filename}. Спроба завантаження з безпечним ім'ям...")
-                            safe_name = f"doc_{hash(filename) % 10000}_{os.path.basename(file_path)}"
-                            # Якщо навіть basename проблемний, використовуємо просто хеш
+                        except Exception:
+                            # Якщо дисплейне ім'я або ШЛЯХ з кирилицею "ламає" SDK на Windows
+                            print("⚠️ Помилка завантаження файлу (можливо через кирилицю назви). Спроба через тимчасовий файл...")
+                            import shutil
+                            import tempfile
+                            
+                            temp_dir = tempfile.gettempdir()
+                            file_ext = os.path.splitext(filename)[1]
+                            safe_temp_name = f"gemini_v3_{int(datetime.now().timestamp())}_{hash(filename)%1000}{file_ext}"
+                            temp_path = os.path.join(temp_dir, safe_temp_name)
+                            
                             try:
-                                uploaded_file = ai_client.files.upload(file=file_path, config={'display_name': safe_name})
+                                # Використовуємо системне копіювання, яке краще справляється з шляхами
+                                shutil.copy2(file_path, temp_path)
+                                uploaded_file = ai_client.files.upload(file=temp_path, config={'display_name': safe_temp_name})
                                 knowledge_files_cache.append(uploaded_file)
+                                print(f"✅ Успішно завантажено (через temp): {safe_temp_name}")
+                                if os.path.exists(temp_path): os.remove(temp_path)
                             except Exception as inner_e:
-                                print(f"❌ Не вдалося завантажити {filename}: {inner_e}")
+                                # Не друкуємо filename тут, щоб не викликати UnicodeEncodeError у терміналі
+                                print(f"❌ Не вдалося завантажити через temp: {str(inner_e).encode('ascii', 'ignore').decode('ascii')}")
+                                if os.path.exists(temp_path): os.remove(temp_path)
                         
             print(f"База знань готова! Активних документів: {len(knowledge_files_cache)}")
         except Exception as e:
@@ -336,8 +365,9 @@ async def publish_report(report_text: str = Form(...), images: List[UploadFile] 
             else:
                 media = []
                 files = {}
-                for i, img in enumerate(images):
-                    file_id = f"pic{i}"
+                if images:
+                    for i, img in enumerate(images):
+                        file_id = f"pic{i}"
                     img_content = await img.read()
                     files[file_id] = (img.filename, img_content)
                     
@@ -399,6 +429,16 @@ async def read_request(): return FileResponse(os.path.join(FRONTEND_DIR, "reques
 async def read_admin(): return FileResponse(os.path.join(FRONTEND_DIR, "admin.html"))
 @app.get("/analytics")
 async def read_analytics(): return FileResponse(os.path.join(FRONTEND_DIR, "analytics.html"))
+@app.get("/report")
+async def read_report():
+    return FileResponse(
+        os.path.join(FRONTEND_DIR, "report.html"),
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
 @app.get("/handbook")
 async def read_handbook(): return FileResponse(os.path.join(FRONTEND_DIR, "handbook.html"))
 @app.get("/fleet")
@@ -558,6 +598,152 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
             yield "Сервіс ШІ тимчасово недоступний (високе навантаження або вичерпано ліміти)."
 
     return StreamingResponse(generate_response(), media_type="text/plain")
+
+class DocxRequest(BaseModel):
+    text: str
+    filename: str
+
+@app.post("/api/generate_docx")
+async def generate_docx(report_data: str = Form(...), filename: str = Form(...)):
+    try:
+        data = json.loads(report_data)
+        doc = Document()
+        
+        # --- Налаштування шрифту (Times New Roman, 12pt) ---
+        style = doc.styles['Normal']
+        font = style.font
+        font.name = 'Times New Roman'
+        font.size = Pt(12)
+        
+        # Виправлення для відображення назви шрифту в Word
+        r = style.element.rPr.rFonts
+        r.set(qn('w:ascii'), 'Times New Roman')
+        r.set(qn('w:hAnsi'), 'Times New Roman')
+
+        # 1. Шапка документа
+        header = doc.add_paragraph()
+        header.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        header.add_run(data.get('header', "Начальнику відділу організації повітряної розвідки\nта протидії безпілотним повітряним суднам штабу\nпідполковнику            Армену МКРТЧЯН"))
+
+        # 2. Назва документа
+        title = doc.add_paragraph()
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title_run = title.add_run("\nДОНЕСЕННЯ ПРО ПОЛІТ")
+        title_run.bold = True
+
+        # 3. БАЗОВІ ДАНІ
+        doc.add_paragraph(f"Дата вильотів : {data.get('date', '__.__.____')}")
+        doc.add_paragraph(f"Ділянка : {data.get('unit', '___')}")
+        doc.add_paragraph("Вильоти:")
+
+        # 4. ТАБЛИЦЯ ПОЛЬОТІВ
+        flights = data.get('flights', [])
+        table = doc.add_table(rows=1, cols=4)
+        table.style = 'Table Grid'
+        
+        hdr_cells = table.rows[0].cells
+        hdr_cells[0].text = 'Прізвище екіпажу'
+        hdr_cells[1].text = 'К-сть'
+        hdr_cells[2].text = 'Тип БпАК'
+        hdr_cells[3].text = 'Час та дистанція вильотів'
+        
+        if not flights:
+            row_cells = table.add_row().cells
+            row_cells[0].text = 'Немає даних'
+            row_cells[1].text = '0'
+            row_cells[2].text = '-'
+            row_cells[3].text = '-'
+        else:
+            for flight in flights:
+                row_cells = table.add_row().cells
+                row_cells[0].text = flight.get('operator', '')
+                row_cells[1].text = str(flight.get('count', ''))
+                row_cells[2].text = flight.get('drone', '')
+                row_cells[3].text = flight.get('details', '')
+
+        # 5. МАРШРУТ ТА ЕКІПАЖ
+        doc.add_paragraph(f"\n Маршрут : {data.get('route', '___')}")
+        doc.add_paragraph(f"БпАК  : {data.get('drones_list', '___')}")
+        doc.add_paragraph("Склад екіпажу:")
+        doc.add_paragraph(f"командир зовнішнього екіпажу: {data.get('commander', '___')};")
+        doc.add_paragraph(f"оператор: {data.get('operators', '___')}.")
+        
+        # 6. РЕЗУЛЬТАТИ
+        doc.add_paragraph("Результати:")
+        doc.add_paragraph(data.get('result', "Під час польотів порушень ОПДК не виявлено."))
+
+        # 7. ФОТОФІКСАЦІЯ (ЯКЩО Є ФОТО)
+        photo_b64 = data.get('photo')
+        temp_photo_path = None
+        if photo_b64 and photo_b64.startswith('data:image'):
+            try:
+                import base64
+                header_data, encoded = photo_b64.split(",", 1)
+                photo_data = base64.b64decode(encoded)
+                temp_photo_path = os.path.join("app", f"{uuid.uuid4()}.jpg")
+                with open(temp_photo_path, "wb") as f:
+                    f.write(photo_data)
+                
+                pic_para = doc.add_paragraph()
+                pic_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                pic_para.add_run().add_picture(temp_photo_path, width=Cm(15))
+            except Exception as e:
+                print(f"Помилка завантаження фото: {e}")
+
+        # 8. ЗВ'ЯЗОК
+        doc.add_paragraph("\nЗв'язок на кордоні підтримувався :")
+        doc.add_paragraph(f"з ПН, ОЧ {data.get('unit', '___')} по р/ст. по радіомережі;")
+        doc.add_paragraph("відео-, фотодокументування здійснювалися штатною апаратурою БпАК.")
+        
+        # 9. ПОГОДА ТА СТАН ТЕХНІКИ
+        doc.add_paragraph(f"\nПогода по маршруту:  {data.get('weather', '___')}")
+        doc.add_paragraph("Готовність екіпажу та стан БпАК: БпАК справний, недоліків у роботі техніки не виявлено.")
+        doc.add_paragraph("Політ виконано в штатному режимі, відмов у системах керування та телеметрії не зафіксовано. Зауважень немає.")
+
+        # 10. ПІДПИС
+        doc.add_paragraph("\nДонесення склав")
+        doc.add_paragraph("Командир зовнішнього екіпажу:")
+        
+        # Форматування підпису (Звання зліва, ПІБ справа)
+        sign_text = data.get('commander_short', '___')
+        doc.add_paragraph(sign_text)
+
+        # Зберігаємо в тимчасовий файл
+        temp_id = str(uuid.uuid4())
+        temp_filepath = os.path.join("app", f"{temp_id}.docx")
+        doc.save(temp_filepath)
+
+        # Визначаємо безпечну назву файлу
+        if not filename.lower().endswith(".docx"):
+            filename += ".docx"
+            
+        def cleanup_temp_files(doc_path: str, photo_path: str = None):
+            try:
+                if os.path.exists(doc_path):
+                    os.remove(doc_path)
+                if photo_path and os.path.exists(photo_path):
+                    os.remove(photo_path)
+            except Exception as e:
+                print(f"Error deleting temp files: {e}")
+
+        from fastapi import BackgroundTasks
+        background_tasks = BackgroundTasks()
+        background_tasks.add_task(cleanup_temp_files, temp_filepath, temp_photo_path)
+
+        encoded_filename = quote(filename)
+        safe_ascii = "report.docx"
+
+        return FileResponse(
+            path=temp_filepath,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            background=background_tasks,
+            headers={
+                "Content-Disposition": f"attachment; filename=\"{safe_ascii}\"; filename*=UTF-8''{encoded_filename}"
+            }
+        )
+    except Exception as e:
+        print(f"DOCX Generation Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
