@@ -584,7 +584,7 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
                 # Fallback без Grounding, якщо API Google перевантажено
                 fallback_config = types.GenerateContentConfig(system_instruction=system_prompt)
                 response = await ai_client.aio.models.generate_content_stream(
-                    model="gemini-2.0-flash-lite",
+                    model="gemini-2.5-flash-lite",
                     contents=contents,
                     config=fallback_config
                 )
