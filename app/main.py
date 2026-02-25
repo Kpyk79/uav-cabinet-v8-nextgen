@@ -126,8 +126,14 @@ async def startup_event():
                     file_path = os.path.join(KNOWLEDGE_DIR, filename)
                     
                     if filename in existing_files:
+                        existing = existing_files[filename]
+                        # Skip files that are not yet ACTIVE or have no usable content
+                        file_state = getattr(existing, 'state', None)
+                        if file_state and str(file_state).upper() not in ('ACTIVE', 'FILE_STATE_ACTIVE'):
+                            print(f"⚠️ Файл {filename} має стан '{file_state}' — пропустити.")
+                            continue
                         print(f"Файл {filename} вже є в базі Gemini.")
-                        knowledge_files_cache.append(existing_files[filename])
+                        knowledge_files_cache.append(existing)
                     else:
                         try:
                             print(f"Завантаження {filename} до Gemini...")
@@ -593,12 +599,19 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
                     if chunk.text:
                         yield chunk.text
             except Exception as e:
-                print(f"Primary Model Error: {e}")
-                # Fallback без Grounding, якщо API Google перевантажено
+                err_str = str(e)
+                print(f"Primary Model Error: {err_str}")
+                # If the error is about documents with no pages, retry without knowledge files
+                if "no pages" in err_str.lower() or "не має сторінок" in err_str.lower() or "document" in err_str.lower():
+                    print("⚠️ Помилка бази знань — спроба без документів...")
+                    safe_contents = [c for c in contents if not hasattr(c, 'uri')]
+                else:
+                    safe_contents = contents
+                # Fallback without grounding, using safe_contents (no bad docs)
                 fallback_config = types.GenerateContentConfig(system_instruction=system_prompt)
                 response = await ai_client.aio.models.generate_content_stream(
                     model="gemini-2.5-flash-lite",
-                    contents=contents,
+                    contents=safe_contents,
                     config=fallback_config
                 )
                 async for chunk in response:
