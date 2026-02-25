@@ -6,3 +6,4 @@ pydantic
 httpx
 python-multipart
 google-genai
+python-docx
