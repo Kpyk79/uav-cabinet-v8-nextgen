@@ -1,31 +1,70 @@
 <!DOCTYPE html>
 <html lang="uk">
+
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Журнал польотів | UAV Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; padding: 8px; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .mission-header { background: rgba(34, 197, 94, 0.1); border-left: 4px solid #22c55e; border-radius: 1rem 1rem 0 0; padding: 1rem; }
-        .flight-row { background: rgba(30, 41, 59, 0.4); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 0.75rem 1rem; }
-        .flight-row:last-child { border-radius: 0 0 1rem 1rem; border-bottom: none; }
-        .tech-label { font-size: 7px; text-transform: uppercase; font-weight: 900; color: #64748b; letter-spacing: 0.05em; }
+
+        body {
+            background: #0f172a;
+            font-family: 'Inter', sans-serif;
+            color: white;
+            padding: 8px;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .mission-header {
+            background: rgba(34, 197, 94, 0.1);
+            border-left: 4px solid #22c55e;
+            border-radius: 1rem 1rem 0 0;
+            padding: 1rem;
+        }
+
+        .flight-row {
+            background: rgba(30, 41, 59, 0.4);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 0.75rem 1rem;
+        }
+
+        .flight-row:last-child {
+            border-radius: 0 0 1rem 1rem;
+            border-bottom: none;
+        }
+
+        .tech-label {
+            font-size: 7px;
+            text-transform: uppercase;
+            font-weight: 900;
+            color: #64748b;
+            letter-spacing: 0.05em;
+        }
     </style>
 </head>
+
 <body class="max-w-4xl mx-auto pb-20">
 
     <div class="flex justify-between items-center mb-6 pt-4 px-2">
         <div class="flex items-center gap-4">
-            <button onclick="nav('/')" class="bg-slate-800 p-2 rounded-lg text-slate-400 hover:text-white transition-all">
+            <button onclick="nav('/')"
+                class="bg-slate-800 p-2 rounded-lg text-slate-400 hover:text-white transition-all">
                 <i class="fa-solid fa-house text-sm"></i>
             </button>
-            <h1 class="text-xl font-black uppercase italic text-green-500 tracking-tighter">Журнал  обліку  польотів (електронна копія)</h1>
+            <h1 class="text-xl font-black uppercase italic text-green-500 tracking-tighter">Журнал обліку польотів
+                (електронна копія)</h1>
         </div>
-        <button onclick="exportToExcel()" class="bg-blue-600 px-4 py-2 rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
+        <button onclick="exportToExcel()"
+            class="bg-blue-600 px-4 py-2 rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
             <i class="fa-solid fa-file-excel mr-2"></i> Скачати таблицю
         </button>
     </div>
@@ -57,12 +96,12 @@
             try {
                 const res = await fetch("/api/get_all_flights");
                 const data = await res.json();
-                
+
                 // Фільтруємо масив, залишаючи тільки польоти поточного користувача
                 allFlights = data.filter(f => f.operator === currentOp && f.unit === currentUnit);
-                
+
                 renderLogs(allFlights);
-            } catch (e) { 
+            } catch (e) {
                 console.error(e);
                 document.getElementById('logsContainer').innerHTML = "Помилка завантаження";
             }
@@ -79,7 +118,7 @@
             // Тепер ми НЕ включаємо flight.route в ключ групування.
             // Групуємо тільки за Датою та Зміною.
             const grouped = flights.reduce((acc, flight) => {
-                const key = `${flight.date}_${flight.shift_time}`; 
+                const key = `${flight.date}_${flight.shift_time}`;
                 if (!acc[key]) acc[key] = [];
                 acc[key].push(flight);
                 return acc;
@@ -87,7 +126,7 @@
 
             container.innerHTML = Object.values(grouped).map(missionFlights => {
                 const first = missionFlights[0];
-                
+
                 // Збираємо всі унікальні маршрути в цьому блоці для заголовка
                 const uniqueRoutes = [...new Set(missionFlights.map(f => f.route).filter(r => r && r !== "Не вказано"))];
                 const routeDisplay = uniqueRoutes.length > 0 ? uniqueRoutes.join(', ') : "Не вказано";
@@ -96,11 +135,19 @@
                 <div class="glass rounded-2xl overflow-hidden mb-6">
                     <div class="mission-header">
                         <div class="flex justify-between items-start">
-                            <div>
-                                <span class="tech-label">Дата та час завдання</span>
-                                <div class="text-sm font-black text-green-500 uppercase">${first.date} | ${first.shift_time}</div>
+                            <div class="flex gap-4">
+                                <div>
+                                    <span class="tech-label">Дата та час завдання</span>
+                                    <div class="text-sm font-black text-green-500 uppercase">${first.date} | ${first.shift_time}</div>
+                                </div>
+                                <div class="flex items-center pt-2">
+                                    <button onclick="window.location.href='/report?date=${first.date}&unit=${encodeURIComponent(first.unit)}&route=${encodeURIComponent(routeDisplay)}'" 
+                                            class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-all border border-blue-500/30 flex items-center gap-2">
+                                        <i class="fa-solid fa-file-invoice"></i> Звіт
+                                    </button>
+                                </div>
                             </div>
-                            <div class="text-right max-w-[50%]">
+                            <div class="text-right max-w-[40%]">
                                 <span class="tech-label">Маршрут / Ділянка</span>
                                 <div class="text-[11px] font-bold text-white uppercase truncate">${routeDisplay}</div>
                             </div>
@@ -108,28 +155,28 @@
                     </div>
                     <div class="flex flex-col">
                         ${missionFlights.map(f => {
-                            // Перевірка на "Польоти не здійснювались"
-                            const isNoFly = f.result === "Польоти не здійснювались";
-                            
-                            // Стилі для рядка (тьмяний, якщо не літали)
-                            const rowClass = isNoFly 
-                                ? "bg-slate-900/50 border-b border-white/5 p-3 flex justify-between items-center opacity-60 grayscale hover:grayscale-0 transition-all" 
-                                : "flight-row flex justify-between items-center hover:bg-slate-800/50 transition-colors";
+                    // Перевірка на "Польоти не здійснювались"
+                    const isNoFly = f.result === "Польоти не здійснювались";
 
-                            // Відображення часу
-                            const durationDisplay = isNoFly 
-                                ? `<span class="text-slate-600 font-bold tracking-widest">---</span>` 
-                                : `<div class="text-[12px] font-black text-green-500">${f.duration}<span class="text-[9px] font-normal">хв</span> <span class="text-slate-600 mx-1">/</span> ${f.distance}<span class="text-[9px] font-normal">м</span></div>`;
+                    // Стилі для рядка (тьмяний, якщо не літали)
+                    const rowClass = isNoFly
+                        ? "bg-slate-900/50 border-b border-white/5 p-3 flex justify-between items-center opacity-60 grayscale hover:grayscale-0 transition-all"
+                        : "flight-row flex justify-between items-center hover:bg-slate-800/50 transition-colors";
 
-                            // Відображення АКБ
-                            const akbDisplay = isNoFly
-                                ? `<span class="text-slate-600 tracking-widest">---</span>`
-                                : `<div class="text-[11px] font-bold text-blue-400 font-mono">${f.battery_id || '—'} <span class="text-[9px] text-orange-500">[${f.battery_cycles}]</span></div>`;
+                    // Відображення часу
+                    const durationDisplay = isNoFly
+                        ? `<span class="text-slate-600 font-bold tracking-widest">---</span>`
+                        : `<div class="text-[12px] font-black text-green-500">${f.duration}<span class="text-[9px] font-normal">хв</span> <span class="text-slate-600 mx-1">/</span> ${f.distance}<span class="text-[9px] font-normal">м</span></div>`;
 
-                            // Маршрут конкретного запису (якщо він відрізняється)
-                            const specificRoute = f.route || "---";
+                    // Відображення АКБ
+                    const akbDisplay = isNoFly
+                        ? `<span class="text-slate-600 tracking-widest">---</span>`
+                        : `<div class="text-[11px] font-bold text-blue-400 font-mono">${f.battery_id || '—'} <span class="text-[9px] text-orange-500">[${f.battery_cycles}]</span></div>`;
 
-                            return `
+                    // Маршрут конкретного запису (якщо він відрізняється)
+                    const specificRoute = f.route || "---";
+
+                    return `
                             <div class="${rowClass}">
                                 <div class="w-1/3">
                                     <div class="tech-label">Зліт — Посадка</div>
@@ -171,13 +218,13 @@
 
             allFlights.forEach((f, i) => {
                 const dateFormatted = f.date && f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date;
-                
+
                 const isNoFly = f.result === "Польоти не здійснювались";
                 const durationTotal = isNoFly ? 0 : (parseInt(f.duration) || 0);
-                
+
                 const hh = Math.floor(durationTotal / 60);
                 const mm = durationTotal % 60;
-                
+
                 sheetData.push([
                     i + 1, dateFormatted, f.drone, f.route || "Не вказано", f.takeoff, f.landing,
                     hh > 0 ? hh : "0", mm, "", "Патрулювання", "", "", "50", "150",
@@ -186,7 +233,7 @@
             });
 
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            
+
             ws['!merges'] = [
                 { s: { r: 0, c: 0 }, e: { r: 0, c: 19 } },
                 { s: { r: 2, c: 0 }, e: { r: 3, c: 0 } },
@@ -201,11 +248,11 @@
                 { s: { r: 2, c: 18 }, e: { r: 3, c: 18 } },
                 { s: { r: 2, c: 19 }, e: { r: 3, c: 19 } }
             ];
-            
+
             ws['!cols'] = [
-                {wch: 4}, {wch: 12}, {wch: 40}, {wch: 25}, {wch: 10}, {wch: 10}, 
-                {wch: 6}, {wch: 6}, {wch: 4}, {wch: 20}, {wch: 4}, {wch: 4}, 
-                {wch: 8}, {wch: 8}, {wch: 25}, {wch: 5}, {wch: 10}, {wch: 10}, {wch: 15}, {wch: 10}
+                { wch: 4 }, { wch: 12 }, { wch: 40 }, { wch: 25 }, { wch: 10 }, { wch: 10 },
+                { wch: 6 }, { wch: 6 }, { wch: 4 }, { wch: 20 }, { wch: 4 }, { wch: 4 },
+                { wch: 8 }, { wch: 8 }, { wch: 25 }, { wch: 5 }, { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 10 }
             ];
 
             const wb = XLSX.utils.book_new();
@@ -216,4 +263,5 @@
         window.onload = loadFlights;
     </script>
 </body>
+
 </html>
