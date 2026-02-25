@@ -262,7 +262,7 @@ async def update_announcement(data: AnnouncementUpdate):
             "announcement_text": data.text,
             "is_announcement_active": data.is_active
         }).eq("id", 1).execute()
-        returngoogle_api_key"status": "ok"}
+        return {"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -275,7 +275,7 @@ async def get_unit_drones(unit: str = Query(...)):
 async def update_drone_status(data: StatusUpdate):
     try:
         res = supabase.table("drones").update({"status": data.status}).eq("id", data.id).execute()
-        returnmaps_api_key"status": "ok"}
+        return {"status": "ok"}
     except Exception as e:
         print(f"Error:maps_api_keye}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -462,7 +462,7 @@ async def chat_with_ai(message: str = Form(...), image: Optional[UploadFile] = F
     context_addon = ""
     if coords_match:
         lat, lon = coords_match.groups()
-        google_api_key = os.environ.get("MAPS_API_KEY") # ПЕРЕКОНАЙТЕСЬ, ЩО ТУТ НОВИЙ КЛЮЧ
+        google_api_key = os.environ.get("GOOGLE_API_KEY") # ПЕРЕКОНАЙТЕСЬ, ЩО ТУТ НОВИЙ КЛЮЧ
         
         try:
             async with httpx.AsyncClient() as client:
