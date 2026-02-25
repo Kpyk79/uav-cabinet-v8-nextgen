@@ -1,27 +1,71 @@
 <!DOCTYPE html>
 <html lang="uk">
+
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Парк БпЛА | Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); min-height: 100vh; font-family: 'Inter', sans-serif; color: white; padding: 15px; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1rem; }
-        .status-active { border-left: 4px solid #22c55e; }
-        .status-repair { border-left: 4px solid #eab308; opacity: 0.8; }
-        .status-broken { border-left: 4px solid #ef4444; opacity: 0.6; }
-        .status-season { border-left: 4px solid #3b82f6; opacity: 0.9; } /* Новий колір для сезонного ТО (синій) */
-        select { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; border-radius: 0.5rem; outline: none; transition: all 0.2s; }
-        select:focus { border-color: #22c55e !important; }
+
+        body {
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            color: white;
+            padding: 15px;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+        }
+
+        .status-active {
+            border-left: 4px solid #22c55e;
+        }
+
+        .status-repair {
+            border-left: 4px solid #eab308;
+            opacity: 0.8;
+        }
+
+        .status-broken {
+            border-left: 4px solid #ef4444;
+            opacity: 0.6;
+        }
+
+        .status-season {
+            border-left: 4px solid #3b82f6;
+            opacity: 0.9;
+        }
+
+        /* Новий колір для сезонного ТО (синій) */
+        select {
+            background: #0f172a !important;
+            color: white !important;
+            border: 1px solid #334155 !important;
+            border-radius: 0.5rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        select:focus {
+            border-color: #22c55e !important;
+        }
     </style>
 </head>
+
 <body class="max-w-3xl mx-auto">
 
     <div class="flex justify-between items-center mb-8">
         <div class="flex items-center gap-4">
-            <button onclick="goBack()" class="bg-slate-800 p-3 rounded-xl text-slate-400 hover:text-white transition-all border border-slate-700">
+            <button onclick="goBack()"
+                class="bg-slate-800 p-3 rounded-xl text-slate-400 hover:text-white transition-all border border-slate-700">
                 <i class="fa-solid fa-arrow-left"></i>
             </button>
             <div>
@@ -29,7 +73,8 @@
                 <p id="currentUnitDisplay" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest"></p>
             </div>
         </div>
-        <button onclick="addNewDrone()" class="bg-blue-600 hover:bg-blue-500 text-xs font-black uppercase px-6 py-3 rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-95">
+        <button onclick="addNewDrone()"
+            class="bg-blue-600 hover:bg-blue-500 text-xs font-black uppercase px-6 py-3 rounded-xl transition-all shadow-lg shadow-blue-500/20 active:scale-95">
             <i class="fa-solid fa-plus mr-2"></i>Додати борт
         </button>
     </div>
@@ -67,7 +112,7 @@
 
         const currentUnit = getTargetUnit();
         const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token'); 
+        const token = urlParams.get('token');
         let dronesCache = [];
 
         // Розумна кнопка "Назад"
@@ -119,7 +164,9 @@
             let statusClass = 'status-active';
             if (status === 'Repair') statusClass = 'status-repair';
             if (status === 'Broken') statusClass = 'status-broken';
-            if (status === 'Season') statusClass = 'status-season'; // Клас для нового статусу
+            if (status === 'Season') statusClass = 'status-season';
+
+            const batteryVal = (d.battery_count !== null && d.battery_count !== undefined) ? d.battery_count : '';
 
             return `
             <div class="glass p-4 ${statusClass} transition-all hover:bg-slate-800/50">
@@ -131,6 +178,19 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
+                        <div class="flex flex-col items-center gap-1">
+                            <label class="text-[9px] text-slate-500 uppercase tracking-widest">АКБ</label>
+                            <input
+                                id="battery-${d.id}"
+                                type="number"
+                                min="0"
+                                value="${batteryVal}"
+                                placeholder="0"
+                                onblur="updateBatteryCount(${d.id})"
+                                onkeydown="if(event.key==='Enter') this.blur()"
+                                class="w-16 text-center bg-slate-900 text-white text-xs font-bold py-1.5 px-2 rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none transition-all"
+                            />
+                        </div>
                         <select onchange="updateStatus(${d.id}, this.value)" class="appearance-none bg-slate-900 text-[10px] font-bold py-2 px-3 rounded-lg border border-slate-700">
                             <option value="Active" ${status === 'Active' ? 'selected' : ''}>🟢 В строю</option>
                             <option value="Repair" ${status === 'Repair' ? 'selected' : ''}>🟡 Ремонт</option>
@@ -174,6 +234,26 @@
             } catch (e) { alert("Помилка оновлення"); }
         }
 
+        async function updateBatteryCount(id) {
+            const input = document.getElementById(`battery-${id}`);
+            const count = parseInt(input.value);
+            if (isNaN(count) || count < 0) return;
+            try {
+                const res = await fetch('/api/update_drone_battery', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id, battery_count: count })
+                });
+                if (res.ok) {
+                    const drone = dronesCache.find(d => d.id === id);
+                    if (drone) drone.battery_count = count;
+                    // Flash border green to confirm
+                    input.style.borderColor = '#22c55e';
+                    setTimeout(() => input.style.borderColor = '', 1200);
+                }
+            } catch (e) { alert("Помилка збереження АКБ"); }
+        }
+
         async function deleteDrone(id) {
             if (confirm("Видалити борт?")) {
                 try {
@@ -186,4 +266,5 @@
         loadFleet();
     </script>
 </body>
+
 </html>
