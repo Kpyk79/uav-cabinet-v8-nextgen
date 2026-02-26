@@ -6,226 +6,518 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UAV Workstation | Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        * {
+            box-sizing: border-box;
+        }
 
         body {
-            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+            background: #060b18;
+            background-image:
+                radial-gradient(ellipse at 20% 0%, rgba(34, 197, 94, 0.07) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 100%, rgba(59, 130, 246, 0.06) 0%, transparent 60%);
             min-height: 100vh;
             font-family: 'Inter', sans-serif;
-            color: white;
-            padding: 8px;
+            color: #e2e8f0;
+            padding: 12px;
         }
 
+        /* ── Glass Cards ── */
         .glass {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(20px) saturate(1.3);
+            -webkit-backdrop-filter: blur(20px) saturate(1.3);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
         }
 
+        .glass-inner {
+            background: rgba(6, 11, 24, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 0.75rem;
+        }
+
+        /* ── Labels ── */
         .label-style {
-            font-size: 9px;
+            font-size: 10px;
             text-transform: uppercase;
-            font-weight: 800;
-            color: #94a3b8;
-            margin-bottom: 0.1rem;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 4px;
             display: block;
+            letter-spacing: 0.06em;
         }
 
+        /* ── Inputs ── */
         input,
         select,
         textarea {
-            background: #0f172a !important;
-            color: white !important;
-            border: 1px solid #334155 !important;
-            border-radius: 0.5rem;
+            background: rgba(6, 11, 24, 0.7) !important;
+            color: #e2e8f0 !important;
+            border: 1px solid rgba(100, 116, 139, 0.25) !important;
+            border-radius: 0.625rem;
             font-size: 14px !important;
             width: 100%;
             outline: none;
-            transition: all 0.2s;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        input:focus {
-            border-color: #22c55e !important;
+        input:focus,
+        select:focus {
+            border-color: rgba(34, 197, 94, 0.6) !important;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1), 0 0 20px rgba(34, 197, 94, 0.05);
         }
 
-        .btn-green {
-            background: #16a34a;
-            font-weight: 900;
+        select {
+            cursor: pointer;
+        }
+
+        /* ── Buttons ── */
+        .btn-primary {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            font-weight: 800;
             text-transform: uppercase;
+            letter-spacing: 0.04em;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(22, 163, 74, 0.25);
         }
 
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 25px rgba(22, 163, 74, 0.3);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-action {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 25px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-action:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        /* ── Toolbar buttons ── */
+        .toolbar-btn {
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.625rem;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            border: 1px solid transparent;
+        }
+
+        .toolbar-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .toolbar-btn:active {
+            transform: translateY(0) scale(0.95);
+        }
+
+        /* ── CUS Boxes ── */
         .cus-box {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(6, 11, 24, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 0.75rem;
+            padding: 10px;
+        }
+
+        /* ── Draft Cards ── */
+        .draft-card {
+            background: rgba(6, 11, 24, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 0.75rem;
+            transition: all 0.2s ease;
+        }
+
+        .draft-card:hover {
+            background: rgba(15, 23, 42, 0.8);
+            border-color: rgba(34, 197, 94, 0.15);
+        }
+
+        /* ── Takeoff/Landing pills ── */
+        .time-pill {
+            background: rgba(6, 11, 24, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 0.75rem;
             padding: 8px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
         }
 
+        .time-pill::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+
+        .time-pill.takeoff::after {
+            background: linear-gradient(90deg, transparent, #22c55e, transparent);
+        }
+
+        .time-pill.landing::after {
+            background: linear-gradient(90deg, transparent, #ef4444, transparent);
+        }
+
+        /* ── Animations ── */
         @keyframes popIn {
             0% {
                 opacity: 0;
-                transform: scale(0.9);
+                transform: scale(0.92) translateY(10px);
             }
 
             100% {
                 opacity: 1;
-                transform: scale(1);
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% center;
+            }
+
+            100% {
+                background-position: 200% center;
             }
         }
 
         .animate-pop {
-            animation: popIn 0.3s ease-out forwards;
+            animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .animate-fade {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+
+        /* ── Section Divider ── */
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+            margin: 12px 0;
+        }
+
+        /* ── Badge ── */
+        .user-badge {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05));
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 0.5rem;
+            padding: 6px 12px;
         }
     </style>
 </head>
 
 <body class="flex items-center justify-center">
 
+    <!-- ═══ ANNOUNCEMENT MODAL ═══ -->
     <div id="announcementCard"
-        class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
-        <div class="glass w-full max-w-sm p-6 rounded-2xl border-l-4 border-yellow-500 shadow-2xl relative animate-pop">
-            <div class="flex justify-between items-start mb-4">
+        class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+        <div class="glass w-full max-w-sm p-7 rounded-2xl border-l-4 border-yellow-500 shadow-2xl relative animate-pop">
+            <div class="flex justify-between items-start mb-5">
                 <h2 class="text-lg font-black text-yellow-500 uppercase tracking-wider flex items-center">
                     <i class="fa-solid fa-triangle-exclamation mr-2"></i>Увага
                 </h2>
-                <button onclick="closeAnnouncement()" class="text-slate-500 hover:text-white transition-colors">
-                    <i class="fa-solid fa-xmark text-xl"></i>
+                <button onclick="closeAnnouncement()"
+                    class="text-slate-500 hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5">
+                    <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
             <div id="announcementText"
                 class="text-sm text-slate-200 leading-relaxed font-mono mb-6 whitespace-pre-wrap"></div>
             <button onclick="closeAnnouncement()"
-                class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-black uppercase py-3 rounded-xl transition-all shadow-lg active:scale-95">
+                class="w-full bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-black font-black uppercase py-3.5 rounded-xl transition-all shadow-lg active:scale-[0.97]">
                 Зрозуміло
             </button>
         </div>
     </div>
-    <div id="loginScreen" class="w-full max-w-md glass p-8 rounded-[2rem] hidden">
-        <h1 class="text-2xl font-black text-center text-green-500 mb-6 uppercase italic">Авторизація</h1>
-        <div class="space-y-3">
-            <div><label class="label-style italic">Підрозділ</label><select id="loginUnit" class="p-3"></select></div>
-            <div><label class="label-style italic">Прізвище</label><input type="text" id="loginOp" class="p-3"></div>
-            <div><label class="label-style italic">Пароль (для ідентифікації)</label><input type="password"
-                    id="loginPass" class="p-3" placeholder="••••••••"></div>
+
+    <!-- ═══ LOGIN SCREEN ═══ -->
+    <div id="loginScreen" class="w-full max-w-md glass p-8 rounded-[2rem] hidden animate-fade">
+        <div class="text-center mb-8">
+            <div
+                class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-600/10 border border-green-500/20 mb-4">
+                <i class="fa-solid fa-shield-halved text-2xl text-green-500"></i>
+            </div>
+            <h1
+                class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-500 uppercase tracking-tight">
+                Авторизація
+            </h1>
+            <p class="text-xs text-slate-500 mt-2 font-medium">UAV Command System</p>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <label class="label-style">Підрозділ</label>
+                <select id="loginUnit" class="p-3"></select>
+            </div>
+            <div>
+                <label class="label-style">Прізвище</label>
+                <input type="text" id="loginOp" class="p-3" placeholder="Введіть прізвище">
+            </div>
+            <div>
+                <label class="label-style">Пароль</label>
+                <input type="password" id="loginPass" class="p-3" placeholder="••••••••">
+            </div>
             <button id="loginBtn" onclick="saveAuth()"
-                class="w-full btn-green py-4 rounded-xl text-slate-900 mt-2">Увійти</button>
+                class="w-full btn-primary py-4 rounded-xl text-white mt-2 text-sm">
+                <i class="fa-solid fa-right-to-bracket mr-2"></i>Увійти
+            </button>
         </div>
     </div>
 
-    <div id="mainScreen" class="w-full max-w-6xl mx-auto flex flex-col lg:flex-row gap-4 hidden">
-        <div class="lg:w-1/2 glass p-4 rounded-[1.5rem] h-fit">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
-                <div id="userBadge" class="text-[10px] font-black text-green-500 uppercase italic"></div>
-                <div class="flex gap-2">
+    <!-- ═══ MAIN SCREEN ═══ -->
+    <div id="mainScreen" class="w-full max-w-6xl mx-auto flex flex-col lg:flex-row gap-5 hidden">
+
+        <!-- ── LEFT PANEL: FORM ── -->
+        <div class="lg:w-1/2 glass p-5 rounded-[1.5rem] h-fit animate-fade">
+
+            <!-- Toolbar -->
+            <div class="flex justify-between items-center mb-5">
+                <div id="userBadge" class="user-badge text-[11px] font-bold text-green-400 tracking-wide"></div>
+                <div class="flex gap-1.5">
                     <button onclick="nav('/request')"
-                        class="p-2 bg-purple-500/20 text-purple-400 rounded-lg border border-purple-500/30 hover:bg-purple-500/40 transition-all"><i
-                            class="fa-solid fa-file-signature"></i></button>
-                    <button onclick="nav('/dashboard')" class="p-2 bg-blue-500/20 text-blue-400 rounded-lg"><i
-                            class="fa-solid fa-journal-whills"></i></button>
+                        class="toolbar-btn bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20"
+                        title="Заявка"><i class="fa-solid fa-file-signature"></i></button>
+                    <button onclick="nav('/dashboard')"
+                        class="toolbar-btn bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20"
+                        title="Журнал"><i class="fa-solid fa-journal-whills"></i></button>
                     <button onclick="nav('/analytics')"
-                        class="p-2 bg-orange-500/20 text-orange-400 rounded-lg border border-orange-500/30"
+                        class="toolbar-btn bg-orange-500/10 text-orange-400 border-orange-500/20 hover:bg-orange-500/20"
                         title="Аналітика"><i class="fa-solid fa-chart-line"></i></button>
                     <button onclick="nav('/handbook')"
-                        class="p-2 bg-teal-500/20 text-teal-400 rounded-lg border border-teal-500/30"
+                        class="toolbar-btn bg-teal-500/10 text-teal-400 border-teal-500/20 hover:bg-teal-500/20"
                         title="Довідник"><i class="fa-solid fa-book-open"></i></button>
                     <button onclick="nav('/support')"
-                        class="p-2 bg-blue-500/20 text-blue-400 rounded-lg border border-blue-500/30"
-                        title="Технічна допомога"><i class="fa-solid fa-headset"></i></button>
-                    <button onclick="logout()" class="p-2 bg-red-500/20 text-red-400 rounded-lg"><i
-                            class="fa-solid fa-power-off"></i></button>
+                        class="toolbar-btn bg-sky-500/10 text-sky-400 border-sky-500/20 hover:bg-sky-500/20"
+                        title="Підтримка"><i class="fa-solid fa-headset"></i></button>
+                    <button onclick="logout()"
+                        class="toolbar-btn bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20"
+                        title="Вийти"><i class="fa-solid fa-power-off"></i></button>
                 </div>
             </div>
 
-            <form id="flightForm" class="space-y-3">
-                <div class="grid grid-cols-2 gap-2">
-                    <div><label class="label-style">Дата</label><input type="date" id="date" class="p-2"
-                            oninput="saveState(this.id)"></div>
-                    <div><label class="label-style">Час польотного завдання</label>
-                        <div class="flex gap-1">
-                            <input type="time" id="s1" value="08:00" class="p-2 text-center"
+            <form id="flightForm" class="space-y-3.5">
+                <!-- Date & Shift -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="label-style">Дата</label>
+                        <input type="date" id="date" class="p-2.5" oninput="saveState(this.id)">
+                    </div>
+                    <div>
+                        <label class="label-style">Час польотного завдання</label>
+                        <div class="flex gap-1.5">
+                            <input type="time" id="s1" value="08:00" class="p-2.5 text-center"
                                 oninput="saveState(this.id)">
-                            <input type="time" id="s2" value="20:00" class="p-2 text-center"
+                            <input type="time" id="s2" value="20:00" class="p-2.5 text-center"
                                 oninput="saveState(this.id)">
                         </div>
                     </div>
                 </div>
-                <div><label class="label-style">БпЛА</label><select id="drone" class="p-2 text-green-400 font-bold"
-                        onchange="saveState(this.id)">
+
+                <!-- Drone -->
+                <div>
+                    <label class="label-style">БпЛА</label>
+                    <select id="drone" class="p-2.5 text-green-400 font-semibold" onchange="saveState(this.id)">
                         <option>Завантаження...</option>
-                    </select></div>
-                <div><label class="label-style">Маршрут</label><input type="text" id="route" class="p-2"
-                        oninput="saveState(this.id)"></div>
-                <div class="grid grid-cols-2 gap-2 bg-slate-900/60 p-2 rounded-xl border border-slate-800 text-center">
-                    <div><label class="label-style text-green-500">Зліт</label><input type="tel" id="t1"
-                            placeholder="09:30"
-                            class="p-1 text-lg font-mono text-green-400 text-center bg-transparent border-none"
-                            oninput="saveState(this.id)"></div>
-                    <div><label class="label-style text-red-500">Посадка</label><input type="tel" id="t2"
-                            placeholder="10:15"
-                            class="p-1 text-lg font-mono text-red-400 text-center bg-transparent border-none"
-                            oninput="saveState(this.id)"></div>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                    <div><label class="label-style">Дист.(м)</label><input type="number" id="dist" inputmode="numeric"
-                            class="p-2" oninput="saveState(this.id)"></div>
-                    <div><label class="label-style">№ АКБ</label><input type="text" id="akb" class="p-2"
-                            oninput="saveState(this.id)"></div>
-                    <div><label class="label-style">Цикли</label><input type="number" id="cyc" inputmode="numeric"
-                            class="p-2" oninput="saveState(this.id)"></div>
-                </div>
-                <div class="grid grid-cols-3 gap-2 border-b border-slate-800 pb-3">
-                    <div><label class="label-style">Погодні умови</label><select id="weather" class="p-2 text-[10px]"
-                            onchange="saveState(this.id)"></select></div>
-                    <div><label class="label-style">Умови польоту</label><select id="mode" class="p-2 text-[10px]"
-                            onchange="saveState(this.id)"></select></div>
-                    <div><label class="label-style text-orange-400">Результат</label><select id="result"
-                            class="p-2 text-[10px] text-orange-400 font-bold" onchange="saveState(this.id)"></select>
-                    </div>
-                </div>
-                <div class="bg-slate-900/40 p-3 rounded-xl border border-dashed border-slate-700">
-                    <label class="label-style">Скріншоти / Фото донесення</label>
-                    <input type="file" id="photos" multiple accept="image/*" class="text-[10px] text-slate-500">
+                    </select>
                 </div>
 
-                <div class="flex gap-2">
+                <!-- Route -->
+                <div>
+                    <label class="label-style">Маршрут</label>
+                    <input type="text" id="route" class="p-2.5" placeholder="Введіть маршрут..."
+                        oninput="saveState(this.id)">
+                </div>
+
+                <!-- Takeoff / Landing -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="time-pill takeoff">
+                        <label class="label-style text-green-400 flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-plane-departure text-[9px]"></i> Зліт
+                        </label>
+                        <input type="tel" id="t1" placeholder="09:30"
+                            class="p-1.5 text-xl font-mono text-green-400 text-center !bg-transparent !border-none"
+                            oninput="saveState(this.id)">
+                    </div>
+                    <div class="time-pill landing">
+                        <label class="label-style text-red-400 flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-plane-arrival text-[9px]"></i> Посадка
+                        </label>
+                        <input type="tel" id="t2" placeholder="10:15"
+                            class="p-1.5 text-xl font-mono text-red-400 text-center !bg-transparent !border-none"
+                            oninput="saveState(this.id)">
+                    </div>
+                </div>
+
+                <!-- Distance / Battery / Cycles -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="label-style">Дист. (м)</label>
+                        <input type="number" id="dist" inputmode="numeric" class="p-2.5" placeholder="0"
+                            oninput="saveState(this.id)">
+                    </div>
+                    <div>
+                        <label class="label-style">№ АКБ</label>
+                        <input type="text" id="akb" class="p-2.5" placeholder="—" oninput="saveState(this.id)">
+                    </div>
+                    <div>
+                        <label class="label-style">Цикли</label>
+                        <input type="number" id="cyc" inputmode="numeric" class="p-2.5" placeholder="0"
+                            oninput="saveState(this.id)">
+                    </div>
+                </div>
+
+                <div class="section-divider"></div>
+
+                <!-- Weather / Mode / Result -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="label-style">Погодні умови</label>
+                        <select id="weather" class="p-2.5 text-xs" onchange="saveState(this.id)"></select>
+                    </div>
+                    <div>
+                        <label class="label-style">Умови польоту</label>
+                        <select id="mode" class="p-2.5 text-xs" onchange="saveState(this.id)"></select>
+                    </div>
+                    <div>
+                        <label class="label-style text-orange-400">Результат</label>
+                        <select id="result" class="p-2.5 text-xs text-orange-400 font-semibold"
+                            onchange="saveState(this.id)"></select>
+                    </div>
+                </div>
+
+                <!-- Photos -->
+                <div class="glass-inner p-3.5">
+                    <label class="label-style flex items-center gap-1.5 mb-2">
+                        <i class="fa-solid fa-camera text-blue-400 text-[9px]"></i> Скріншоти / Фото
+                    </label>
+                    <input type="file" id="photos" multiple accept="image/*" class="text-[11px] text-slate-500">
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2 pt-1">
                     <button type="button" id="submitBtn" onclick="addToDraft()"
-                        class="w-full bg-blue-600 py-3 rounded-xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Додати
-                        в чернетку</button>
+                        class="w-full btn-action py-3.5 rounded-xl text-white text-sm">
+                        <i class="fa-solid fa-plus mr-1.5"></i>Додати в чернетку
+                    </button>
                     <button type="button" id="cancelBtn" onclick="cancelEdit()"
-                        class="hidden w-1/3 bg-slate-700 hover:bg-slate-600 py-3 rounded-xl font-bold uppercase text-xs transition-all text-slate-300">Скасувати</button>
+                        class="hidden w-1/3 bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-bold uppercase text-xs transition-all text-slate-300 border border-slate-700">
+                        Скасувати
+                    </button>
                 </div>
             </form>
         </div>
 
-        <div class="lg:w-1/2 glass p-4 rounded-[1.5rem] flex flex-col">
-            <h2 class="text-[11px] font-black uppercase text-slate-500 mb-2 italic">Чернетка (<span
-                    id="draftCount">0</span>)</h2>
-            <div id="draftList" class="flex-grow space-y-2 overflow-y-auto max-h-[250px] mb-4"></div>
+        <!-- ── RIGHT PANEL: DRAFT ── -->
+        <div class="lg:w-1/2 glass p-5 rounded-[1.5rem] flex flex-col animate-fade" style="animation-delay: 0.1s;">
 
-            <div class="grid grid-cols-2 gap-2 mb-4">
+            <!-- Draft Header -->
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                    <i class="fa-solid fa-clipboard-list text-blue-500"></i>
+                    Чернетка
+                    <span class="bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-md text-[10px] font-black"
+                        id="draftCount">0</span>
+                </h2>
+            </div>
+
+            <div id="draftList" class="flex-grow space-y-2 overflow-y-auto max-h-[250px] mb-4 pr-1"></div>
+
+            <!-- CUS Blocks -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
                 <div class="cus-box">
-                    <div class="flex justify-between mb-1"><span
-                            class="text-[8px] font-black uppercase text-green-500 tracking-tighter">До
-                            00:00</span><button onclick="copyText('cusBefore')"
-                            class="text-[8px] text-blue-400 font-bold">Копіювати</button></div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span
+                            class="text-[9px] font-black uppercase text-green-500/80 tracking-wide flex items-center gap-1">
+                            <i class="fa-solid fa-sun text-[8px]"></i> До 00:00
+                        </span>
+                        <button onclick="copyText('cusBefore')"
+                            class="text-[9px] text-blue-400 font-bold hover:text-blue-300 transition-colors">
+                            <i class="fa-regular fa-copy mr-0.5"></i>Копіювати
+                        </button>
+                    </div>
                     <textarea id="cusBefore" readonly
-                        class="w-full bg-transparent p-1 text-[10px] h-14 text-slate-400 font-mono outline-none resize-none"></textarea>
+                        class="w-full !bg-transparent p-1 text-[10px] h-16 text-slate-400 font-mono resize-none !border-none"></textarea>
                 </div>
                 <div class="cus-box">
-                    <div class="flex justify-between mb-1"><span
-                            class="text-[8px] font-black uppercase text-blue-500 tracking-tighter">Після
-                            00:00</span><button onclick="copyText('cusAfter')"
-                            class="text-[8px] text-blue-400 font-bold">Копіювати</button></div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span
+                            class="text-[9px] font-black uppercase text-blue-500/80 tracking-wide flex items-center gap-1">
+                            <i class="fa-solid fa-moon text-[8px]"></i> Після 00:00
+                        </span>
+                        <button onclick="copyText('cusAfter')"
+                            class="text-[9px] text-blue-400 font-bold hover:text-blue-300 transition-colors">
+                            <i class="fa-regular fa-copy mr-0.5"></i>Копіювати
+                        </button>
+                    </div>
                     <textarea id="cusAfter" readonly
-                        class="w-full bg-transparent p-1 text-[10px] h-14 text-slate-400 font-mono outline-none resize-none"></textarea>
+                        class="w-full !bg-transparent p-1 text-[10px] h-16 text-slate-400 font-mono resize-none !border-none"></textarea>
                 </div>
             </div>
 
+            <!-- Publish Button -->
             <button id="publishBtn" onclick="publishAll()" disabled
-                class="w-full btn-green py-4 rounded-xl text-slate-900 mt-auto font-black uppercase shadow-xl">Опублікувати
-                донесення</button>
+                class="w-full btn-primary py-4 rounded-xl text-white mt-auto text-sm flex items-center justify-center gap-2">
+                <i class="fa-solid fa-paper-plane"></i>
+                Опублікувати донесення
+            </button>
         </div>
     </div>
 
@@ -236,7 +528,6 @@
 
         function normalizeOperatorName(name) {
             if (!name) return "";
-            // Список звань для видалення
             const ranks = [
                 "солдат", "сержант", "лейтенант", "капітан", "майор", "підполковник", "полковник",
                 "мл. с-нт", "ст. с-нт", "мл.", "ст.", "с-нт", "лт", "кпт", "м-р", "п-к", "ген",
@@ -248,12 +539,9 @@
                 const regex = new RegExp("\\b" + escapedRank + "\\.?\\s*", "gi");
                 res = res.replace(regex, "");
             });
-            // Видаляємо ініціали (А.Б. або А. Б. або Прізвище А.)
             res = res.replace(/\b[А-ЯЁІЇЄA-Z]\.\s*/gi, "");
             res = res.replace(/\s+[А-ЯЁІЇЄA-Z](\.|$)/gi, "");
-            // Чистимо зайві символи
             res = res.trim().replace(/^[\s._,-]+|[\s._,-]+$/g, "");
-            // Беремо лише перше слово (прізвище)
             const words = res.split(/\s+/);
             if (words.length > 0 && words[0]) {
                 res = words[0];
@@ -393,7 +681,7 @@
 
                 if (data.status === "ok") {
                     localStorage.setItem('uav_unit', unit);
-                    localStorage.setItem('uav_op', normalizeOperatorName(op)); // Зберігаємо вже нормалізоване
+                    localStorage.setItem('uav_op', normalizeOperatorName(op));
                     location.reload();
                 } else {
                     alert(data.message || "Помилка авторизації");
@@ -432,8 +720,8 @@
 
             editingId = id;
             const btn = document.getElementById('submitBtn');
-            btn.innerText = "Зберегти зміни";
-            btn.classList.remove('bg-blue-600');
+            btn.innerHTML = '<i class="fa-solid fa-check mr-1.5"></i>Зберегти зміни';
+            btn.classList.remove('btn-action');
             btn.classList.add('bg-orange-500');
 
             document.getElementById('cancelBtn').classList.remove('hidden');
@@ -445,8 +733,8 @@
             restoreFields();
 
             const btn = document.getElementById('submitBtn');
-            btn.innerText = "Додати в чернетку";
-            btn.classList.add('bg-blue-600');
+            btn.innerHTML = '<i class="fa-solid fa-plus mr-1.5"></i>Додати в чернетку';
+            btn.classList.add('btn-action');
             btn.classList.remove('bg-orange-500');
             document.getElementById('cancelBtn').classList.add('hidden');
         }
@@ -528,20 +816,21 @@
             document.getElementById('draftCount').innerText = draft.length;
             document.getElementById('publishBtn').disabled = draft.length === 0;
             document.getElementById('draftList').innerHTML = draft.map(f => `
-                <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700 flex justify-between items-center group hover:bg-slate-800 transition-colors">
+                <div class="draft-card p-3 flex justify-between items-center">
                     <div class="text-[10px] w-full mr-2" onclick="editDraft(${f.id})" style="cursor: pointer;">
-                        <div class="font-bold text-green-500 flex items-center gap-2">
+                        <div class="font-bold text-green-400 flex items-center gap-2">
+                            <i class="fa-solid fa-plane text-[8px] opacity-50"></i>
                             ${f.takeoff} → ${f.landing} 
-                            <span class="text-slate-500 font-normal">(${f.duration} хв)</span>
+                            <span class="text-slate-500 font-normal text-[9px]">${f.duration} хв</span>
                         </div>
-                        <div class="text-slate-400 uppercase truncate">${f.drone.split(' (')[0]}</div>
+                        <div class="text-slate-500 uppercase truncate mt-0.5">${f.drone.split(' (')[0]}</div>
                     </div>
-                    <div class="flex items-center gap-1">
-                        <button onclick="editDraft(${f.id})" class="text-yellow-500 p-2 hover:bg-yellow-500/10 rounded-lg transition-all" title="Редагувати">
-                            <i class="fa-solid fa-pen"></i>
+                    <div class="flex items-center gap-0.5">
+                        <button onclick="editDraft(${f.id})" class="text-yellow-500/70 p-2 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-all" title="Редагувати">
+                            <i class="fa-solid fa-pen text-[11px]"></i>
                         </button>
-                        <button onclick="removeFromDraft(${f.id})" class="text-red-500 p-2 hover:bg-red-500/10 rounded-lg transition-all" title="Видалити">
-                            <i class="fa-solid fa-trash-can"></i>
+                        <button onclick="removeFromDraft(${f.id})" class="text-red-500/70 p-2 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Видалити">
+                            <i class="fa-solid fa-trash-can text-[11px]"></i>
                         </button>
                     </div>
                 </div>`).join('');
@@ -585,7 +874,7 @@
             if (draft.length === 0) return;
             const btn = document.getElementById('publishBtn');
             btn.disabled = true;
-            btn.innerText = "НАДСИЛАННЯ...";
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>НАДСИЛАННЯ...';
 
             const first = draft[0];
             const currentShift = (document.getElementById('s1')?.value || "08:00") + "-" + (document.getElementById('s2')?.value || "20:00");
@@ -657,7 +946,7 @@
                 console.error(e);
             } finally {
                 btn.disabled = false;
-                btn.innerText = "Опублікувати донесення";
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Опублікувати донесення';
             }
         }
 
