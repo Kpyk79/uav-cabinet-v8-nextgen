@@ -332,6 +332,9 @@
         let allFlights = [];
         let saveTimeout;
 
+        // Strip seconds from time: "12:30:00" → "12:30"
+        function fmtTime(t) { return t ? t.substring(0, 5) : '--'; }
+
         function nav(path) {
             const token = new URLSearchParams(window.location.search).get('token');
             window.location.href = token ? `${path}?token=${token}` : path;
@@ -418,7 +421,7 @@
                 if (!stats[op]) stats[op] = { count: 0, drones: {} };
                 stats[op].count++;
                 if (!stats[op].drones[dr]) stats[op].drones[dr] = [];
-                stats[op].drones[dr].push(`${f.takeoff || '--'} - ${f.landing || '--'} (${f.distance || 0} м)`);
+                stats[op].drones[dr].push(`${fmtTime(f.takeoff)} - ${fmtTime(f.landing)} (${f.distance || 0} м)`);
             });
 
             Object.entries(stats).forEach(([op, data]) => {
@@ -475,7 +478,7 @@
                     stats[key] = { name: op, drone: dr, count: 0, details: [] };
                 }
                 stats[key].count++;
-                stats[key].details.push(`${f.takeoff || '--'} - ${f.landing || '--'} (${f.distance || 0} м)`);
+                stats[key].details.push(`${fmtTime(f.takeoff)} - ${fmtTime(f.landing)} (${f.distance || 0} м)`);
             });
 
             const flightsData = Object.values(stats).map(item => ({

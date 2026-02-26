@@ -1,55 +1,132 @@
 <!DOCTYPE html>
 <html lang="uk">
+
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Панель начальника відділення/групи</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; padding: 12px; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.25rem; }
-        .chief-label { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; letter-spacing: 0.1em; margin-bottom: 8px; }
-        .stat-value { font-size: 1.5rem; font-weight: 900; line-height: 1; }
-        
+
+        body {
+            background: #0f172a;
+            font-family: 'Inter', sans-serif;
+            color: white;
+            padding: 12px;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.25rem;
+        }
+
+        .chief-label {
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: #64748b;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 900;
+            line-height: 1;
+        }
+
         /* Стилі для графіка часу */
-        .bar-container { display: flex; align-items: flex-end; height: 50px; gap: 4px; }
-        .bar { width: 100%; border-radius: 4px 4px 0 0; background: #3b82f6; opacity: 0.5; transition: all 0.3s; }
-        .bar:hover { opacity: 1; transform: scaleY(1.1); }
+        .bar-container {
+            display: flex;
+            align-items: flex-end;
+            height: 50px;
+            gap: 4px;
+        }
+
+        .bar {
+            width: 100%;
+            border-radius: 4px 4px 0 0;
+            background: #3b82f6;
+            opacity: 0.5;
+            transition: all 0.3s;
+        }
+
+        .bar:hover {
+            opacity: 1;
+            transform: scaleY(1.1);
+        }
 
         /* Стилі для списків */
-        .info-card { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 0.5rem; padding: 0.5rem; margin-bottom: 0.5rem; }
-        .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-        
+        .info-card {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
         /* СТАТУСИ */
-        .bg-active { background-color: #22c55e; box-shadow: 0 0 8px rgba(34, 197, 94, 0.5); }
-        .bg-repair { background-color: #eab308; }
-        .bg-lost { background-color: #ef4444; }
-        .bg-season { background-color: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); } /* Новий статус */
+        .bg-active {
+            background-color: #22c55e;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+        }
+
+        .bg-repair {
+            background-color: #eab308;
+        }
+
+        .bg-lost {
+            background-color: #ef4444;
+        }
+
+        .bg-season {
+            background-color: #3b82f6;
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+        }
+
+        /* Новий статус */
     </style>
 </head>
+
 <body class="max-w-6xl mx-auto pb-20">
 
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pt-4">
         <div class="flex items-center gap-4">
-            <button onclick="window.location.href='/dashboard'" class="p-2 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-all">
+            <button onclick="window.location.href='/dashboard'"
+                class="p-2 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-all">
                 <i class="fa-solid fa-arrow-left"></i>
             </button>
             <div>
-                <h1 class="text-2xl font-black uppercase italic text-blue-500 tracking-tighter">Аналітика відділення / групи</h1>
-                <p id="unitInfo" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Завантаження...</p>
+                <h1 class="text-2xl font-black uppercase italic text-blue-500 tracking-tighter">Аналітика відділення /
+                    групи</h1>
+                <p id="unitInfo" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                    Завантаження...</p>
             </div>
         </div>
-        
+
         <div class="flex flex-wrap gap-2 w-full md:w-auto">
-            <select id="dateFilter" onchange="init()" class="bg-slate-800 text-xs font-bold p-2 rounded-xl border border-white/10 outline-none">
+            <select id="dateFilter" onchange="init()"
+                class="bg-slate-800 text-xs font-bold p-2 rounded-xl border border-white/10 outline-none">
                 <option value="today">Сьогодні</option>
                 <option value="week">За тиждень</option>
                 <option value="month" selected>Поточний місяць</option>
                 <option value="all">За весь час</option>
             </select>
-            <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-500 text-white text-[10px] font-black uppercase px-4 py-2 rounded-xl transition-all shadow-lg shadow-green-900/20">
+            <button onclick="exportToExcel()"
+                class="bg-green-600 hover:bg-green-500 text-white text-[10px] font-black uppercase px-4 py-2 rounded-xl transition-all shadow-lg shadow-green-900/20">
                 <i class="fa-solid fa-file-excel mr-1"></i> Експорт Звіту
             </button>
         </div>
@@ -58,21 +135,28 @@
     <div id="statsGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8"></div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        
+
         <div class="glass p-5 h-fit">
-            <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection('fleetContainer', 'fleetArrow')">
+            <div class="flex justify-between items-center cursor-pointer select-none"
+                onclick="toggleSection('fleetContainer', 'fleetArrow')">
                 <h3 class="text-sm font-black uppercase text-blue-400 flex items-center gap-2">
-                    <i id="fleetArrow" class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
+                    <i id="fleetArrow"
+                        class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
                     <i class="fa-solid fa-plane-up ml-1"></i> Парк БпЛА (Ввірені підрозділи)
                 </h3>
                 <div class="flex gap-2" onclick="event.stopPropagation()">
-                    <button onclick="exportFleetToExcel()" class="text-[10px] bg-green-700 hover:bg-green-600 px-3 py-1 rounded text-white transition-all shadow-lg shadow-green-900/20" title="Експорт списку БпЛА">
+                    <button onclick="exportFleetToExcel()"
+                        class="text-[10px] bg-green-700 hover:bg-green-600 px-3 py-1 rounded text-white transition-all shadow-lg shadow-green-900/20"
+                        title="Експорт списку БпЛА">
                         <i class="fa-solid fa-file-excel"></i>
                     </button>
-                    <button onclick="window.location.href='/fleet'" class="text-[10px] bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-white transition-all shadow-lg shadow-blue-900/20" title="Редагувати парк">
+                    <button onclick="window.location.href='/fleet'"
+                        class="text-[10px] bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-white transition-all shadow-lg shadow-blue-900/20"
+                        title="Редагувати парк">
                         <i class="fa-solid fa-pen-to-square"></i>
                     </button>
-                    <button onclick="reloadFleetData()" class="text-[10px] bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-white transition-all">
+                    <button onclick="reloadFleetData()"
+                        class="text-[10px] bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-white transition-all">
                         <i class="fa-solid fa-sync"></i>
                     </button>
                 </div>
@@ -83,13 +167,17 @@
         </div>
 
         <div class="glass p-5 h-fit">
-            <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleSection('personnelContainer', 'personnelArrow')">
+            <div class="flex justify-between items-center cursor-pointer select-none"
+                onclick="toggleSection('personnelContainer', 'personnelArrow')">
                 <h3 class="text-sm font-black uppercase text-yellow-500 flex items-center gap-2">
-                    <i id="personnelArrow" class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
+                    <i id="personnelArrow"
+                        class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
                     <i class="fa-solid fa-users ml-1"></i> Особовий Склад
                 </h3>
                 <div class="flex gap-2" onclick="event.stopPropagation()">
-                     <button onclick="exportPersonnelToExcel()" class="text-[10px] bg-green-700 hover:bg-green-600 px-3 py-1 rounded text-white transition-all shadow-lg shadow-green-900/20" title="Експорт списку О/С">
+                    <button onclick="exportPersonnelToExcel()"
+                        class="text-[10px] bg-green-700 hover:bg-green-600 px-3 py-1 rounded text-white transition-all shadow-lg shadow-green-900/20"
+                        title="Експорт списку О/С">
                         <i class="fa-solid fa-file-excel"></i>
                     </button>
                 </div>
@@ -102,12 +190,13 @@
     </div>
 
     <div class="grid lg:grid-cols-3 gap-6">
-        
+
         <div class="lg:col-span-2 space-y-6">
-            
+
             <div class="glass p-5">
                 <div class="flex justify-between items-end mb-4">
-                    <div class="chief-label mb-0"><i class="fa-solid fa-clock text-purple-500 mr-2"></i>Інтенсивність роботи (Доба)</div>
+                    <div class="chief-label mb-0"><i class="fa-solid fa-clock text-purple-500 mr-2"></i>Інтенсивність
+                        роботи (Доба)</div>
                     <div class="text-[9px] text-slate-500 font-mono uppercase">розподіл вильотів по годинах</div>
                 </div>
                 <div id="timeChart" class="bar-container w-full px-1"></div>
@@ -126,19 +215,22 @@
         </div>
 
         <div class="space-y-6">
-            
+
             <div class="glass p-5">
-                <div class="chief-label"><i class="fa-solid fa-plane-up text-blue-500 mr-2"></i>Робочі конячки (БпЛА)</div>
+                <div class="chief-label"><i class="fa-solid fa-plane-up text-blue-500 mr-2"></i>Робочі конячки (БпЛА)
+                </div>
                 <div id="droneUsageContainer" class="space-y-3 mt-4 text-[11px]"></div>
             </div>
 
             <div class="glass p-5">
-                <div class="chief-label"><i class="fa-solid fa-map-location-dot text-orange-500 mr-2"></i>ТОП Маршрутів</div>
+                <div class="chief-label"><i class="fa-solid fa-map-location-dot text-orange-500 mr-2"></i>ТОП Маршрутів
+                </div>
                 <div id="routeContainer" class="space-y-2 mt-4 text-[11px]"></div>
             </div>
 
             <div class="glass p-5 border-t-4 border-red-500/50">
-                <div class="chief-label"><i class="fa-solid fa-battery-full text-red-500 mr-2"></i>Критичний знос АКБ</div>
+                <div class="chief-label"><i class="fa-solid fa-battery-full text-red-500 mr-2"></i>Критичний знос АКБ
+                </div>
                 <div id="batteryContainer" class="space-y-2 mt-4 text-[11px]"></div>
             </div>
         </div>
@@ -155,10 +247,13 @@
         };
 
         const currentUnit = localStorage.getItem('uav_unit');
-        let allUnitFlights = []; 
-        let filteredData = []; 
-        let globalFleetData = []; 
-        let myUnits = []; 
+        let allUnitFlights = [];
+        let filteredData = [];
+        let globalFleetData = [];
+        let myUnits = [];
+
+        // Strip seconds from time: "12:30:00" → "12:30"
+        function fmtTime(t) { return t ? t.substring(0, 5) : '--'; }
 
         function toggleSection(containerId, arrowId) {
             const container = document.getElementById(containerId);
@@ -178,18 +273,18 @@
                 return;
             }
             document.getElementById('unitInfo').innerText = `Сектор відповідальності: ${currentUnit}`;
-            
+
             myUnits = hierarchy[currentUnit] ? [currentUnit, ...hierarchy[currentUnit]] : [currentUnit];
 
             try {
                 const res = await fetch("/api/get_all_flights");
                 const data = await res.json();
-                
+
                 allUnitFlights = data.filter(f => myUnits.includes(f.unit));
-                
+
                 const period = document.getElementById('dateFilter').value;
                 const now = new Date();
-                
+
                 filteredData = allUnitFlights.filter(f => {
                     const fDate = new Date(f.date);
                     if (period === 'today') return fDate.toDateString() === now.toDateString();
@@ -199,8 +294,8 @@
                 });
 
                 renderDashboard();
-                loadFleet(myUnits); 
-                renderPersonnel(allUnitFlights); 
+                loadFleet(myUnits);
+                renderPersonnel(allUnitFlights);
 
             } catch (e) { console.error(e); }
         }
@@ -208,7 +303,7 @@
         function renderDashboard() {
             renderStats();
             renderTimeChart();
-            renderPilotsChart(); 
+            renderPilotsChart();
             renderResources();
             renderTactics();
         }
@@ -219,12 +314,12 @@
 
         async function loadFleet(unitsList) {
             const container = document.getElementById('fleetContainer');
-            if(unitsList.length === 0) {
+            if (unitsList.length === 0) {
                 container.innerHTML = '<div class="text-center text-slate-500 text-xs">Список підрозділів порожній</div>';
                 return;
             }
-            container.innerHTML = ''; 
-            
+            container.innerHTML = '';
+
             const promises = unitsList.map(async (unit) => {
                 try {
                     const resDrones = await fetch(`/api/get_unit_drones?unit=${encodeURIComponent(unit)}`);
@@ -240,17 +335,17 @@
                     dronesHtml = drones.map(d => {
                         let statusClass = 'bg-active';
                         let statusTitle = 'В строю';
-                        
+
                         // ОНОВЛЕНА ЛОГІКА СТАТУСІВ
-                        if (d.status === 'Repair') { 
-                            statusClass = 'bg-repair'; 
-                            statusTitle = 'В ремонті'; 
-                        } else if (d.status === 'Season') { 
-                            statusClass = 'bg-season'; 
-                            statusTitle = 'Сезонне ТО'; 
-                        } else if (d.status === 'Lost' || d.status === 'Broken') { 
-                            statusClass = 'bg-lost'; 
-                            statusTitle = 'Втрачено/Пошкоджено'; 
+                        if (d.status === 'Repair') {
+                            statusClass = 'bg-repair';
+                            statusTitle = 'В ремонті';
+                        } else if (d.status === 'Season') {
+                            statusClass = 'bg-season';
+                            statusTitle = 'Сезонне ТО';
+                        } else if (d.status === 'Lost' || d.status === 'Broken') {
+                            statusClass = 'bg-lost';
+                            statusTitle = 'Втрачено/Пошкоджено';
                         }
 
                         return `
@@ -294,7 +389,7 @@
                 if (!unitMap[u]) unitMap[u] = {};
                 if (!unitMap[u][op]) unitMap[u][op] = { flights: 0, time: 0 };
 
-                if(f.result !== "Польоти не здійснювались") {
+                if (f.result !== "Польоти не здійснювались") {
                     unitMap[u][op].flights++;
                     unitMap[u][op].time += dur;
                 }
@@ -303,8 +398,8 @@
             container.innerHTML = '';
 
             Object.entries(unitMap).forEach(([unitName, pilotsObj]) => {
-                const pilotsList = Object.entries(pilotsObj).sort((a,b) => b[1].flights - a[1].flights);
-                
+                const pilotsList = Object.entries(pilotsObj).sort((a, b) => b[1].flights - a[1].flights);
+
                 const pilotsHtml = pilotsList.map(([name, stats]) => `
                     <div class="info-card flex justify-between items-center text-[11px]">
                         <div class="flex items-center gap-2">
@@ -313,7 +408,7 @@
                         </div>
                         <div class="flex gap-2">
                             <span class="text-slate-500 font-mono text-[9px] bg-slate-900 px-1 rounded border border-slate-700">${stats.flights} вил.</span>
-                            <span class="text-blue-400 font-mono text-[9px] bg-blue-900/20 px-1 rounded border border-blue-500/20">${Math.floor(stats.time/60)}г ${stats.time%60}хв</span>
+                            <span class="text-blue-400 font-mono text-[9px] bg-blue-900/20 px-1 rounded border border-blue-500/20">${Math.floor(stats.time / 60)}г ${stats.time % 60}хв</span>
                         </div>
                     </div>`).join('');
 
@@ -348,12 +443,12 @@
                         sheetData.push([unit, d.model, d.serial_number || "---", s]);
                     });
                 } else {
-                     sheetData.push([unit, "Немає техніки", "", ""]);
+                    sheetData.push([unit, "Немає техніки", "", ""]);
                 }
             });
 
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            ws['!cols'] = [{wch: 25}, {wch: 30}, {wch: 25}, {wch: 15}];
+            ws['!cols'] = [{ wch: 25 }, { wch: 30 }, { wch: 25 }, { wch: 15 }];
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Fleet");
             XLSX.writeFile(wb, `Fleet_Report_${currentUnit}.xlsx`);
@@ -361,7 +456,7 @@
 
         function exportPersonnelToExcel() {
             if (allUnitFlights.length === 0) return alert("Немає даних для експорту");
-            
+
             const unitMap = {};
             allUnitFlights.forEach(f => {
                 const u = f.unit || "Не вказано";
@@ -369,7 +464,7 @@
                 const dur = parseInt(f.duration) || 0;
                 if (!unitMap[u]) unitMap[u] = {};
                 if (!unitMap[u][op]) unitMap[u][op] = { flights: 0, time: 0 };
-                if(f.result !== "Польоти не здійснювались") {
+                if (f.result !== "Польоти не здійснювались") {
                     unitMap[u][op].flights++;
                     unitMap[u][op].time += dur;
                 }
@@ -382,14 +477,14 @@
             ];
 
             Object.entries(unitMap).forEach(([unitName, pilotsObj]) => {
-                 Object.entries(pilotsObj).forEach(([name, stats]) => {
-                     const hours = (stats.time / 60).toFixed(1);
-                     sheetData.push([unitName, name, stats.flights, stats.time, hours]);
-                 });
+                Object.entries(pilotsObj).forEach(([name, stats]) => {
+                    const hours = (stats.time / 60).toFixed(1);
+                    sheetData.push([unitName, name, stats.flights, stats.time, hours]);
+                });
             });
 
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            ws['!cols'] = [{wch: 25}, {wch: 25}, {wch: 15}, {wch: 15}, {wch: 15}];
+            ws['!cols'] = [{ wch: 25 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Personnel");
             XLSX.writeFile(wb, `Personnel_Report_${currentUnit}.xlsx`);
@@ -400,11 +495,11 @@
             const time = filteredData.reduce((s, f) => s + (f.duration || 0), 0);
             const results = filteredData.filter(f => f.result === 'Затримання').length;
             const avgDuration = realFlights.length > 0 ? Math.round(time / realFlights.length) : 0;
-            
+
             document.getElementById('statsGrid').innerHTML = `
                 <div class="glass p-5 border-l-4 border-blue-500">
                     <div class="chief-label">Загальний наліт</div>
-                    <div class="stat-value">${Math.floor(time/60)}<span class="text-sm font-normal text-slate-500">г</span> ${time%60}<span class="text-sm font-normal text-slate-500">хв</span></div>
+                    <div class="stat-value">${Math.floor(time / 60)}<span class="text-sm font-normal text-slate-500">г</span> ${time % 60}<span class="text-sm font-normal text-slate-500">хв</span></div>
                 </div>
                 <div class="glass p-5 border-l-4 border-green-500">
                     <div class="chief-label">Кількість вильотів</div>
@@ -423,9 +518,9 @@
         function renderTimeChart() {
             const hours = new Array(24).fill(0);
             filteredData.forEach(f => {
-                if(f.takeoff && f.result !== "Польоти не здійснювались") {
+                if (f.takeoff && f.result !== "Польоти не здійснювались") {
                     const h = parseInt(f.takeoff.split(':')[0]);
-                    if(!isNaN(h)) hours[h]++;
+                    if (!isNaN(h)) hours[h]++;
                 }
             });
             const max = Math.max(...hours, 1);
@@ -448,7 +543,7 @@
                 if (f.result !== "Польоти не здійснювались") pilots[f.operator].flights++;
             });
 
-            const sorted = Object.entries(pilots).sort((a,b) => b[1].time - a[1].time);
+            const sorted = Object.entries(pilots).sort((a, b) => b[1].time - a[1].time);
             document.getElementById('pilotsContainer').innerHTML = sorted.map(([name, data], index) => {
                 const percent = totalUnitTime > 0 ? Math.round((data.time / totalUnitTime) * 100) : 0;
                 return `
@@ -464,7 +559,7 @@
                         </div>
                         <div class="text-right">
                             <div class="text-lg font-black text-blue-400 leading-none">${data.flights} <span class="text-[10px] text-slate-500 uppercase">вильотів</span></div>
-                            <div class="text-xs font-mono text-slate-400 mt-1">${Math.floor(data.time/60)}г ${data.time%60}хв <span class="text-blue-500/50 ml-1">(${percent}%)</span></div>
+                            <div class="text-xs font-mono text-slate-400 mt-1">${Math.floor(data.time / 60)}г ${data.time % 60}хв <span class="text-blue-500/50 ml-1">(${percent}%)</span></div>
                         </div>
                     </div>
                 </div>`;
@@ -479,7 +574,7 @@
                     drones[model] = (drones[model] || 0) + 1;
                 }
             });
-            const sortedDrones = Object.entries(drones).sort((a,b) => b[1] - a[1]);
+            const sortedDrones = Object.entries(drones).sort((a, b) => b[1] - a[1]);
             document.getElementById('droneUsageContainer').innerHTML = sortedDrones.map(([name, count]) => `
                 <div class="flex justify-between items-center border-b border-white/5 pb-2 last:border-0">
                     <span class="font-bold text-slate-300">${name}</span>
@@ -488,9 +583,9 @@
 
             const batteries = {};
             filteredData.forEach(f => {
-                if(f.battery_id) batteries[f.battery_id] = Math.max(batteries[f.battery_id] || 0, f.battery_cycles || 0);
+                if (f.battery_id) batteries[f.battery_id] = Math.max(batteries[f.battery_id] || 0, f.battery_cycles || 0);
             });
-            const critical = Object.entries(batteries).filter(([id, cyc]) => cyc > 0).sort((a,b) => b[1] - a[1]).slice(0, 5); 
+            const critical = Object.entries(batteries).filter(([id, cyc]) => cyc > 0).sort((a, b) => b[1] - a[1]).slice(0, 5);
             document.getElementById('batteryContainer').innerHTML = critical.map(([id, cyc]) => `
                 <div class="flex justify-between items-center p-2 ${cyc > 150 ? 'bg-red-500/10 border border-red-500/20' : 'bg-slate-800'} rounded-lg">
                     <span class="font-mono text-slate-300">${id}</span>
@@ -500,19 +595,19 @@
 
         function renderTactics() {
             const routes = {};
-            filteredData.forEach(f => { 
+            filteredData.forEach(f => {
                 if (f.result !== "Польоти не здійснювались") {
-                    routes[f.route] = (routes[f.route] || 0) + 1; 
+                    routes[f.route] = (routes[f.route] || 0) + 1;
                 }
             });
-            const topRoutes = Object.entries(routes).sort((a,b) => b[1] - a[1]).slice(0, 5);
+            const topRoutes = Object.entries(routes).sort((a, b) => b[1] - a[1]).slice(0, 5);
             document.getElementById('routeContainer').innerHTML = topRoutes.map(([name, count]) => `
                 <div class="flex justify-between items-center">
                     <span class="truncate w-3/4 font-medium text-slate-400" title="${name}">${name}</span>
                     <span class="font-bold text-white">${count}</span>
                 </div>
                 <div class="w-full bg-slate-800 h-1 rounded-full mb-2">
-                    <div class="bg-orange-500 h-full rounded-full" style="width: ${(count/filteredData.length)*100}%"></div>
+                    <div class="bg-orange-500 h-full rounded-full" style="width: ${(count / filteredData.length) * 100}%"></div>
                 </div>`).join('') || '<div class="text-slate-700 italic text-center">Немає даних</div>';
         }
 
@@ -520,7 +615,7 @@
             if (filteredData.length === 0) return alert("Немає даних для експорту!");
             const dataForExcel = filteredData.map(f => ({
                 'Дата': f.date, 'Підрозділ': f.unit, 'Оператор': f.operator, 'БпЛА': f.drone,
-                'Зліт': f.takeoff, 'Посадка': f.landing, 'Тривалість (хв)': f.duration,
+                'Зліт': fmtTime(f.takeoff), 'Посадка': fmtTime(f.landing), 'Тривалість (хв)': f.duration,
                 'Результат': f.result, 'Маршрут': f.route
             }));
             const ws = XLSX.utils.json_to_sheet(dataForExcel);
@@ -532,4 +627,5 @@
         init();
     </script>
 </body>
+
 </html>

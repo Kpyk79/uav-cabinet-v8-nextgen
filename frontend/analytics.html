@@ -262,6 +262,9 @@
         const currentOp = localStorage.getItem('uav_op');
         const currentUnit = localStorage.getItem('uav_unit');
 
+        // Strip seconds from time: "12:30:00" → "12:30"
+        function fmtTime(t) { return t ? t.substring(0, 5) : '--'; }
+
         function toggleFilters() {
             const section = document.getElementById('filterSection');
             const arrow = document.getElementById('filterArrow');
@@ -465,7 +468,7 @@
                         <td class="py-3 pl-2 align-top">
                             <div class="font-bold text-white text-sm">${shortDate}</div>
                             <div class="text-[10px] text-slate-400 font-mono mt-1 bg-slate-800/60 inline-block px-1 rounded border border-slate-700">
-                                ${f.takeoff} - ${f.landing}
+                                ${fmtTime(f.takeoff)} - ${fmtTime(f.landing)}
                             </div>
                         </td>
                         <td class="py-3 align-top">
