@@ -199,7 +199,7 @@
     </div>
 
     <!-- Filters -->
-    <div class="glass p-6 mb-8 mx-4 grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
+    <div class="glass p-6 mb-8 mx-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
         <div>
             <label class="text-[9px] font-black text-slate-500 uppercase ml-1 mb-2 block tracking-widest">Період
                 (Місяць)</label>
@@ -243,17 +243,19 @@
             </select>
         </div>
         <button onclick="resetFilters()"
-            class="h-10 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all border border-white/5">Скинути</button>
+            class="h-10 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all border border-white/5 sm:col-span-2 lg:col-span-1">Скинути</button>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 px-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 px-4">
         <!-- Daily Activity -->
-        <div class="glass p-6">
+        <div class="glass p-6 overflow-hidden">
             <h2 class="text-[11px] font-black uppercase mb-6 text-slate-400 italic flex items-center gap-3">
                 <i class="fa-solid fa-clock text-purple-500 text-sm"></i> Інтенсивність (Добовий розподіл)
             </h2>
-            <div id="timeChart" class="bar-container w-full px-2"></div>
-            <div class="grid grid-cols-6 text-[8px] text-slate-500 font-black mt-4 uppercase text-center">
+            <div class="overflow-x-auto pb-2 scrollbar-hide">
+                <div id="timeChart" class="bar-container min-w-[300px] px-2"></div>
+            </div>
+            <div class="grid grid-cols-6 text-[8px] text-slate-500 font-black mt-4 uppercase text-center min-w-[300px]">
                 <span>00-04</span><span>04-08</span><span>08-12</span><span>12-16</span><span>16-20</span><span>20-24</span>
             </div>
         </div>
@@ -269,20 +271,20 @@
 
     <!-- Ranking and Top Models -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 px-4">
-        <div class="lg:col-span-2 glass p-8">
-            <div class="flex justify-between items-center mb-10">
+        <div class="lg:col-span-2 glass p-4 sm:p-8">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
                 <h2 class="text-[11px] font-black uppercase text-slate-400 italic flex items-center gap-3">
                     <i class="fa-solid fa-trophy text-yellow-500 text-sm"></i> Глобальний рейтинг нальоту
                 </h2>
-                <div class="flex gap-2 bg-slate-900/80 p-1 rounded-xl border border-white/5">
+                <div class="flex gap-2 bg-slate-900/80 p-1 rounded-xl border border-white/5 w-full sm:w-auto">
                     <button onclick="switchTab('pilots')" id="btnPilots"
-                        class="px-5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all rounded-lg">Пілоти</button>
+                        class="flex-1 sm:flex-none px-5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all rounded-lg">Пілоти</button>
                     <button onclick="switchTab('units')" id="btnUnits"
-                        class="px-5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all rounded-lg">Підрозділи</button>
+                        class="flex-1 sm:flex-none px-5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all rounded-lg">Підрозділи</button>
                 </div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="tech-table">
+            <div class="overflow-x-auto -mx-2 sm:mx-0">
+                <table class="tech-table min-w-[450px]">
                     <thead>
                         <tr>
                             <th class="pl-4">Суб'єкт</th>
