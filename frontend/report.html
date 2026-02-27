@@ -514,7 +514,7 @@
             // Короткий формат командира
             const cmdParts = cmd.split(' ');
             const rank = cmdParts[0] || 'штаб-сержант';
-            const name = cmdParts.slice(1).join(' ') || 'Олександр ГВОЗДІЦЬКИЙ';
+            const name = cmdParts.slice(1).join(' ') || 'Степан БАНДЕРА';
             const commanderShort = `${rank}                                          ${name}`;
 
             const reportData = {
@@ -635,7 +635,7 @@
                 if (val) document.getElementById(f).value = val;
             });
             if (!document.getElementById('reportHeader').value) {
-                document.getElementById('reportHeader').value = "Начальнику відділу ОПР та ПБпПС штабу\nпідполковнику Армену МКРТЧЯН";
+                document.getElementById('reportHeader').value = "Начальнику відділу організації\nповітряної розвідки та протидії безпілотним\nповітряним суднам штабу\nпідполковнику Армену МКРТЧЯН";
             }
         }
 
