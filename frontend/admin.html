@@ -189,24 +189,26 @@
     <!-- Navbar -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 pt-8 px-4">
         <div>
-            <h1 class="text-4xl font-black italic text-green-500 uppercase tracking-tighter leading-none">Admin Panel
-            </h1>
+            <h1 class="text-3xl sm:text-4xl font-black italic text-green-500 uppercase tracking-tighter leading-none">
+                Admin Panel</h1>
             <p class="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-3 flex items-center gap-2">
                 <span class="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></span> Системний центр керування
             </p>
         </div>
-        <div class="flex flex-wrap gap-3">
+        <div class="flex flex-wrap gap-3 w-full sm:w-auto">
             <button onclick="nav('/')"
-                class="w-12 h-12 flex items-center justify-center glass hover:bg-slate-800 transition-all active:scale-95 group">
+                class="flex-1 sm:flex-none w-12 h-12 flex items-center justify-center glass hover:bg-slate-800 transition-all active:scale-95 group">
                 <i class="fa-solid fa-house text-slate-400 group-hover:text-white transition-colors"></i>
             </button>
             <button onclick="exportAllToExcel()"
-                class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-2xl text-white font-black uppercase text-[11px] tracking-widest shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-3">
-                <i class="fa-solid fa-file-excel text-sm"></i> Експорт логів
+                class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-2xl text-white font-black uppercase text-[11px] tracking-widest shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-3">
+                <i class="fa-solid fa-file-excel text-sm"></i> <span class="hidden sm:inline">Експорт логів</span> <span
+                    class="sm:hidden">Експорт</span>
             </button>
             <button onclick="nav('/admin_analytics')"
-                class="bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-2xl text-white font-black uppercase text-[11px] tracking-widest shadow-lg shadow-orange-500/20 transition-all active:scale-95 flex items-center gap-3">
-                <i class="fa-solid fa-chart-line text-sm"></i> Глобальна Аналітика
+                class="flex-1 sm:flex-none bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-2xl text-white font-black uppercase text-[11px] tracking-widest shadow-lg shadow-orange-500/20 transition-all active:scale-95 flex items-center justify-center gap-3">
+                <i class="fa-solid fa-chart-line text-sm"></i> <span class="hidden sm:inline">Глобальна Аналітика</span>
+                <span class="sm:hidden">Аналітика</span>
             </button>
         </div>
     </div>
@@ -339,7 +341,8 @@
                 <i class="fa-solid fa-rotate-left"></i> Скинути фільтри
             </button>
         </div>
-        <div id="filterContainer" class="hidden mt-8 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-5">
+        <div id="filterContainer"
+            class="hidden mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
             <div><label class="label-mini">З дати</label><input type="date" id="filterDateFrom" oninput="filterData()"
                     class="input-dark"></div>
             <div><label class="label-mini">По дату</label><input type="date" id="filterDateTo" oninput="filterData()"
@@ -357,8 +360,8 @@
 
     <!-- Main Data Table -->
     <div class="glass overflow-hidden mx-4">
-        <div class="overflow-x-auto custom-scrollbar">
-            <table class="tech-table">
+        <div class="overflow-x-auto scrollbar-hide">
+            <table class="tech-table min-w-[1000px]">
                 <thead>
                     <tr>
                         <th class="pl-6">Дата</th>
