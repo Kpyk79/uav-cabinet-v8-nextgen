@@ -8,71 +8,150 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-
-        body {
-            background: #0f172a;
-            font-family: 'Inter', sans-serif;
-            color: white;
-            padding: 8px;
+        * {
+            box-sizing: border-box;
         }
 
+        body {
+            background: #060b18;
+            background-image:
+                radial-gradient(ellipse at 20% 0%, rgba(34, 197, 94, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 100%, rgba(59, 130, 246, 0.07) 0%, transparent 60%);
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            color: #e2e8f0;
+            padding: 12px;
+        }
+
+        /* ── Glass Cards ── */
         .glass {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(20px) saturate(1.3);
+            -webkit-backdrop-filter: blur(20px) saturate(1.3);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .mission-card {
+            border-radius: 1.5rem;
+            overflow: hidden;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(15, 23, 42, 0.4);
+            transition: transform 0.3s ease;
         }
 
         .mission-header {
-            background: rgba(34, 197, 94, 0.1);
+            background: linear-gradient(to right, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05));
             border-left: 4px solid #22c55e;
-            border-radius: 1rem 1rem 0 0;
-            padding: 1rem;
+            padding: 1.25rem 1.5rem;
+            position: relative;
         }
 
         .flight-row {
+            background: rgba(30, 41, 59, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            padding: 1rem 1.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .flight-row:hover {
             background: rgba(30, 41, 59, 0.4);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 0.75rem 1rem;
         }
 
         .flight-row:last-child {
-            border-radius: 0 0 1rem 1rem;
             border-bottom: none;
         }
 
         .tech-label {
-            font-size: 7px;
+            font-size: 8px;
             text-transform: uppercase;
-            font-weight: 900;
+            font-weight: 800;
             color: #64748b;
+            letter-spacing: 0.1em;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .btn-report {
+            background: rgba(37, 99, 235, 0.1);
+            border: 1px solid rgba(37, 99, 235, 0.2);
+            color: #60a5fa;
+            font-weight: 800;
+            text-transform: uppercase;
             letter-spacing: 0.05em;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-report:hover {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .no-fly-row {
+            opacity: 0.5;
+            filter: grayscale(0.5);
+            background: rgba(15, 23, 42, 0.3);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
         }
     </style>
 </head>
 
 <body class="max-w-4xl mx-auto pb-20">
 
-    <div class="flex justify-between items-center mb-6 pt-4 px-2">
+    <!-- Header Section -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 pt-6 px-2">
         <div class="flex items-center gap-4">
             <button onclick="nav('/')"
-                class="bg-slate-800 p-2 rounded-lg text-slate-400 hover:text-white transition-all">
-                <i class="fa-solid fa-house text-sm"></i>
+                class="w-10 h-10 flex items-center justify-center glass hover:bg-slate-800 transition-all active:scale-95 group rounded-xl">
+                <i class="fa-solid fa-house text-slate-400 group-hover:text-white transition-colors"></i>
             </button>
-            <h1 class="text-xl font-black uppercase italic text-green-500 tracking-tighter">Журнал обліку польотів
-                (електронна копія)</h1>
+            <div>
+                <h1 class="text-2xl font-black uppercase italic text-green-500 tracking-tighter leading-none">Журнал
+                    польотів</h1>
+                <p
+                    class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Електронна копія
+                </p>
+            </div>
         </div>
+
         <button onclick="exportToExcel()"
-            class="bg-blue-600 px-4 py-2 rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
-            <i class="fa-solid fa-file-excel mr-2"></i> Скачати таблицю
+            class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-wider shadow-lg shadow-blue-500/20 active:scale-95 transition-all text-white flex items-center gap-2">
+            <i class="fa-solid fa-file-excel text-sm"></i> Експорт в Excel
         </button>
     </div>
 
-    <div id="logsContainer" class="space-y-6">
-        <div class="text-center py-20 text-slate-600 animate-pulse">
-            <i class="fa-solid fa-sync fa-spin mb-2 text-2xl"></i>
-            <div class="text-[10px] uppercase font-black tracking-widest">Фільтрація даних...</div>
+    <!-- Content Container -->
+    <div id="logsContainer" class="space-y-8 min-h-[400px]">
+        <div class="flex flex-col items-center justify-center py-32 text-slate-600 space-y-4">
+            <div class="relative">
+                <i class="fa-solid fa-circle-notch fa-spin text-4xl text-green-500"></i>
+                <div class="absolute inset-0 blur-xl bg-green-500/20 animate-pulse"></div>
+            </div>
+            <div class="text-[10px] uppercase font-black tracking-[0.2em]">Обробка польотних даних...</div>
         </div>
     </div>
 
@@ -81,8 +160,7 @@
         const currentOp = localStorage.getItem('uav_op');
         const currentUnit = localStorage.getItem('uav_unit');
 
-        // Strip seconds from time: "12:30:00" → "12:30"
-        function fmtTime(t) { return t ? t.substring(0, 5) : '--'; }
+        function fmtTime(t) { return t ? t.substring(0, 5) : '--:--'; }
 
         function nav(path) {
             const token = new URLSearchParams(window.location.search).get('token');
@@ -99,27 +177,29 @@
             try {
                 const res = await fetch("/api/get_all_flights");
                 const data = await res.json();
-
-                // Фільтруємо масив, залишаючи тільки польоти поточного користувача
                 allFlights = data.filter(f => f.operator === currentOp && f.unit === currentUnit);
-
                 renderLogs(allFlights);
             } catch (e) {
                 console.error(e);
-                document.getElementById('logsContainer').innerHTML = "Помилка завантаження";
+                document.getElementById('logsContainer').innerHTML = `
+                    <div class="text-center py-20 text-red-500/50">
+                        <i class="fa-solid fa-triangle-exclamation text-4xl mb-4"></i>
+                        <p class="font-black uppercase text-xs tracking-widest">Помилка завантаження бази даних</p>
+                    </div>`;
             }
         }
 
         function renderLogs(flights) {
             const container = document.getElementById('logsContainer');
             if (flights.length === 0) {
-                container.innerHTML = '<div class="text-center text-slate-500 py-10 italic">Ваших записів не знайдено</div>';
+                container.innerHTML = `
+                    <div class="text-center py-32 glass rounded-3xl mx-2 border-dashed border-2 border-white/5">
+                        <i class="fa-solid fa-ghost text-4xl text-slate-800 mb-4"></i>
+                        <div class="text-slate-500 text-[11px] font-black uppercase tracking-widest italic">Записів не знайдено</div>
+                    </div>`;
                 return;
             }
 
-            // --- ЗМІНЕНО ГРУПУВАННЯ ---
-            // Тепер ми НЕ включаємо flight.route в ключ групування.
-            // Групуємо тільки за Датою та Зміною.
             const grouped = flights.reduce((acc, flight) => {
                 const key = `${flight.date}_${flight.shift_time}`;
                 if (!acc[key]) acc[key] = [];
@@ -129,83 +209,86 @@
 
             container.innerHTML = Object.values(grouped).map(missionFlights => {
                 const first = missionFlights[0];
-
-                // Збираємо всі унікальні маршрути в цьому блоці для заголовка
                 const uniqueRoutes = [...new Set(missionFlights.map(f => f.route).filter(r => r && r !== "Не вказано"))];
-                const routeDisplay = uniqueRoutes.length > 0 ? uniqueRoutes.join(', ') : "Не вказано";
+                const routeDisplay = uniqueRoutes.length > 0 ? uniqueRoutes.join(', ') : "Маршрут не вказано";
 
                 return `
-                <div class="glass rounded-2xl overflow-hidden mb-6">
+                <div class="mission-card glass mx-2">
                     <div class="mission-header">
-                        <div class="flex justify-between items-start">
-                            <div class="flex gap-4">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div class="flex items-center gap-6">
                                 <div>
-                                    <span class="tech-label">Дата та час завдання</span>
-                                    <div class="text-sm font-black text-green-500 uppercase">${first.date} | ${fmtTime(first.shift_time)}</div>
+                                    <span class="tech-label">Дата завдання</span>
+                                    <div class="text-lg font-black text-white flex items-center gap-2">
+                                        ${first.date?.split('-').reverse().join('.')}
+                                        <span class="text-xs text-green-500/50 font-mono tracking-tighter">(${fmtTime(first.shift_time)})</span>
+                                    </div>
                                 </div>
-                                <div class="flex items-center pt-2">
-                                    <button onclick="window.location.href='/report?date=${first.date}&unit=${encodeURIComponent(first.unit)}&route=${encodeURIComponent(routeDisplay)}'" 
-                                            class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase transition-all border border-blue-500/30 flex items-center gap-2">
-                                        <i class="fa-solid fa-file-invoice"></i> Звіт
-                                    </button>
+                                <div class="w-px h-8 bg-white/10 hidden sm:block"></div>
+                                <div>
+                                    <span class="tech-label">Маршрут / Локація</span>
+                                    <div class="text-[11px] font-bold text-slate-400 uppercase max-w-[200px] truncate" title="${routeDisplay}">${routeDisplay}</div>
                                 </div>
                             </div>
-                            <div class="text-right max-w-[40%]">
-                                <span class="tech-label">Маршрут / Ділянка</span>
-                                <div class="text-[11px] font-bold text-white uppercase truncate">${routeDisplay}</div>
-                            </div>
+                            
+                            <button onclick="window.location.href='/report?date=${first.date}&unit=${encodeURIComponent(first.unit)}&route=${encodeURIComponent(routeDisplay)}'" 
+                                    class="btn-report px-4 py-2 rounded-lg text-[10px] flex items-center gap-2">
+                                <i class="fa-solid fa-file-contract text-sm"></i> Донесення
+                            </button>
                         </div>
                     </div>
+
                     <div class="flex flex-col">
                         ${missionFlights.map(f => {
-                    // Перевірка на "Польоти не здійснювались"
                     const isNoFly = f.result === "Польоти не здійснювались";
-
-                    // Стилі для рядка (тьмяний, якщо не літали)
-                    const rowClass = isNoFly
-                        ? "bg-slate-900/50 border-b border-white/5 p-3 flex justify-between items-center opacity-60 grayscale hover:grayscale-0 transition-all"
-                        : "flight-row flex justify-between items-center hover:bg-slate-800/50 transition-colors";
-
-                    // Відображення часу
-                    const durationDisplay = isNoFly
-                        ? `<span class="text-slate-600 font-bold tracking-widest">---</span>`
-                        : `<div class="text-[12px] font-black text-green-500">${f.duration}<span class="text-[9px] font-normal">хв</span> <span class="text-slate-600 mx-1">/</span> ${f.distance}<span class="text-[9px] font-normal">м</span></div>`;
-
-                    // Відображення АКБ
-                    const akbDisplay = isNoFly
-                        ? `<span class="text-slate-600 tracking-widest">---</span>`
-                        : `<div class="text-[11px] font-bold text-blue-400 font-mono">${f.battery_id || '—'} <span class="text-[9px] text-orange-500">[${f.battery_cycles}]</span></div>`;
-
-                    // Маршрут конкретного запису (якщо він відрізняється)
-                    const specificRoute = f.route || "---";
+                    const rowClass = isNoFly ? "no-fly-row" : "";
 
                     return `
-                            <div class="${rowClass}">
-                                <div class="w-1/3">
-                                    <div class="tech-label">Зліт — Посадка</div>
-                                    <div class="text-[13px] font-bold">${fmtTime(f.takeoff)} <i class="fa-solid fa-arrow-right text-[9px] mx-1 opacity-40"></i> ${fmtTime(f.landing)}</div>
+                            <div class="flight-row grid grid-cols-2 sm:flex sm:flex-nowrap justify-between items-start gap-y-4 gap-x-2 ${rowClass}">
+                                <div class="col-span-1 sm:w-1/4">
+                                    <span class="tech-label">Зліт - Посадка</span>
+                                    <div class="text-[13px] font-bold text-white tracking-tight flex items-center gap-2 font-mono">
+                                        ${fmtTime(f.takeoff)} 
+                                        <i class="fa-solid fa-arrow-right-long text-[10px] text-green-500/40"></i> 
+                                        ${fmtTime(f.landing)}
+                                    </div>
                                 </div>
-                                <div class="w-1/4 text-center">
-                                    <div class="tech-label">Трив. / Дист.</div>
-                                    ${durationDisplay}
+                                <div class="col-span-1 sm:w-1/4 text-right sm:text-left">
+                                    <span class="tech-label">Ресурс АКБ</span>
+                                    <div class="text-[12px] font-black text-blue-400 font-mono flex items-baseline gap-1 justify-end sm:justify-start">
+                                        ${f.battery_id || '--'} 
+                                        <span class="text-[9px] text-orange-500 font-bold">[${f.battery_cycles || 0}]</span>
+                                    </div>
                                 </div>
-                                <div class="w-1/4 text-center">
-                                    <div class="tech-label">АКБ / Цикли</div>
-                                    ${akbDisplay}
+                                <div class="col-span-1 sm:w-1/4 text-left">
+                                    <span class="tech-label">Тривалість / Дист.</span>
+                                    <div class="text-[13px] font-extrabold text-white">
+                                        ${isNoFly ? '--' : f.duration + '<span class="text-[10px] text-slate-500 ml-0.5">хв</span>'}
+                                        <span class="mx-1.5 text-slate-700">|</span>
+                                        ${isNoFly ? '--' : (f.distance || 0) + '<span class="text-[10px] text-slate-500 ml-0.5">м</span>'}
+                                    </div>
                                 </div>
-                                <div class="text-right">
-                                    <div class="tech-label">Результат</div>
-                                    <div class="text-[9px] font-black ${isNoFly ? 'text-slate-400 border border-slate-600 rounded px-1' : 'text-slate-300'} uppercase">${f.result || 'ОК'}</div>
+                                <div class="col-span-1 sm:w-[15%] text-right">
+                                    <span class="tech-label">Підсумок</span>
+                                    <div class="text-[9px] font-black uppercase tracking-wider py-0.5 px-2 rounded-md inline-block border ${isNoFly ? 'text-slate-500 border-slate-700' : 'text-emerald-400 bg-emerald-400/5 border-emerald-400/20'}">
+                                        ${f.result || 'ВИКОНАНО'}
+                                    </div>
                                 </div>
-                            </div>
-                        `}).join('')}
+                            </div>`;
+                }).join('')}
                     </div>
-                    <div class="p-2 px-4 bg-slate-900/50 flex justify-between items-center border-t border-white/5">
-                        <span class="text-[9px] text-slate-500 font-bold uppercase">${first.drone}</span>
-                        <span class="text-[10px] text-blue-400 font-bold italic">${first.operator}</span>
+
+                    <div class="px-6 py-3 bg-white/[0.02] flex justify-between items-center text-[10px] font-bold uppercase tracking-tighter">
+                        <div class="flex items-center gap-2 text-slate-500 italic">
+                            <i class="fa-solid fa-microchip text-[11px]"></i>
+                            ${first.drone || "Автономний борт"}
+                        </div>
+                        <div class="text-blue-500/80">
+                            <i class="fa-solid fa-user-circle mr-1"></i>
+                            ${first.operator}
+                        </div>
                     </div>
-                </div>
-                `;
+                </div>`;
             }).join('');
         }
 
@@ -221,10 +304,8 @@
 
             allFlights.forEach((f, i) => {
                 const dateFormatted = f.date && f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date;
-
                 const isNoFly = f.result === "Польоти не здійснювались";
                 const durationTotal = isNoFly ? 0 : (parseInt(f.duration) || 0);
-
                 const hh = Math.floor(durationTotal / 60);
                 const mm = durationTotal % 60;
 
