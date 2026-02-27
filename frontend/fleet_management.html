@@ -45,16 +45,34 @@
         }
 
         /* Новий колір для сезонного ТО (синій) */
-        select {
+        /* ── Labels ── */
+        .label-style {
+            font-size: 10px;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: flex-end;
+            min-height: 24px;
+            letter-spacing: 0.06em;
+            line-height: 1.2;
+        }
+
+        select,
+        input {
             background: #0f172a !important;
             color: white !important;
             border: 1px solid #334155 !important;
             border-radius: 0.5rem;
             outline: none;
             transition: all 0.2s;
+            padding: 8px 12px !important;
+            width: 100%;
         }
 
-        select:focus {
+        select:focus,
+        input:focus {
             border-color: #22c55e !important;
         }
     </style>
@@ -170,16 +188,17 @@
 
             return `
             <div class="glass p-4 ${statusClass} transition-all hover:bg-slate-800/50">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <div class="text-sm font-black uppercase text-white tracking-wide">${d.model}</div>
+                <div class="flex items-center justify-between gap-4">
+                    <div class="min-w-0 flex-1">
+                        <div class="text-sm font-black uppercase text-white tracking-wide truncate">${d.model}</div>
                         <div class="text-[10px] font-mono text-slate-400 mt-1">
-                            <span class="bg-slate-800 px-2 py-0.5 rounded text-slate-300">${d.serial_number || 'S/N: ---'}</span>
+                            <span class="bg-slate-800 px-2 py-0.5 rounded text-slate-300 select-all">${d.serial_number || 'S/N: ---'}</span>
                         </div>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <div class="flex flex-col items-center gap-1">
-                            <label class="text-[9px] text-slate-500 uppercase tracking-widest">АКБ</label>
+                    
+                    <div class="flex items-end gap-2 flex-shrink-0">
+                        <div class="w-[55px]">
+                            <label class="label-style !text-[9px] !mb-1 text-center">АКБ</label>
                             <input
                                 id="battery-${d.id}"
                                 type="number"
@@ -188,18 +207,23 @@
                                 placeholder="0"
                                 onblur="updateBatteryCount(${d.id})"
                                 onkeydown="if(event.key==='Enter') this.blur()"
-                                class="w-16 text-center bg-slate-900 text-white text-xs font-bold py-1.5 px-2 rounded-lg border border-slate-700 focus:border-blue-500 focus:outline-none transition-all"
+                                class="text-center !text-[11px] !font-bold !py-1.5 !px-1 rounded-lg"
                             />
                         </div>
-                        <select onchange="updateStatus(${d.id}, this.value)" class="appearance-none bg-slate-900 text-[10px] font-bold py-2 px-3 rounded-lg border border-slate-700">
-                            <option value="Active" ${status === 'Active' ? 'selected' : ''}>🟢 В строю</option>
-                            <option value="Repair" ${status === 'Repair' ? 'selected' : ''}>🟡 Ремонт</option>
-                            <option value="Season" ${status === 'Season' ? 'selected' : ''}>🔵 Сезонне ТО</option>
-                            <option value="Broken" ${status === 'Broken' ? 'selected' : ''}>🔴 Пошкоджено / Втрачено</option>
-                        </select>
-                        <button onclick="deleteDrone(${d.id})" class="text-slate-600 hover:text-red-500 p-2 transition-all active:scale-90">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
+                        <div class="w-[130px]">
+                            <label class="label-style !text-[9px] !mb-1 text-center">Статус</label>
+                            <select onchange="updateStatus(${d.id}, this.value)" class="appearance-none !text-[9px] font-bold !py-2 !px-2 rounded-lg truncate">
+                                <option value="Active" ${status === 'Active' ? 'selected' : ''}>🟢 В строю</option>
+                                <option value="Repair" ${status === 'Repair' ? 'selected' : ''}>🟡 Ремонт</option>
+                                <option value="Season" ${status === 'Season' ? 'selected' : ''}>🔵 ТО</option>
+                                <option value="Broken" ${status === 'Broken' ? 'selected' : ''}>🔴 Пош/Втр</option>
+                            </select>
+                        </div>
+                        <div class="pb-0.5">
+                            <button onclick="deleteDrone(${d.id})" class="text-slate-600 hover:text-red-500 p-2 transition-all active:scale-90" title="Видалити">
+                                <i class="fa-solid fa-trash-can text-sm"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>`;
