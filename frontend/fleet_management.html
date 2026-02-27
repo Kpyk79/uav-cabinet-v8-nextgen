@@ -188,16 +188,16 @@
 
             return `
             <div class="glass p-4 ${statusClass} transition-all hover:bg-slate-800/50">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="min-w-0 flex-1">
-                        <div class="text-sm font-black uppercase text-white tracking-wide truncate">${d.model}</div>
+                <div class="flex flex-col gap-4">
+                    <div class="min-w-0">
+                        <div class="text-sm font-black uppercase text-white tracking-wide">${d.model}</div>
                         <div class="text-[10px] font-mono text-slate-400 mt-1">
                             <span class="bg-slate-800 px-2 py-0.5 rounded text-slate-300 select-all">${d.serial_number || 'S/N: ---'}</span>
                         </div>
                     </div>
                     
-                    <div class="flex items-end gap-2 flex-shrink-0">
-                        <div class="w-[55px]">
+                    <div class="flex items-end gap-3 justify-end border-t border-white/5 pt-3">
+                        <div class="w-[60px]">
                             <label class="label-style !text-[9px] !mb-1 text-center">АКБ</label>
                             <input
                                 id="battery-${d.id}"
@@ -207,21 +207,21 @@
                                 placeholder="0"
                                 onblur="updateBatteryCount(${d.id})"
                                 onkeydown="if(event.key==='Enter') this.blur()"
-                                class="text-center !text-[11px] !font-bold !py-1.5 !px-1 rounded-lg"
+                                class="text-center !text-[12px] !font-bold !py-2 !px-1 rounded-lg"
                             />
                         </div>
-                        <div class="w-[130px]">
+                        <div class="w-[140px]">
                             <label class="label-style !text-[9px] !mb-1 text-center">Статус</label>
-                            <select onchange="updateStatus(${d.id}, this.value)" class="appearance-none !text-[9px] font-bold !py-2 !px-2 rounded-lg truncate">
+                            <select onchange="updateStatus(${d.id}, this.value)" class="appearance-none !text-[10px] font-bold !py-2.5 !px-2 rounded-lg truncate">
                                 <option value="Active" ${status === 'Active' ? 'selected' : ''}>🟢 В строю</option>
                                 <option value="Repair" ${status === 'Repair' ? 'selected' : ''}>🟡 Ремонт</option>
-                                <option value="Season" ${status === 'Season' ? 'selected' : ''}>🔵 ТО</option>
-                                <option value="Broken" ${status === 'Broken' ? 'selected' : ''}>🔴 Пош/Втр</option>
+                                <option value="Season" ${status === 'Season' ? 'selected' : ''}>🔵 Сезонне ТО</option>
+                                <option value="Broken" ${status === 'Broken' ? 'selected' : ''}>🔴 Пошкоджений</option>
                             </select>
                         </div>
-                        <div class="pb-0.5">
+                        <div class="pb-1">
                             <button onclick="deleteDrone(${d.id})" class="text-slate-600 hover:text-red-500 p-2 transition-all active:scale-90" title="Видалити">
-                                <i class="fa-solid fa-trash-can text-sm"></i>
+                                <i class="fa-solid fa-trash-can text-base"></i>
                             </button>
                         </div>
                     </div>
