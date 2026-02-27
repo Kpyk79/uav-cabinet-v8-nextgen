@@ -782,7 +782,6 @@
             document.getElementById('dist').value = "";
             document.getElementById('akb').value = "";
             document.getElementById('cyc').value = "";
-            document.getElementById('route').value = "";
             document.getElementById('comment').value = "";
             toggleCommentField();
         }
@@ -925,8 +924,8 @@
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>НАДСИЛАННЯ...';
 
             const first = draft[0];
-            const currentShift = (document.getElementById('s1')?.value || "08:00") + "-" + (document.getElementById('s2')?.value || "20:00");
-            const currentRoute = document.getElementById('route')?.value || "Не вказано";
+            const currentShift = first.shift_time || "08:00-20:00";
+            const currentRoute = first.route || "Не вказано";
 
             let report = "<b>Донесення:</b> " + first.unit + "\n" +
                 "<b>Пілот:</b> " + first.operator + "\n" +
