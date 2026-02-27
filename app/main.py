@@ -213,17 +213,28 @@ class StatusUpdate(BaseModel):
     id: int
     status: str
 
+class FlightResultUpdate(BaseModel):
+    id: int
+    result: str
+
 # --- HELPERS ---
 
-def calculate_duration(t1: str, t2: str):
+def calculate_duration(t1, t2):
+    if not t1 or not t2: return 0
     try:
+        t1, t2 = str(t1).strip(), str(t2).strip()
+        # Normalizing to HH:MM format (stripping seconds if any)
+        if len(t1.split(':')) > 2: t1 = ':'.join(t1.split(':')[:2])
+        if len(t2.split(':')) > 2: t2 = ':'.join(t2.split(':')[:2])
+        
         fmt = "%H:%M"
-        start = datetime.strptime(t1.strip(), fmt)
-        end = datetime.strptime(t2.strip(), fmt)
+        start = datetime.strptime(t1, fmt)
+        end = datetime.strptime(t2, fmt)
         diff = (end - start).total_seconds() / 60
         if diff < 0: diff += 1440
         return int(diff)
-    except:
+    except Exception as e:
+        print(f"Calc error: {e} for {t1}, {t2}")
         return 0
 
 def normalize_operator_name(name: str) -> str:
@@ -279,6 +290,59 @@ async def update_announcement(data: AnnouncementUpdate):
         }).eq("id", 1).execute()
         return {"status": "ok"}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/update_flight_result")
+@app.post("/api/update_flight_result/")
+async def update_flight_result(data: FlightResultUpdate):
+    try:
+        print(f"DEBUG: Updating flight {data.id} result to {data.result}")
+        # 1. Отримуємо існуючий запис
+        res_get = supabase.table("flights").select("*").eq("id", data.id).execute()
+        if not res_get.data:
+            print(f"DEBUG: Flight {data.id} not found in DB")
+            raise HTTPException(status_code=404, detail="Flight not found")
+        
+        flight = res_get.data[0]
+        print(f"DEBUG: Current flight data: takeoff={flight.get('takeoff')}, landing={flight.get('landing')}, dur={flight.get('duration')}")
+        
+        new_duration = flight.get("duration") or 0
+        new_distance = flight.get("distance") or 0
+        new_cycles = flight.get("battery_cycles") or 0
+        
+        # 2. Логіка нальоту та ресурсів
+        if data.result == "Польоти не здійснювались":
+            new_duration = 0
+            new_distance = 0
+            new_cycles = 0
+            print("DEBUG: Setting all flight metrics to 0 (NoFly)")
+        else:
+            # Перераховуємо наліт
+            new_duration = calculate_duration(flight.get("takeoff"), flight.get("landing"))
+            
+            # Якщо дистанція 0, відновлюємо її приблизно (0.5 км / хв)
+            if new_distance == 0 and new_duration > 0:
+                new_distance = round(new_duration * 500, 1)
+                print(f"DEBUG: Restoring estimated distance: {new_distance}")
+            
+            print(f"DEBUG: Active flight recalced. Dur: {new_duration}, Dist: {new_distance}")
+
+        # 3. Оновлюємо базу
+        update_payload = {
+            "result": data.result,
+            "duration": float(new_duration),
+            "distance": float(new_distance),
+            "battery_cycles": float(new_cycles)
+        }
+        print(f"DEBUG: Updating with payload: {update_payload}")
+        upd_res = supabase.table("flights").update(update_payload).eq("id", data.id).execute()
+        
+        print(f"DEBUG: Update result data: {upd_res.data}")
+        return {"status": "ok", "new_duration": float(new_duration), "new_distance": float(new_distance)}
+    except Exception as e:
+        print(f"CRITICAL API ERROR: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/get_unit_drones")
@@ -692,7 +756,11 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
                 row_cells[0].text = flight.get('operator', '')
                 row_cells[1].text = str(flight.get('count', ''))
                 row_cells[2].text = flight.get('drone', '')
-                row_cells[3].text = flight.get('details', '')
+                # Strip seconds from time: "05:54:00" → "05:54"
+                import re
+                details_raw = flight.get('details', '')
+                details_clean = re.sub(r'(\d{2}:\d{2}):\d{2}', r'\1', details_raw)
+                row_cells[3].text = details_clean
 
         # 5. МАРШРУТ ТА ЕКІПАЖ
         doc.add_paragraph(f"\n Маршрут : {data.get('route', '___')}")
