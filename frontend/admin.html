@@ -681,6 +681,36 @@
             } catch (e) { alert("Сервер не відповідає."); }
         }
 
+        async function updateFlightResult(id, newResult) {
+            try {
+                const res = await fetch('/api/update_flight_result', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, result: newResult })
+                });
+                if (res.ok) {
+                    const json = await res.json();
+                    console.log("Updated flight response:", json);
+                    const flight = allFlights.find(f => f.id == id);
+                    if (flight) {
+                        flight.result = newResult;
+                        flight.duration = json.new_duration;
+                        flight.distance = json.new_distance;
+                        console.log("Local flight object updated:", flight);
+                    } else {
+                        console.warn("Flight not found in local allFlights array", id);
+                    }
+                    filterData();
+                } else {
+                    const err = await res.text();
+                    alert(`Помилка оновлення: ${res.status} - ${err}`);
+                }
+            } catch (e) {
+                console.error(e);
+                alert(`Сервер не відповідає: ${e.message}`);
+            }
+        }
+
         function filterData() {
             const dFrom = document.getElementById('filterDateFrom').value;
             const dTo = document.getElementById('filterDateTo').value;
@@ -727,7 +757,14 @@
                     <td><span class="route-badge">${f.route || '---'}</span></td>
                     <td class="font-mono text-slate-400 text-xs">${fmtTime(f.takeoff)} → ${fmtTime(f.landing)}</td>
                     <td class="font-black text-blue-400 font-mono">${f.duration}<span class="text-[9px] text-slate-600 lowercase ml-1">хв</span></td>
-                    <td><span class="tech-tag ${f.result === 'Затримання' ? 'text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'text-slate-500'}">${f.result || '---'}</span></td>
+                    <td>
+                        <select onchange="updateFlightResult(${f.id}, this.value)" 
+                            class="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer hover:text-white transition-colors ${f.result === 'Затримання' ? 'text-red-500' : 'text-slate-500'}">
+                            <option value="Без ознак порушення" ${f.result === 'Без ознак порушення' ? 'selected' : ''} class="bg-slate-900 text-slate-300">БЕЗ ОЗНАК</option>
+                            <option value="Затримання" ${f.result === 'Затримання' ? 'selected' : ''} class="bg-slate-900 text-red-500">ЗАТРИМАННЯ</option>
+                            <option value="Польоти не здійснювались" ${f.result === 'Польоти не здійснювались' ? 'selected' : ''} class="bg-slate-900 text-slate-500 italic">СКАСОВАНО</option>
+                        </select>
+                    </td>
                     <td class="text-right pr-6">
                         <button onclick="deleteFlight(${f.id})" class="w-8 h-8 flex items-center justify-center bg-red-500/10 text-red-700 hover:bg-red-600 hover:text-white rounded-lg transition-all" title="DESTRUCTIVE DELETE">
                             <i class="fa-solid fa-trash-can text-xs"></i>
