@@ -152,15 +152,27 @@
 
         /* ── Draft Cards ── */
         .draft-card {
-            background: rgba(6, 11, 24, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            border-radius: 0.75rem;
-            transition: all 0.2s ease;
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
         }
 
         .draft-card:hover {
-            background: rgba(15, 23, 42, 0.8);
-            border-color: rgba(34, 197, 94, 0.15);
+            background: rgba(30, 41, 59, 0.6);
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(2px);
+        }
+
+        .draft-card.draft-empty-result {
+            background: rgba(234, 179, 8, 0.1);
+            border-color: rgba(234, 179, 8, 0.3);
+        }
+
+        .draft-card.draft-empty-result:hover {
+            background: rgba(234, 179, 8, 0.15);
+            border-color: rgba(234, 179, 8, 0.4);
         }
 
         /* ── Takeoff/Landing pills ── */
@@ -443,8 +455,14 @@
                     <div>
                         <label class="label-style text-orange-400">Результат</label>
                         <select id="result" class="text-xs text-orange-400 font-semibold"
-                            onchange="saveState(this.id)"></select>
+                            onchange="saveState(this.id); toggleCommentField()"></select>
                     </div>
+                </div>
+
+                <div id="commentSection" class="hidden mt-3">
+                    <label class="label-style text-slate-400">Коментар</label>
+                    <textarea id="comment" class="text-xs h-16" placeholder="Вкажіть причину..."
+                        oninput="saveState(this.id)"></textarea>
                 </div>
 
                 <!-- Photos -->
@@ -602,6 +620,19 @@
             if (!document.getElementById('date').value) {
                 document.getElementById('date').valueAsDate = new Date();
             }
+            toggleCommentField();
+        }
+
+        function toggleCommentField() {
+            const result = document.getElementById('result').value;
+            const commentSection = document.getElementById('commentSection');
+            if (result === "Польоти не здійснювались") {
+                commentSection.classList.remove('hidden');
+            } else {
+                commentSection.classList.add('hidden');
+                document.getElementById('comment').value = "";
+                localStorage.removeItem('saved_comment');
+            }
         }
 
         function formatTimeInput(val) {
@@ -721,6 +752,8 @@
             document.getElementById('weather').value = flight.weather;
             document.getElementById('mode').value = flight.conditions;
             document.getElementById('result').value = flight.result;
+            document.getElementById('comment').value = flight.comment || "";
+            toggleCommentField();
 
             editingId = id;
             const btn = document.getElementById('submitBtn');
@@ -750,6 +783,8 @@
             document.getElementById('akb').value = "";
             document.getElementById('cyc').value = "";
             document.getElementById('route').value = "";
+            document.getElementById('comment').value = "";
+            toggleCommentField();
         }
 
         function addToDraft() {
@@ -787,7 +822,8 @@
                 battery_cycles: getVal('cyc', 0),
                 weather: getVal('weather', 'Нормальні'),
                 conditions: getVal('mode', 'Норма'),
-                result: getVal('result', 'Без ознак порушення')
+                result: getVal('result', 'Без ознак порушення'),
+                comment: document.getElementById('comment').value
             };
 
             const [h1, m1] = flightData.takeoff.split(':').map(Number);
@@ -810,6 +846,7 @@
                 localStorage.removeItem('saved_t1');
                 localStorage.removeItem('saved_t2');
                 localStorage.removeItem('saved_dist');
+                localStorage.removeItem('saved_comment');
             }
 
             localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
@@ -819,15 +856,21 @@
         function renderDraft() {
             document.getElementById('draftCount').innerText = draft.length;
             document.getElementById('publishBtn').disabled = draft.length === 0;
-            document.getElementById('draftList').innerHTML = draft.map(f => `
-                <div class="draft-card p-3 flex justify-between items-center">
+            document.getElementById('draftList').innerHTML = draft.map(f => {
+                const isEmpty = f.result === "Польоти не здійснювались";
+                const highlightClass = isEmpty ? 'draft-empty-result' : '';
+                const commentHtml = (isEmpty && f.comment) ? `<div class="text-[9px] text-yellow-500/80 italic mt-1 font-medium">📝 ${f.comment}</div>` : '';
+
+                return `
+                <div class="draft-card p-3 flex justify-between items-center ${highlightClass}">
                     <div class="text-[10px] w-full mr-2" onclick="editDraft(${f.id})" style="cursor: pointer;">
-                        <div class="font-bold text-green-400 flex items-center gap-2">
-                            <i class="fa-solid fa-plane text-[8px] opacity-50"></i>
+                        <div class="font-bold ${isEmpty ? 'text-yellow-500' : 'text-green-400'} flex items-center gap-2">
+                            <i class="fa-solid ${isEmpty ? 'fa-circle-exclamation' : 'fa-plane'} text-[8px] opacity-50"></i>
                             ${f.takeoff} → ${f.landing} 
                             <span class="text-slate-500 font-normal text-[9px]">${f.duration} хв</span>
                         </div>
                         <div class="text-slate-500 uppercase truncate mt-0.5">${f.drone.split(' (')[0]}</div>
+                        ${commentHtml}
                     </div>
                     <div class="flex items-center gap-0.5">
                         <button onclick="editDraft(${f.id})" class="text-yellow-500/70 p-2 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-all" title="Редагувати">
@@ -837,7 +880,8 @@
                             <i class="fa-solid fa-trash-can text-[11px]"></i>
                         </button>
                     </div>
-                </div>`).join('');
+                </div>`;
+            }).join('');
             generateCUS();
         }
 
@@ -899,6 +943,7 @@
                 if (f.weather && f.weather !== "Нормальні") statusParts.push("☁️ " + f.weather);
                 if (f.conditions && f.conditions !== "Норма") statusParts.push("⚠️ " + f.conditions);
                 if (f.result && f.result !== "Без ознак порушення") statusParts.push("🎯 <b>" + f.result + "</b>");
+                if (f.result === "Польоти не здійснювались" && f.comment) statusParts.push("💬 " + f.comment);
                 if (statusParts.length > 0) report += "   └ " + statusParts.join(" | ") + "\n";
             });
 
