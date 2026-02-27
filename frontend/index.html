@@ -46,9 +46,12 @@
             text-transform: uppercase;
             font-weight: 700;
             color: #64748b;
-            margin-bottom: 4px;
-            display: block;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: flex-end;
+            min-height: 26px;
             letter-spacing: 0.06em;
+            line-height: 1.2;
         }
 
         /* ── Inputs ── */
@@ -61,6 +64,7 @@
             border-radius: 0.625rem;
             font-size: 14px !important;
             width: 100%;
+            padding: 10px 12px !important;
             outline: none;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -305,15 +309,15 @@
         <div class="space-y-4">
             <div>
                 <label class="label-style">Підрозділ</label>
-                <select id="loginUnit" class="p-3"></select>
+                <select id="loginUnit" class=""></select>
             </div>
             <div>
                 <label class="label-style">Прізвище</label>
-                <input type="text" id="loginOp" class="p-3" placeholder="Введіть прізвище">
+                <input type="text" id="loginOp" class="" placeholder="Введіть прізвище">
             </div>
             <div>
                 <label class="label-style">Пароль</label>
-                <input type="password" id="loginPass" class="p-3" placeholder="••••••••">
+                <input type="password" id="loginPass" class="" placeholder="••••••••">
             </div>
             <button id="loginBtn" onclick="saveAuth()"
                 class="w-full btn-primary py-4 rounded-xl text-white mt-2 text-sm">
@@ -358,14 +362,14 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="label-style">Дата</label>
-                        <input type="date" id="date" class="p-2.5" oninput="saveState(this.id)">
+                        <input type="date" id="date" class="" oninput="saveState(this.id)">
                     </div>
                     <div>
                         <label class="label-style">Час польотного завдання</label>
                         <div class="flex flex-wrap gap-1.5">
-                            <input type="time" id="s1" value="08:00" class="p-2.5 text-center flex-1 min-w-[80px]"
+                            <input type="time" id="s1" value="08:00" class="text-center flex-1 min-w-[80px]"
                                 oninput="saveState(this.id)">
-                            <input type="time" id="s2" value="20:00" class="p-2.5 text-center flex-1 min-w-[80px]"
+                            <input type="time" id="s2" value="20:00" class="text-center flex-1 min-w-[80px]"
                                 oninput="saveState(this.id)">
                         </div>
                     </div>
@@ -374,7 +378,7 @@
                 <!-- Drone -->
                 <div>
                     <label class="label-style">БпЛА</label>
-                    <select id="drone" class="p-2.5 text-green-400 font-semibold" onchange="saveState(this.id)">
+                    <select id="drone" class="text-green-400 font-semibold" onchange="saveState(this.id)">
                         <option>Завантаження...</option>
                     </select>
                 </div>
@@ -382,7 +386,7 @@
                 <!-- Route -->
                 <div>
                     <label class="label-style">Маршрут</label>
-                    <input type="text" id="route" class="p-2.5" placeholder="Введіть маршрут..."
+                    <input type="text" id="route" class="" placeholder="Введіть маршрут..."
                         oninput="saveState(this.id)">
                 </div>
 
@@ -410,16 +414,16 @@
                 <div class="grid grid-cols-3 gap-3">
                     <div>
                         <label class="label-style">Дист. (м)</label>
-                        <input type="number" id="dist" inputmode="numeric" class="p-2.5" placeholder="0"
+                        <input type="number" id="dist" inputmode="numeric" class="" placeholder="0"
                             oninput="saveState(this.id)">
                     </div>
                     <div>
                         <label class="label-style">№ АКБ</label>
-                        <input type="text" id="akb" class="p-2.5" placeholder="—" oninput="saveState(this.id)">
+                        <input type="text" id="akb" class="" placeholder="—" oninput="saveState(this.id)">
                     </div>
                     <div>
                         <label class="label-style">Цикли</label>
-                        <input type="number" id="cyc" inputmode="numeric" class="p-2.5" placeholder="0"
+                        <input type="number" id="cyc" inputmode="numeric" class="" placeholder="0"
                             oninput="saveState(this.id)">
                     </div>
                 </div>
@@ -430,15 +434,15 @@
                 <div class="grid grid-cols-3 gap-3">
                     <div>
                         <label class="label-style">Погодні умови</label>
-                        <select id="weather" class="p-2.5 text-xs" onchange="saveState(this.id)"></select>
+                        <select id="weather" class="text-xs" onchange="saveState(this.id)"></select>
                     </div>
                     <div>
                         <label class="label-style">Умови польоту</label>
-                        <select id="mode" class="p-2.5 text-xs" onchange="saveState(this.id)"></select>
+                        <select id="mode" class="text-xs" onchange="saveState(this.id)"></select>
                     </div>
                     <div>
                         <label class="label-style text-orange-400">Результат</label>
-                        <select id="result" class="p-2.5 text-xs text-orange-400 font-semibold"
+                        <select id="result" class="text-xs text-orange-400 font-semibold"
                             onchange="saveState(this.id)"></select>
                     </div>
                 </div>
