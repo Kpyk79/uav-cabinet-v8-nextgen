@@ -215,12 +215,12 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
                         <label class="label-premium">Дата у форматі звіту</label>
-                        <input type="text" id="reportDate" oninput="generateReport()" placeholder="12.02.2026"
-                            class="input-premium">
+                        <input type="text" id="reportDate" oninput="triggerSave(); generateReport()"
+                            placeholder="12.02.2026" class="input-premium">
                     </div>
                     <div>
                         <label class="label-premium">Маршрут польотів</label>
-                        <input type="text" id="reportRoute" oninput="generateReport()"
+                        <input type="text" id="reportRoute" oninput="triggerSave(); generateReport()"
                             placeholder="н.п. Альфа - н.п. Бета" class="input-premium">
                     </div>
                 </div>
@@ -625,17 +625,17 @@
         }
 
         function saveLocal() {
-            const fields = ['reportHeader', 'reportCmd', 'reportOps', 'weatherTemp', 'weatherVis', 'weatherWindDir', 'weatherWindSpeed'];
+            const fields = ['reportHeader', 'reportDate', 'reportRoute', 'reportCmd', 'reportOps', 'weatherTemp', 'weatherVis', 'weatherWindDir', 'weatherWindSpeed'];
             fields.forEach(f => localStorage.setItem(f, document.getElementById(f).value));
         }
 
         function loadLocal() {
-            ['reportHeader', 'reportCmd', 'reportOps', 'weatherTemp', 'weatherVis', 'weatherWindDir', 'weatherWindSpeed'].forEach(f => {
+            ['reportHeader', 'reportDate', 'reportRoute', 'reportCmd', 'reportOps', 'weatherTemp', 'weatherVis', 'weatherWindDir', 'weatherWindSpeed'].forEach(f => {
                 const val = localStorage.getItem(f);
                 if (val) document.getElementById(f).value = val;
             });
             if (!document.getElementById('reportHeader').value) {
-                document.getElementById('reportHeader').value = "Начальнику відділу організації\nповітряної розвідки та протидії безпілотним\nповітряним суднам штабу\nпідполковнику Армену МКРТЧЯН";
+                document.getElementById('reportHeader').value = "Начальнику відділу організації\nповітряної розвідки та протидії безпілотним\nповітряним суднам штабу\nпідполковнику   Армену МКРТЧЯН";
             }
         }
 
