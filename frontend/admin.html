@@ -8,28 +8,47 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        * {
+            box-sizing: border-box;
+        }
 
         body {
-            background: #0f172a;
-            color: white;
+            background: #060b18;
+            background-image:
+                radial-gradient(ellipse at 20% 0%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 100%, rgba(34, 197, 94, 0.06) 0%, transparent 60%);
+            min-height: 100vh;
             font-family: 'Inter', sans-serif;
-            padding: 20px;
+            color: #f1f5f9;
+            padding: 12px;
+        }
+
+        /* ── Glass Cards ── */
+        .glass {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(20px) saturate(1.3);
+            -webkit-backdrop-filter: blur(20px) saturate(1.3);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            border-radius: 1.5rem;
         }
 
         .card {
-            background: rgba(30, 41, 59, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1rem;
+            background: rgba(15, 23, 42, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 1.25rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .input-dark {
-            background: #1e293b;
-            border: 1px solid #334155;
-            color: white;
-            border-radius: 0.5rem;
-            padding: 0.5rem;
+            background: rgba(15, 23, 42, 0.8) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #f8fafc;
+            border-radius: 0.75rem !important;
+            padding: 0.6rem 0.8rem !important;
             width: 100%;
             outline: none;
             transition: all 0.2s;
@@ -37,19 +56,21 @@
         }
 
         .input-dark:focus {
-            border-color: #22c55e;
-            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+            border-color: #22c55e !important;
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.15);
         }
 
         .label-mini {
-            font-size: 10px;
+            font-size: 9px;
             text-transform: uppercase;
-            font-weight: 700;
-            color: #94a3b8;
-            margin-bottom: 4px;
+            font-weight: 800;
+            color: #64748b;
+            margin-bottom: 6px;
             display: block;
+            letter-spacing: 0.1em;
         }
 
+        /* ── Tech Table ── */
         .tech-table {
             width: 100%;
             border-collapse: separate;
@@ -57,52 +78,66 @@
         }
 
         .tech-table th {
-            background: #1e293b;
-            color: #94a3b8;
-            font-size: 10px;
+            background: rgba(15, 23, 42, 0.6);
+            color: #64748b;
+            font-size: 9px;
             text-transform: uppercase;
-            font-weight: 800;
-            padding: 1rem;
+            font-weight: 900;
+            padding: 1.25rem 1rem;
             text-align: left;
-            border-bottom: 1px solid #334155;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            letter-spacing: 0.05em;
         }
 
         .tech-table td {
             padding: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            font-size: 13px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 12px;
+            color: #cbd5e1;
+        }
+
+        .tech-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+            color: #fff;
         }
 
         .tech-tag {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 900;
             text-transform: uppercase;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.375rem;
-            background: rgba(255, 255, 255, 0.05);
+            padding: 0.3rem 0.6rem;
+            border-radius: 0.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            letter-spacing: 0.05em;
         }
 
         .route-badge {
             font-size: 10px;
-            font-weight: 700;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: rgba(59, 130, 246, 0.15);
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 0.5rem;
+            background: rgba(59, 130, 246, 0.08);
             color: #60a5fa;
-            border: 1px solid rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.15);
             display: inline-block;
-            max-width: 150px;
+            max-width: 180px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
         .info-card {
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 0.5rem;
-            padding: 0.5rem;
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 0.75rem;
+            padding: 0.65rem;
             margin-bottom: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .info-card:hover {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.08);
         }
 
         .status-dot {
@@ -110,212 +145,239 @@
             width: 8px;
             border-radius: 50%;
             display: inline-block;
-            margin-right: 6px;
+            margin-right: 8px;
         }
 
-        /* СТАТУСИ */
+        /* Status Colors */
         .bg-active {
             background-color: #22c55e;
-            box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
         }
 
         .bg-repair {
             background-color: #eab308;
+            box-shadow: 0 0 10px rgba(234, 179, 8, 0.3);
         }
 
         .bg-lost {
             background-color: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
         }
 
         .bg-season {
             background-color: #3b82f6;
-            box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 10px;
         }
     </style>
 </head>
 
 <body class="max-w-7xl mx-auto pb-20">
 
-    <div class="flex justify-between items-center mb-6">
+    <!-- Navbar -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 pt-8 px-4">
         <div>
-            <h1 class="text-3xl font-black italic text-green-500 uppercase tracking-tighter">Admin Panel</h1>
-            <p class="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">UAV Command System Center</p>
+            <h1 class="text-4xl font-black italic text-green-500 uppercase tracking-tighter leading-none">Admin Panel
+            </h1>
+            <p class="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-3 flex items-center gap-2">
+                <span class="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></span> Системний центр керування
+            </p>
         </div>
-        <div class="flex gap-3">
+        <div class="flex flex-wrap gap-3">
             <button onclick="nav('/')"
-                class="bg-slate-800 p-3 rounded-xl text-slate-400 hover:text-white transition-all">
-                <i class="fa-solid fa-house"></i>
+                class="w-12 h-12 flex items-center justify-center glass hover:bg-slate-800 transition-all active:scale-95 group">
+                <i class="fa-solid fa-house text-slate-400 group-hover:text-white transition-colors"></i>
             </button>
             <button onclick="exportAllToExcel()"
-                class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-xl text-slate-900 font-black uppercase text-xs shadow-lg shadow-green-500/20 transition-all">
-                <i class="fa-solid fa-file-excel mr-2"></i> Експорт Журналу
+                class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-2xl text-white font-black uppercase text-[11px] tracking-widest shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center gap-3">
+                <i class="fa-solid fa-file-excel text-sm"></i> Експорт логів
             </button>
             <button onclick="nav('/admin_analytics')"
-                class="bg-orange-600 hover:bg-orange-500 px-2 py-2 rounded-xl text-white font-black uppercase text-xs shadow-lg shadow-orange-500/20 transition-all">
-                <i class="fa-solid fa-chart-pie mr-2"></i> Аналітика
+                class="bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-2xl text-white font-black uppercase text-[11px] tracking-widest shadow-lg shadow-orange-500/20 transition-all active:scale-95 flex items-center gap-3">
+                <i class="fa-solid fa-chart-line text-sm"></i> Глобальна Аналітика
             </button>
         </div>
     </div>
 
-    <div class="card p-5 mb-6 border-l-4 border-purple-500 bg-slate-800/50">
-        <div class="flex justify-between items-center cursor-pointer select-none"
+    <!-- Announcement Config -->
+    <div class="card p-7 mb-8 border-l-4 border-purple-500 bg-purple-500/[0.03] mx-4">
+        <div class="flex justify-between items-center cursor-pointer select-none group"
             onclick="toggleSection('announcementContainer', 'announcementArrow')">
-            <h3 class="text-sm font-black uppercase text-purple-400 flex items-center gap-2">
+            <h3 class="text-xs font-black uppercase text-purple-400 flex items-center gap-3 tracking-[0.2em]">
+                <i class="fa-solid fa-bullhorn text-sm"></i> Керування оголошеннями
                 <i id="announcementArrow"
-                    class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
-                <i class="fa-solid fa-bullhorn ml-1"></i> Налаштування оголошення
+                    class="fa-solid fa-chevron-right text-slate-600 transition-transform duration-300 group-hover:text-purple-400"></i>
             </h3>
         </div>
-        <div id="announcementContainer" class="hidden mt-4 flex flex-col gap-4">
+        <div id="announcementContainer" class="hidden mt-6 flex flex-col gap-5">
             <textarea id="adminMsgText"
-                class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white h-20 focus:border-purple-500 outline-none transition-colors font-mono"
+                class="w-full bg-slate-900/50 border border-white/5 rounded-2xl p-4 text-sm text-slate-200 h-24 focus:border-purple-500 outline-none transition-all font-medium placeholder-slate-600"
                 placeholder="Введіть текст оголошення для пілотів..."></textarea>
             <div class="flex items-center justify-between">
-                <label class="flex items-center gap-3 cursor-pointer select-none group">
+                <label class="flex items-center gap-4 cursor-pointer select-none group">
                     <div class="relative">
                         <input type="checkbox" id="adminMsgActive" class="sr-only peer">
                         <div
-                            class="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 group-hover:bg-slate-600">
+                            class="w-12 h-6 bg-slate-800 rounded-full peer peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-slate-400 after:border-transparent after:rounded-full after:h-[18px] after:w-[18px] after:transition-all peer-checked:bg-purple-600 peer-checked:after:bg-white group-hover:bg-slate-700">
                         </div>
                     </div>
                     <span
-                        class="text-xs font-bold uppercase text-slate-300 group-hover:text-white transition-colors">Активувати
-                        показ на головній</span>
+                        class="text-[10px] font-black uppercase text-slate-400 tracking-widest group-hover:text-white transition-colors">Показувати
+                        на головній</span>
                 </label>
                 <button onclick="saveAnnouncement()"
-                    class="bg-purple-600 hover:bg-purple-500 px-6 py-2 rounded-xl text-white font-black uppercase text-xs shadow-lg shadow-purple-500/20 transition-all active:scale-95">
-                    <i class="fa-solid fa-floppy-disk mr-2"></i> Зберегти
+                    class="bg-purple-600 hover:bg-purple-500 px-8 py-3 rounded-2xl text-white font-black uppercase text-[11px] tracking-widest shadow-lg shadow-purple-500/20 transition-all active:scale-95">
+                    Зберегти зміни
                 </button>
             </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Fleet and Personnel Blocks -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 px-4">
 
-        <div class="card p-5 h-fit">
-            <div class="flex flex-wrap justify-between items-center cursor-pointer select-none gap-2"
-                onclick="toggleSection('fleetContainer', 'fleetArrow')">
-                <h3 class="text-sm font-black uppercase text-blue-400 flex items-center gap-2">
-                    <i id="fleetArrow"
-                        class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
-                    <i class="fa-solid fa-plane-up ml-1"></i> Парк БпЛА
-                </h3>
+        <!-- Fleet Card -->
+        <div class="card p-7">
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                <div class="flex items-center gap-3 cursor-pointer select-none group"
+                    onclick="toggleSection('fleetContainer', 'fleetArrow')">
+                    <h3 class="text-xs font-black uppercase text-blue-400 flex items-center gap-3 tracking-[0.2em]">
+                        <i class="fa-solid fa-plane-up text-sm"></i> Парк БпЛА
+                        <i id="fleetArrow"
+                            class="fa-solid fa-chevron-right text-slate-600 transition-transform duration-300"></i>
+                    </h3>
+                </div>
 
-                <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+                <div class="flex items-center gap-2">
                     <select id="adminFleetSelect"
-                        class="bg-slate-900 border border-slate-600 text-[10px] rounded px-2 py-1 outline-none text-slate-300 max-w-[150px] cursor-pointer hover:border-blue-500 transition-colors">
-                        <option value="">Оберіть підрозділ...</option>
+                        class="bg-slate-900/80 border border-white/5 text-[10px] font-bold rounded-lg px-3 py-1.5 outline-none text-slate-300 hover:border-blue-500 transition-colors">
+                        <option value="">Усі підрозділи</option>
                     </select>
 
                     <button onclick="exportFleetToExcel()"
-                        class="text-[10px] bg-green-700 hover:bg-green-600 px-3 py-1 rounded text-white transition-all shadow-lg shadow-green-900/20"
-                        title="Експорт списку БпЛА">
-                        <i class="fa-solid fa-file-excel"></i>
-                    </button>
+                        class="w-8 h-8 flex items-center justify-center bg-green-500/10 text-green-500 rounded-lg hover:bg-green-600 hover:text-white transition-all shadow-sm"
+                        title="Excel експорт"><i class="fa-solid fa-file-excel text-xs"></i></button>
                     <button onclick="goToEditFleet()"
-                        class="text-[10px] bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-white transition-all shadow-lg shadow-blue-900/20"
-                        title="Редагувати парк обраного підрозділу">
-                        <i class="fa-solid fa-pen-to-square"></i>
-                    </button>
+                        class="w-8 h-8 flex items-center justify-center bg-blue-600/10 text-blue-500 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                        title="Редагувати"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
                     <button onclick="loadFleet()"
-                        class="text-[10px] bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-white transition-all">
-                        <i class="fa-solid fa-sync"></i>
-                    </button>
+                        class="w-8 h-8 flex items-center justify-center bg-slate-800 text-slate-400 rounded-lg hover:text-white transition-all"><i
+                            class="fa-solid fa-sync text-xs"></i></button>
                 </div>
             </div>
-            <div id="fleetContainer" class="hidden mt-4 space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                <div class="text-center py-5 text-slate-500 text-xs animate-pulse">Завантаження...</div>
+            <div id="fleetContainer"
+                class="hidden mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-3 custom-scrollbar">
+                <div
+                    class="text-center py-10 text-slate-600 text-[10px] font-black uppercase animate-pulse col-span-2 tracking-widest">
+                    Зчитування даних парку...</div>
             </div>
         </div>
 
-        <div class="card p-5 h-fit">
-            <div class="flex justify-between items-center cursor-pointer select-none"
-                onclick="toggleSection('personnelContainer', 'personnelArrow')">
-                <h3 class="text-sm font-black uppercase text-yellow-500 flex items-center gap-2">
-                    <i id="personnelArrow"
-                        class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
-                    <i class="fa-solid fa-users ml-1"></i> Особовий Склад
-                </h3>
-                <div class="flex gap-2" onclick="event.stopPropagation()">
-                    <button onclick="exportPersonnelToExcel()"
-                        class="text-[10px] bg-green-700 hover:bg-green-600 px-3 py-1 rounded text-white transition-all shadow-lg shadow-green-900/20"
-                        title="Експорт списку О/С">
-                        <i class="fa-solid fa-file-excel"></i>
-                    </button>
-                    <div class="text-[10px] text-slate-500 font-bold uppercase self-center px-1">Active</div>
+        <!-- Personnel Card -->
+        <div class="card p-7">
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-3 cursor-pointer select-none group"
+                    onclick="toggleSection('personnelContainer', 'personnelArrow')">
+                    <h3 class="text-xs font-black uppercase text-yellow-500 flex items-center gap-3 tracking-[0.2em]">
+                        <i class="fa-solid fa-users text-sm"></i> Особовий Склад
+                        <i id="personnelArrow"
+                            class="fa-solid fa-chevron-right text-slate-600 transition-transform duration-300"></i>
+                    </h3>
                 </div>
+                <button onclick="exportPersonnelToExcel()"
+                    class="px-4 py-2 text-[10px] font-black uppercase tracking-widest bg-yellow-500/10 text-yellow-500 rounded-xl border border-yellow-500/20 hover:bg-yellow-500 hover:text-slate-900 transition-all">
+                    Експорт О/С
+                </button>
             </div>
-            <div id="personnelContainer" class="hidden mt-4 space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                <div class="text-center py-5 text-slate-500 text-xs">Дані будуть доступні після завантаження журналу
-                </div>
+            <div id="personnelContainer"
+                class="hidden mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-3 custom-scrollbar text-center">
+                <div class="text-slate-600 text-[10px] font-black uppercase py-10 col-span-2 tracking-widest">Очікування
+                    завантаження журналів...</div>
             </div>
         </div>
     </div>
 
-    <div class="card p-5 mb-6">
-        <div class="flex justify-between items-center cursor-pointer select-none"
+    <!-- Problems Section -->
+    <div class="card p-7 mb-8 border-l-4 border-red-500/50 bg-red-500/[0.02] mx-4">
+        <div class="flex justify-between items-center cursor-pointer select-none group"
             onclick="toggleSection('problemContainer', 'problemArrow')">
-            <h3 class="text-sm font-black uppercase text-red-400 flex items-center gap-2">
+            <h3 class="text-xs font-black uppercase text-red-400 flex items-center gap-3 tracking-[0.2em]">
+                <i class="fa-solid fa-triangle-exclamation text-sm"></i> Критичний реєстр (Втрати / Ремонт)
                 <i id="problemArrow"
-                    class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
-                <i class="fa-solid fa-triangle-exclamation ml-1"></i> Проблемні борти (Втрати / Ремонт)
+                    class="fa-solid fa-chevron-right text-slate-600 transition-transform duration-300 group-hover:text-red-400"></i>
             </h3>
         </div>
-        <div id="problemContainer" class="hidden mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="text-center text-xs text-slate-500 col-span-2">Очікування даних парку...</div>
+        <div id="problemContainer" class="hidden mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="text-center text-[10px] text-slate-700 font-black uppercase py-4 col-span-2 tracking-widest">
+                Аналіз технічного стану...</div>
         </div>
     </div>
 
-    <div class="card p-5 mb-6">
-        <div class="flex justify-between items-center cursor-pointer select-none"
+    <!-- Filter Console -->
+    <div class="card p-7 mb-8 mx-4">
+        <div class="flex justify-between items-center cursor-pointer select-none group"
             onclick="toggleSection('filterContainer', 'filterArrow')">
-            <h3 class="text-xs font-black uppercase text-slate-400 flex items-center gap-2">
+            <h3 class="text-[10px] font-black uppercase text-slate-400 flex items-center gap-3 tracking-widest">
+                <i class="fa-solid fa-terminal text-green-500 text-sm"></i> Консоль фільтрації
                 <i id="filterArrow"
-                    class="fa-solid fa-chevron-right text-slate-500 transition-transform duration-300"></i>
-                <i class="fa-solid fa-filter text-green-500"></i> Фільтрація даних
+                    class="fa-solid fa-chevron-right text-slate-600 transition-transform duration-300 group-hover:text-white"></i>
             </h3>
             <button onclick="event.stopPropagation(); resetFilters()"
-                class="text-[10px] text-slate-500 hover:text-white uppercase font-bold transition-colors">
-                <i class="fa-solid fa-rotate-left mr-1"></i> Скинути
+                class="text-[9px] text-slate-600 hover:text-white uppercase font-black tracking-widest transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-rotate-left"></i> Скинути фільтри
             </button>
         </div>
-        <div id="filterContainer" class="hidden mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
-            <div><label class="label-mini">Дата з</label><input type="date" id="filterDateFrom" oninput="filterData()"
+        <div id="filterContainer" class="hidden mt-8 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-5">
+            <div><label class="label-mini">З дати</label><input type="date" id="filterDateFrom" oninput="filterData()"
                     class="input-dark"></div>
-            <div><label class="label-mini">Дата по</label><input type="date" id="filterDateTo" oninput="filterData()"
+            <div><label class="label-mini">По дату</label><input type="date" id="filterDateTo" oninput="filterData()"
                     class="input-dark"></div>
-            <div><label class="label-mini">Час зльоту з</label><input type="time" id="filterTimeFrom"
-                    oninput="filterData()" class="input-dark"></div>
-            <div><label class="label-mini">Час зльоту по</label><input type="time" id="filterTimeTo"
-                    oninput="filterData()" class="input-dark"></div>
+            <div><label class="label-mini">Зліт з</label><input type="time" id="filterTimeFrom" oninput="filterData()"
+                    class="input-dark"></div>
+            <div><label class="label-mini">Зліт по</label><input type="time" id="filterTimeTo" oninput="filterData()"
+                    class="input-dark"></div>
             <div><label class="label-mini">Підрозділ</label><input type="text" id="filterUnit" oninput="filterData()"
-                    placeholder="Введіть назву..." class="input-dark"></div>
-            <div><label class="label-mini">Пілот (Прізвище)</label><input type="text" id="filterOp"
-                    oninput="filterData()" placeholder="Введіть прізвище..." class="input-dark"></div>
+                    placeholder="..." class="input-dark"></div>
+            <div><label class="label-mini">Пілот</label><input type="text" id="filterOp" oninput="filterData()"
+                    placeholder="..." class="input-dark"></div>
         </div>
     </div>
 
-    <div class="card overflow-hidden">
-        <div class="overflow-x-auto">
+    <!-- Main Data Table -->
+    <div class="glass overflow-hidden mx-4">
+        <div class="overflow-x-auto custom-scrollbar">
             <table class="tech-table">
                 <thead>
                     <tr>
-                        <th>Дата</th>
+                        <th class="pl-6">Дата</th>
                         <th>Підрозділ</th>
-                        <th>Оператор</th>
-                        <th>Тип БпЛА</th>
+                        <th>Прізвище</th>
+                        <th>Модель БпЛА</th>
                         <th>Маршрут / Завдання</th>
                         <th>Час (Зліт-Пос)</th>
                         <th>Наліт</th>
-                        <th>Результат</th>
-                        <th class="text-right">Дії</th>
+                        <th>Підсумок</th>
+                        <th class="text-right pr-6">Керування</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody"></tbody>
             </table>
         </div>
-        <div id="noDataMessage" class="hidden text-center py-10 text-slate-500 text-xs uppercase font-bold">
-            Записів не знайдено
+        <div id="noDataMessage"
+            class="hidden text-center py-20 text-slate-700 text-[10px] uppercase font-black tracking-[0.4em] italic">
+            База даних не містить записів
         </div>
     </div>
 
@@ -323,8 +385,7 @@
         let allFlights = [];
         let globalFleetData = [];
 
-        // Strip seconds from time: "12:30:00" → "12:30"
-        function fmtTime(t) { return t ? t.substring(0, 5) : '--'; }
+        function fmtTime(t) { return t ? t.substring(0, 5) : '--:--'; }
 
         function nav(path) {
             const token = new URLSearchParams(window.location.search).get('token');
@@ -359,9 +420,7 @@
             }
             const token = new URLSearchParams(window.location.search).get('token');
             let targetUrl = `/fleet?unit=${encodeURIComponent(unit)}`;
-            if (token) {
-                targetUrl += `&token=${token}`;
-            }
+            if (token) targetUrl += `&token=${token}`;
             window.location.href = targetUrl;
         }
 
@@ -375,7 +434,7 @@
                 const units = options.units || [];
 
                 const currentSelection = select.value;
-                select.innerHTML = '<option value="">Оберіть підрозділ...</option>';
+                select.innerHTML = '<option value="">Усі підрозділи</option>';
                 units.forEach(u => {
                     const option = document.createElement('option');
                     option.value = u;
@@ -385,7 +444,7 @@
                 if (currentSelection) select.value = currentSelection;
 
                 if (units.length === 0) {
-                    container.innerHTML = '<div class="text-center text-slate-500 text-xs">Список підрозділів порожній</div>';
+                    container.innerHTML = '<div class="text-center text-slate-700 text-[9px] font-black col-span-2">СПИСОК ПОРОЖНІЙ</div>';
                     return;
                 }
 
@@ -405,43 +464,34 @@
                     if (drones.length > 0) {
                         dronesHtml = drones.map(d => {
                             let statusClass = 'bg-active';
-                            let statusTitle = 'В строю';
-
-                            if (d.status === 'Repair') {
-                                statusClass = 'bg-repair';
-                                statusTitle = 'В ремонті';
-                            } else if (d.status === 'Season') {
-                                statusClass = 'bg-season';
-                                statusTitle = 'Сезонне ТО';
-                            } else if (d.status === 'Lost' || d.status === 'Broken') {
-                                statusClass = 'bg-lost';
-                                statusTitle = 'Втрачено/Пошкоджено';
-                            }
+                            if (d.status === 'Repair') statusClass = 'bg-repair';
+                            else if (d.status === 'Season') statusClass = 'bg-season';
+                            else if (d.status === 'Lost' || d.status === 'Broken') statusClass = 'bg-lost';
 
                             return `
-                                <div class="info-card flex justify-between items-center text-[11px]">
+                                <div class="info-card flex justify-between items-center text-[10px] mb-1.5">
                                     <div class="flex items-center gap-2 overflow-hidden">
-                                        <span class="status-dot ${statusClass}" title="${statusTitle}"></span>
-                                        <span class="font-bold text-slate-200 truncate">${d.model}</span>
+                                        <span class="status-dot ${statusClass}"></span>
+                                        <span class="font-bold text-slate-300 truncate">${d.model}</span>
                                     </div>
-                                    <span class="font-mono text-slate-500 text-[9px]">${d.serial_number || 'S/N ---'}</span>
+                                    <span class="font-mono text-slate-600 text-[8px] tracking-tighter">${d.serial_number || '---'}</span>
                                 </div>`;
                         }).join('');
                     } else {
-                        dronesHtml = '<div class="text-center text-[10px] text-slate-600 italic py-2">Немає закріплених бортів</div>';
+                        dronesHtml = '<div class="text-center text-[8px] text-slate-700 italic border border-white/5 py-2 rounded-lg">РЕЗЕРВ ПОРОЖНІЙ</div>';
                     }
                     const unitCard = `
-                        <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition-colors">
-                            <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-700/50">
-                                <h4 class="text-xs font-black uppercase text-slate-300 truncate pr-2" title="${unit}">${unit}</h4>
-                                <span class="bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded text-[10px] font-bold">${drones.length} шт</span>
+                        <div class="bg-white/[0.02] border border-white/[0.03] rounded-2xl p-4 hover:border-white/10 transition-all">
+                            <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/5">
+                                <h4 class="text-[9px] font-black uppercase text-slate-400 truncate pr-3" title="${unit}">${unit}</h4>
+                                <span class="bg-blue-600/10 text-blue-500 px-2 py-0.5 rounded text-[8px] font-black border border-blue-500/20">${drones.length} ОД</span>
                             </div>
-                            <div class="space-y-1">${dronesHtml}</div>
+                            <div class="space-y-0.5">${dronesHtml}</div>
                         </div>`;
                     container.insertAdjacentHTML('beforeend', unitCard);
                 });
             } catch (e) {
-                container.innerHTML = '<div class="text-center text-red-400 text-xs">Помилка завантаження парку</div>';
+                container.innerHTML = '<div class="text-center text-red-500/50 text-[10px] font-black uppercase col-span-2 tracking-widest font-mono">CRITICAL ERROR LOAD</div>';
             }
         }
 
@@ -454,50 +504,50 @@
 
             globalFleetData.forEach(({ unit, drones }) => {
                 drones.forEach(d => {
-                    const sn = d.serial_number || 'S/N ---';
+                    const sn = d.serial_number || '---';
                     const model = d.model;
 
                     if (d.status === 'Lost' || d.status === 'Broken') {
                         lostCount++;
                         lostHtml += `
-                            <div class="flex justify-between items-center bg-slate-900/50 p-2 rounded mb-1 border-l-2 border-red-500 hover:bg-slate-800 transition-colors">
+                            <div class="flex justify-between items-center bg-red-500/5 border border-red-500/10 p-2.5 rounded-xl mb-1.5 group hover:bg-red-500/10 transition-colors">
                                 <div>
-                                    <div class="text-[10px] font-bold text-slate-300">${model}</div>
-                                    <div class="text-[9px] text-slate-500 uppercase">${unit}</div>
+                                    <div class="text-[10px] font-black text-slate-200 tracking-tight">${model}</div>
+                                    <div class="text-[8px] text-slate-500 uppercase font-bold tracking-widest mt-0.5">${unit}</div>
                                 </div>
-                                <div class="text-[10px] font-mono text-red-400 font-bold tracking-wider">${sn}</div>
+                                <div class="text-[9px] font-mono text-red-500 font-bold tracking-tighter">${sn}</div>
                             </div>`;
                     } else if (d.status === 'Repair') {
                         repairCount++;
                         repairHtml += `
-                            <div class="flex justify-between items-center bg-slate-900/50 p-2 rounded mb-1 border-l-2 border-yellow-500 hover:bg-slate-800 transition-colors">
+                            <div class="flex justify-between items-center bg-yellow-500/5 border border-yellow-500/10 p-2.5 rounded-xl mb-1.5 group hover:bg-yellow-500/10 transition-colors">
                                 <div>
-                                    <div class="text-[10px] font-bold text-slate-300">${model}</div>
-                                    <div class="text-[9px] text-slate-500 uppercase">${unit}</div>
+                                    <div class="text-[10px] font-black text-slate-200 tracking-tight">${model}</div>
+                                    <div class="text-[8px] text-slate-500 uppercase font-bold tracking-widest mt-0.5">${unit}</div>
                                 </div>
-                                <div class="text-[10px] font-mono text-yellow-400 font-bold tracking-wider">${sn}</div>
+                                <div class="text-[9px] font-mono text-yellow-500 font-bold tracking-tighter">${sn}</div>
                             </div>`;
                     }
                 });
             });
 
             container.innerHTML = `
-                <div class="bg-slate-800/40 rounded-xl p-4 border border-red-500/20">
-                    <h4 class="text-xs font-black uppercase text-red-500 mb-3 flex justify-between items-center">
-                        <span><i class="fa-solid fa-skull-crossbones mr-2"></i>Втрачено / Пошкоджено</span>
-                        <span class="bg-red-500/20 px-2 py-0.5 rounded text-[10px] text-red-300 font-bold">${lostCount}</span>
+                <div class="bg-white/[0.01] border border-red-500/20 rounded-2xl p-6">
+                    <h4 class="text-[10px] font-black uppercase text-red-500 mb-5 flex justify-between items-center tracking-widest">
+                        <span><i class="fa-solid fa-skull-crossbones mr-3"></i>Втрачено / Списано</span>
+                        <span class="bg-red-500/10 text-red-400 px-3 py-1 rounded-lg border border-red-500/20">${lostCount}</span>
                     </h4>
-                    <div class="max-h-[300px] overflow-y-auto pr-1 space-y-1 custom-scrollbar">
-                        ${lostHtml || '<div class="text-center text-[10px] text-slate-600 py-4 italic">Список порожній</div>'}
+                    <div class="max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                        ${lostHtml || '<div class="text-center text-[9px] text-slate-700 py-10 uppercase font-black">Реєстр чистий</div>'}
                     </div>
                 </div>
-                <div class="bg-slate-800/40 rounded-xl p-4 border border-yellow-500/20">
-                    <h4 class="text-xs font-black uppercase text-yellow-500 mb-3 flex justify-between items-center">
-                        <span><i class="fa-solid fa-screwdriver-wrench mr-2"></i>В ремонті</span>
-                        <span class="bg-yellow-500/20 px-2 py-0.5 rounded text-[10px] text-yellow-300 font-bold">${repairCount}</span>
+                <div class="bg-white/[0.01] border border-yellow-500/20 rounded-2xl p-6">
+                    <h4 class="text-[10px] font-black uppercase text-yellow-500 mb-5 flex justify-between items-center tracking-widest">
+                        <span><i class="fa-solid fa-tools mr-3"></i>В активному ремонті</span>
+                        <span class="bg-yellow-500/10 text-yellow-400 px-3 py-1 rounded-lg border border-yellow-500/20">${repairCount}</span>
                     </h4>
-                    <div class="max-h-[300px] overflow-y-auto pr-1 space-y-1 custom-scrollbar">
-                        ${repairHtml || '<div class="text-center text-[10px] text-slate-600 py-4 italic">Список порожній</div>'}
+                    <div class="max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                        ${repairHtml || '<div class="text-center text-[9px] text-slate-700 py-10 uppercase font-black">Реєстр чистий</div>'}
                     </div>
                 </div>
             `;
@@ -519,60 +569,43 @@
             });
 
             const sheetData = [
-                ["ЗВІТ: Особовий склад (Пілоти)"],
-                [],
+                ["ЗВІТ: Особовий склад (Пілоти)"], [],
                 ["Підрозділ", "Прізвище", "К-сть вильотів", "Наліт (хв)", "Наліт (год)"]
             ];
 
             Object.entries(unitMap).forEach(([unitName, pilotsObj]) => {
                 Object.entries(pilotsObj).forEach(([name, stats]) => {
-                    const hours = (stats.time / 60).toFixed(1);
-                    sheetData.push([unitName, name, stats.flights, stats.time, hours]);
+                    sheetData.push([unitName, name, stats.flights, stats.time, (stats.time / 60).toFixed(1)]);
                 });
             });
 
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            ws['!cols'] = [{ wch: 25 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Personnel");
-            XLSX.writeFile(wb, `Personnel_Report_${new Date().toLocaleDateString()}.xlsx`);
+            XLSX.writeFile(wb, `Global_Personnel_Report_${new Date().toLocaleDateString()}.xlsx`);
         }
 
         function exportFleetToExcel() {
-            if (globalFleetData.length === 0) return alert("Дані про парк техніки ще не завантажені або порожні");
-
+            if (globalFleetData.length === 0) return alert("Дані ще зчитуються...");
             const sheetData = [
-                ["ЗВІТ: Парк БпЛА"],
-                [],
-                ["Підрозділ", "Модель БпЛА", "Серійний номер", "Статус"]
+                ["ЗВІТ: Парк БпЛА (ГЛОБАЛЬНИЙ)"], [],
+                ["Підрозділ", "Модель", "Серійний номер", "Статус"]
             ];
-
             globalFleetData.forEach(({ unit, drones }) => {
                 if (drones.length > 0) {
-                    drones.forEach(d => {
-                        let s = d.status || "Active";
-                        if (s === "Season") s = "Season TO";
-                        if (s === "Broken") s = "Broken/Lost";
-                        sheetData.push([unit, d.model, d.serial_number || "---", s]);
-                    });
-                } else {
-                    sheetData.push([unit, "Немає техніки", "", ""]);
-                }
+                    drones.forEach(d => sheetData.push([unit, d.model, d.serial_number || "---", d.status]));
+                } else sheetData.push([unit, "ПОРОЖНЬО", "", ""]);
             });
-
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            ws['!cols'] = [{ wch: 25 }, { wch: 30 }, { wch: 25 }, { wch: 15 }];
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Fleet");
-            XLSX.writeFile(wb, `Fleet_Report_${new Date().toLocaleDateString()}.xlsx`);
+            XLSX.writeFile(wb, `Global_Fleet_Report_${new Date().toLocaleDateString()}.xlsx`);
         }
 
         function renderPersonnel(flights) {
             const container = document.getElementById('personnelContainer');
-            if (flights.length === 0) {
-                container.innerHTML = '<div class="text-center text-slate-500 text-xs">Немає даних про польоти</div>';
-                return;
-            }
+            if (flights.length === 0) return;
+
             const unitMap = {};
             flights.forEach(f => {
                 const u = f.unit || "Не вказано";
@@ -589,23 +622,23 @@
             Object.entries(unitMap).forEach(([unitName, pilotsObj]) => {
                 const pilotsList = Object.entries(pilotsObj).sort((a, b) => b[1].flights - a[1].flights);
                 const pilotsHtml = pilotsList.map(([name, stats]) => `
-                    <div class="info-card flex justify-between items-center text-[11px]">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-user text-slate-500"></i>
-                            <span class="font-bold text-slate-200">${name}</span>
+                    <div class="info-card flex justify-between items-center text-[10px] mb-1.5">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-user-pilot-tie text-slate-600"></i>
+                            <span class="font-bold text-slate-300 truncate">${name}</span>
                         </div>
                         <div class="flex gap-2">
-                            <span class="text-slate-500 font-mono text-[9px] bg-slate-900 px-1 rounded border border-slate-700">${stats.flights} вил.</span>
-                            <span class="text-blue-400 font-mono text-[9px] bg-blue-900/20 px-1 rounded border border-blue-500/20">${Math.floor(stats.time / 60)}г ${stats.time % 60}хв</span>
+                            <span class="text-slate-500 font-mono text-[8px] bg-slate-900 border border-white/5 px-2 rounded-md font-black">${stats.flights} вил</span>
+                            <span class="text-blue-500 font-mono text-[8px] bg-blue-500/10 border border-blue-500/20 px-2 rounded-md font-black">${Math.floor(stats.time / 60)}год</span>
                         </div>
                     </div>`).join('');
                 const unitBlock = `
-                    <div class="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition-colors">
-                        <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-700/50">
-                            <h4 class="text-xs font-black uppercase text-slate-300 truncate pr-2" title="${unitName}">${unitName}</h4>
-                            <span class="bg-yellow-600/20 text-yellow-500 px-2 py-0.5 rounded text-[10px] font-bold">${pilotsList.length} чол</span>
+                    <div class="bg-white/[0.02] border border-white/[0.03] rounded-2xl p-4 hover:border-white/10 transition-all">
+                        <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/5">
+                            <h4 class="text-[9px] font-black uppercase text-slate-400 truncate pr-3" title="${unitName}">${unitName}</h4>
+                            <span class="bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded text-[8px] font-black border border-yellow-500/20">${pilotsList.length} ПІЛ</span>
                         </div>
-                        <div class="space-y-1">${pilotsHtml}</div>
+                        <div class="space-y-0.5">${pilotsHtml}</div>
                     </div>`;
                 container.insertAdjacentHTML('beforeend', unitBlock);
             });
@@ -628,22 +661,21 @@
                 const res = await fetch('/api/update_announcement', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: text, is_active: isActive })
+                    body: JSON.stringify({ text, is_active: isActive })
                 });
-                if (res.ok) alert("Налаштування оголошення оновлено!");
-            } catch (e) { alert("Помилка з'єднання!"); }
+                if (res.ok) alert("Системне оголошення оновлено!");
+            } catch (e) { alert("Серверна помилка!"); }
         }
 
         async function deleteFlight(id) {
-            if (!confirm("Ви впевнені, що хочете видалити цей запис?")) return;
+            if (!confirm("Ця дія ВИДАЛИТЬ запис з бази назавжди. Продовжити?")) return;
             try {
                 const res = await fetch(`/api/delete_flight/${id}`, { method: 'DELETE' });
                 if (res.ok) {
                     allFlights = allFlights.filter(f => f.id !== id);
                     filterData();
-                    renderPersonnel(allFlights);
-                } else { alert("Помилка при видаленні."); }
-            } catch (e) { alert("Помилка з'єднання."); }
+                } else alert("Помилка видалення!");
+            } catch (e) { alert("Сервер не відповідає."); }
         }
 
         function filterData() {
@@ -682,23 +714,20 @@
             noData.classList.add('hidden');
             tbody.innerHTML = flights.map(f => {
                 const dateF = f.date && f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date;
+                const isNoFly = f.result === "Польоти не здійснювались";
                 return `
-                <tr class="hover:bg-white/5 transition-colors group">
-                    <td class="font-mono text-slate-400 text-xs">${dateF}</td>
-                    <td class="font-bold text-green-500">${f.unit}</td>
-                    <td class="font-medium">${f.operator}</td>
-                    <td class="text-slate-300 text-xs uppercase">${f.drone}</td>
+                <tr class="transition-colors group ${isNoFly ? 'opacity-50' : ''}">
+                    <td class="pl-6 font-mono text-[11px] font-bold text-slate-500">${dateF}</td>
+                    <td class="font-extrabold text-green-500/80 tracking-tighter uppercase text-[11px]">${f.unit}</td>
+                    <td class="font-black text-slate-200">${f.operator}</td>
+                    <td class="text-slate-400 text-[11px] uppercase font-bold tracking-tighter">${f.drone}</td>
                     <td><span class="route-badge">${f.route || '---'}</span></td>
-                    <td class="font-mono text-slate-400">${fmtTime(f.takeoff)} - ${fmtTime(f.landing)}</td>
-                    <td class="font-black">${f.duration} <span class="text-[10px] text-slate-500">хв</span></td>
-                    <td>
-                        <span class="tech-tag ${f.result === 'Затримання' ? 'text-red-400' : 'text-slate-400'}">
-                            ${f.result || '---'}
-                        </span>
-                    </td>
-                    <td class="text-right">
-                        <button onclick="deleteFlight(${f.id})" class="text-slate-600 hover:text-red-500 transition-colors p-2" title="Видалити запис">
-                            <i class="fa-solid fa-trash"></i>
+                    <td class="font-mono text-slate-400 text-xs">${fmtTime(f.takeoff)} → ${fmtTime(f.landing)}</td>
+                    <td class="font-black text-blue-400 font-mono">${f.duration}<span class="text-[9px] text-slate-600 lowercase ml-1">хв</span></td>
+                    <td><span class="tech-tag ${f.result === 'Затримання' ? 'text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'text-slate-500'}">${f.result || '---'}</span></td>
+                    <td class="text-right pr-6">
+                        <button onclick="deleteFlight(${f.id})" class="w-8 h-8 flex items-center justify-center bg-red-500/10 text-red-700 hover:bg-red-600 hover:text-white rounded-lg transition-all" title="DESTRUCTIVE DELETE">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
                         </button>
                     </td>
                 </tr>`;
@@ -706,24 +735,21 @@
         }
 
         function exportAllToExcel() {
-            if (allFlights.length === 0) return alert("Немає даних для експорту");
+            if (allFlights.length === 0) return alert("База порожня!");
             const sheetData = [
-                ["ЖУРНАЛ обліку польотів (ЗАГАЛЬНИЙ)"],
-                [],
-                ["№", "Дата", "Вид БпЛА", "Ділянка", "Час", "", "Трив.", "Підрозділ", "ПІБ", "АКБ", "Цикли"],
-                ["", "", "", "", "Зліт", "Пос.", "хв.", "", "", "", ""]
+                ["ЖУРНАЛ ОБЛІКУ ПОЛЬОТІВ (ГЛОБАЛЬНИЙ ПОТІК)"], [],
+                ["№", "Дата", "Модель БпЛА", "Ділянка", "Зліт", "Посадка", "Наліт хв", "Підрозділ", "Оператор", "АКБ ID", "Цикли"]
             ];
             allFlights.forEach((f, i) => {
-                const dateFormatted = f.date && f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date;
                 sheetData.push([
-                    i + 1, dateFormatted, f.drone, f.route || "---", fmtTime(f.takeoff), fmtTime(f.landing),
+                    i + 1, f.date, f.drone, f.route || "---", fmtTime(f.takeoff), fmtTime(f.landing),
                     f.duration, f.unit, f.operator, f.battery_id || "", f.battery_cycles || ""
                 ]);
             });
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Log");
-            XLSX.writeFile(wb, `Admin_Journal_${new Date().toLocaleDateString()}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws, "LogStream");
+            XLSX.writeFile(wb, `UAV_Global_Journal_${new Date().toLocaleDateString()}.xlsx`);
         }
 
         window.onload = async () => {
