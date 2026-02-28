@@ -7,6 +7,11 @@
     <title>Подання заявки | UAV Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#9333ea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/icon.png">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
 
@@ -154,6 +159,7 @@
         </button>
     </div>
 
+    <script src="/libs/db.js"></script>
     <script>
         const API = window.location.origin + "/api";
 
@@ -247,7 +253,7 @@
 
             // Отримуємо список дронів
             const selectedDrones = Array.from(document.querySelectorAll('input[name="drones"]:checked')).map(cb => cb.value);
-            if (selectedDrones.length === 0) return alert("Оберіть хоча б один БпЛА!");
+            if (selectedDrones.length === 0) return dbAPI.showNotification("Оберіть хоча б один БпЛА!", "warning");
 
             // --- ЗБЕРЕЖЕННЯ ВСІХ ПОЛІВ ---
             localStorage.setItem('cus_phone', phone);
@@ -295,6 +301,17 @@
                 window.location.href = `sgnl://send?text=${encoded}${phone ? '&number=' + phone : ''}`;
                 setTimeout(() => { if (!document.hidden) window.location.href = `https://signal.me/#p/${phone}`; }, 1000);
             }
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('SW Registered:', reg.scope);
+                }).catch(err => {
+                    console.log('SW Registration Failed:', err);
+                });
+            });
         }
     </script>
 </body>
