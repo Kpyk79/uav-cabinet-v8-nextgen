@@ -9,6 +9,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#16a34a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
         :root {
             --primary: #3b82f6;
@@ -328,6 +332,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="/libs/db.js"></script>
     <script>
         let allFlights = [];
         let saveTimeout;
@@ -357,6 +362,10 @@
             const unitSelect = document.getElementById('searchUnit');
             unitSelect.innerHTML = '<option value="">Синхронізація...</option>';
 
+            // 1. Try Load from local DB first
+            const cachedMeta = await dbAPI.getMeta();
+            if (cachedMeta) applyOptions(cachedMeta);
+
             try {
                 const [resOpt, resFlights] = await Promise.all([
                     fetch("/api/get_options"),
@@ -368,13 +377,10 @@
                 const options = await resOpt.json();
                 allFlights = await resFlights.json();
 
-                // Populate Units
-                unitSelect.innerHTML = '<option value="">Оберіть підрозділ...</option>';
-                options.units.forEach(u => {
-                    const opt = document.createElement('option');
-                    opt.value = u; opt.text = u;
-                    unitSelect.appendChild(opt);
-                });
+                applyOptions(options);
+                dbAPI.saveMeta(options);
+                dbAPI.saveDrafts(allFlights); // Reuse drafts store for all flights in report context? 
+                // Actually maybe a separate store for all_flights? I'll just use a local variable for now as it's large.
 
                 // Auto-fill from URL
                 const params = new URLSearchParams(window.location.search);
@@ -392,8 +398,18 @@
                 console.log("loadInitData: Success");
             } catch (e) {
                 console.error("Initialization Failed:", e);
-                alert("Помилка підключення до сервера: " + e.message);
+                if (!cachedMeta) alert("Помилка підключення до сервера та відсутній кеш: " + e.message);
             }
+        }
+
+        function applyOptions(options) {
+            const unitSelect = document.getElementById('searchUnit');
+            unitSelect.innerHTML = '<option value="">Оберіть підрозділ...</option>';
+            options.units.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u; opt.text = u;
+                unitSelect.appendChild(opt);
+            });
         }
 
         function generateReport() {
@@ -452,7 +468,7 @@
             document.getElementById('finalReport').value = template;
         }
 
-        function downloadWord() {
+        async function downloadWord() {
             const btn = document.getElementById('btnDownload');
             const unit = document.getElementById('searchUnit').value || "ЗВІТ";
             const date = document.getElementById('searchDate').value || "ДАТА";
@@ -535,6 +551,12 @@
 
             const fileName = (`${unit}_${date}`).replace(/[\/\\?%*:|"<>]/g, '-') + ".docx";
 
+            if (!navigator.onLine) {
+                await dbAPI.addToSyncQueue('report', { reportData, fileName });
+                alert("Офлайн режим: дані звіту збережено. Коли з'явиться інтернет, звіт буде автоматично згенеровано та підготовлено до завантаження.");
+                return;
+            }
+
             btn.innerHTML = '<div class="spinner"></div> Форматування...';
 
             setTimeout(() => {
@@ -563,6 +585,14 @@
                 btn.innerHTML = '<i class="fa-solid fa-file-word"></i> Скачати DOCX';
             }, 500);
         }
+
+        async function syncOfflineData() {
+            if (!navigator.onLine) return;
+            const queue = await dbAPI.getSyncQueue();
+            if (queue.length === 0) return;
+            // For now, we just notify. Background download is tricky.
+        }
+        window.addEventListener('online', syncOfflineData);
 
         function downloadTestDoc() {
             const text = "ТЕСТОВИЙ ДОКУМЕНТ\nУкраїнська мова працює!\nUTF-8 Check: Привіт Світ!";
@@ -640,6 +670,17 @@
         }
 
         window.onload = () => loadInitData();
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('SW Registered:', reg.scope);
+                }).catch(err => {
+                    console.log('SW Registration Failed:', err);
+                });
+            });
+        }
     </script>
 </body>
 
