@@ -104,6 +104,41 @@ const dbAPI = {
             tx.objectStore('syncQueue').delete(id);
             tx.oncomplete = () => resolve();
         });
+    },
+
+    showNotification(msg, type = 'info') {
+        const id = 'notification-' + Date.now();
+        const div = document.createElement('div');
+        div.id = id;
+        div.innerHTML = `
+            <div class="fixed top-4 right-4 z-[9999] glass p-4 rounded-2xl shadow-2xl border-l-4 transition-all duration-300 translate-x-full opacity-0 flex items-center gap-3">
+                <div class="w-2 h-2 rounded-full animate-pulse"></div>
+                <div class="text-[11px] font-black uppercase tracking-wider text-white">${msg}</div>
+            </div>
+        `;
+
+        const inner = div.firstElementChild;
+        if (type === 'error') inner.classList.add('border-red-500', 'bg-red-500/10');
+        else if (type === 'success') inner.classList.add('border-green-500', 'bg-green-500/10');
+        else inner.classList.add('border-blue-500', 'bg-blue-500/10');
+
+        const dot = inner.querySelector('.animate-pulse');
+        if (type === 'error') dot.classList.add('bg-red-500');
+        else if (type === 'success') dot.classList.add('bg-green-500');
+        else dot.classList.add('bg-blue-500');
+
+        document.body.appendChild(inner);
+
+        // Trigger animation
+        requestAnimationFrame(() => {
+            inner.classList.remove('translate-x-full', 'opacity-0');
+        });
+
+        // Remove after 5 seconds
+        setTimeout(() => {
+            inner.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => inner.remove(), 300);
+        }, 5000);
     }
 };
 
