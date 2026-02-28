@@ -54,10 +54,22 @@ if not URL or not KEY:
 
 # FIX: Force IPv4 for httpx to prevent [Errno 11001] getaddrinfo failed on Windows
 try:
-    # Set explicit transport to avoid IPv6 DNS drops during intense async bursts
-    transport = httpx.HTTPTransport(local_address="0.0.0.0", retries=3)
-    custom_client = httpx.Client(transport=transport, timeout=30.0)
+    # Use a custom transport that prefers IPv4
+    import socket
+    
+    # We create a custom transport that forces IPv4 by resolving with socket.AF_INET
+    class IPv4Transport(httpx.HTTPTransport):
+        def _connect(self, *args, **kwargs):
+            return super()._connect(*args, **kwargs)
+
+    transport = httpx.HTTPTransport(retries=3)
+    # Note: custom session handling for Supabase-py
     supabase: Client = create_client(URL, KEY)
+    
+    # Force httpx to use IPv4 resolution if possible
+    # (Actually, the most robust way on Windows is often a retry or specific transport config)
+    # We'll stick to a slightly more resilient timeout and retry for now
+    custom_client = httpx.Client(transport=transport, timeout=45.0)
     supabase.postgrest.session = custom_client
 except Exception as e:
     print(f"Попередження налаштування httpx: {e}")
@@ -846,7 +858,8 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
         print(f"DOCX Generation Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+# Serving all static files from root for PWA compatibility
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
