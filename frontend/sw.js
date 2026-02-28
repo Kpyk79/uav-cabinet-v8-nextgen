@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uav-v8-cache-v1';
+const CACHE_NAME = 'uav-v8-cache-v3';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
@@ -11,7 +11,7 @@ const ASSETS_TO_CACHE = [
     '/request.html',
     '/admin_analytics.html',
     '/fleet_management.html',
-    '/fleet',
+    '/offline.html',
     '/libs/db.js',
     '/icon.png',
     '/manifest.json',
@@ -53,15 +53,31 @@ self.addEventListener('fetch', event => {
                     return response;
                 })
                 .catch(() => {
-                    return caches.match(event.request);
+                    return caches.match(event.request, { ignoreSearch: true });
                 })
+        );
+        return;
+    }
+
+    // Navigation requests: handle extensionless URLs and fallback to offline.html
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            caches.match(event.request, { ignoreSearch: true }).then(response => {
+                if (response) return response;
+
+                // Fallback to .html if requested without extension
+                const path = url.pathname === '/' ? '/index.html' : url.pathname + '.html';
+                return caches.match(path, { ignoreSearch: true }).then(htmlResponse => {
+                    return htmlResponse || fetch(event.request).catch(() => caches.match('/offline.html'));
+                });
+            })
         );
         return;
     }
 
     // Default: Cache-First for assets
     event.respondWith(
-        caches.match(event.request).then(response => {
+        caches.match(event.request, { ignoreSearch: true }).then(response => {
             return response || fetch(event.request);
         })
     );
@@ -70,7 +86,6 @@ self.addEventListener('fetch', event => {
 // Sync logic (optional if using simple window.online listener, but good for robust PWA)
 self.addEventListener('sync', event => {
     if (event.tag === 'sync-reports') {
-        // This will be handled in the main script since it has access to IndexedDB easier
-        // But SW can trigger it too
+        // This will be handled in the main script
     }
 });
