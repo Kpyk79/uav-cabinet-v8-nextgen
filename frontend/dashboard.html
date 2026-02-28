@@ -10,6 +10,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#22c55e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/icon.png">
     <style>
         * {
             box-sizing: border-box;
@@ -155,6 +160,7 @@
         </div>
     </div>
 
+    <script src="/libs/db.js"></script>
     <script>
         let allFlights = [];
         const currentOp = localStorage.getItem('uav_op');
@@ -169,7 +175,7 @@
 
         async function loadFlights() {
             if (!currentOp || !currentUnit) {
-                alert("Помилка авторизації!");
+                dbAPI.showNotification("Помилка авторизації!", "error");
                 window.location.href = "/";
                 return;
             }
@@ -293,7 +299,7 @@
         }
 
         function exportToExcel() {
-            if (allFlights.length === 0) return alert("Немає даних для експорту");
+            if (allFlights.length === 0) return dbAPI.showNotification("Немає даних для експорту", "warning");
 
             const sheetData = [
                 ["ЖУРНАЛ обліку польотів із застосуванням БпЛА відділом повітряної розвідки та протидії безпілотним повітряним суднам"],
@@ -345,6 +351,17 @@
         }
 
         window.onload = loadFlights;
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('SW Registered:', reg.scope);
+                }).catch(err => {
+                    console.log('SW Registration Failed:', err);
+                });
+            });
+        }
     </script>
 </body>
 
