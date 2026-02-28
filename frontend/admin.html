@@ -7,6 +7,7 @@
     <title>Admin Panel | UAV Monitor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="/libs/db.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
@@ -423,7 +424,7 @@
         function goToEditFleet() {
             const unit = document.getElementById('adminFleetSelect').value;
             if (!unit) {
-                alert("Будь ласка, оберіть підрозділ зі списку для редагування!");
+                dbAPI.showNotification("Будь ласка, оберіть підрозділ зі списку для редагування!", "warning");
                 return;
             }
             const token = new URLSearchParams(window.location.search).get('token');
@@ -562,7 +563,7 @@
         }
 
         function exportPersonnelToExcel() {
-            if (allFlights.length === 0) return alert("Немає даних для експорту");
+            if (allFlights.length === 0) return dbAPI.showNotification("Немає даних для експорту", "warning");
             const unitMap = {};
             allFlights.forEach(f => {
                 const u = f.unit || "Не вказано";
@@ -594,7 +595,7 @@
         }
 
         function exportFleetToExcel() {
-            if (globalFleetData.length === 0) return alert("Дані ще зчитуються...");
+            if (globalFleetData.length === 0) return dbAPI.showNotification("Дані ще зчитуються...", "info");
             const sheetData = [
                 ["ЗВІТ: Парк БпЛА (ГЛОБАЛЬНИЙ)"], [],
                 ["Підрозділ", "Модель", "Серійний номер", "Статус"]
@@ -671,8 +672,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text, is_active: isActive })
                 });
-                if (res.ok) alert("Системне оголошення оновлено!");
-            } catch (e) { alert("Серверна помилка!"); }
+                if (res.ok) dbAPI.showNotification("Системне оголошення оновлено!", "success");
+            } catch (e) { dbAPI.showNotification("Серверна помилка!", "error"); }
         }
 
         async function deleteFlight(id) {
@@ -682,8 +683,8 @@
                 if (res.ok) {
                     allFlights = allFlights.filter(f => f.id !== id);
                     filterData();
-                } else alert("Помилка видалення!");
-            } catch (e) { alert("Сервер не відповідає."); }
+                } else dbAPI.showNotification("Помилка видалення!", "error");
+            } catch (e) { dbAPI.showNotification("Сервер не відповідає.", "error"); }
         }
 
         async function updateFlightResult(id, newResult) {
@@ -708,11 +709,11 @@
                     filterData();
                 } else {
                     const err = await res.text();
-                    alert(`Помилка оновлення: ${res.status} - ${err}`);
+                    dbAPI.showNotification(`Помилка оновлення: ${res.status}`, "error");
                 }
             } catch (e) {
                 console.error(e);
-                alert(`Сервер не відповідає: ${e.message}`);
+                dbAPI.showNotification(`Сервер не відповідає: ${e.message}`, "error");
             }
         }
 
@@ -780,7 +781,7 @@
         }
 
         function exportAllToExcel() {
-            if (allFlights.length === 0) return alert("База порожня!");
+            if (allFlights.length === 0) return dbAPI.showNotification("База порожня!", "warning");
             const sheetData = [
                 ["ЖУРНАЛ ОБЛІКУ ПОЛЬОТІВ (ГЛОБАЛЬНИЙ ПОТІК)"], [],
                 ["№", "Дата", "Модель БпЛА", "Ділянка", "Зліт", "Посадка", "Наліт хв", "Підрозділ", "Оператор", "АКБ ID", "Цикли"]
