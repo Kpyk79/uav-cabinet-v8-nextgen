@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uav-v8-cache-v3';
+const CACHE_NAME = 'uav-v8-cache-v4';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
@@ -17,13 +17,16 @@ const ASSETS_TO_CACHE = [
     '/manifest.json',
     'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css',
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap'
 ];
 
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => {
-            return cache.addAll(ASSETS_TO_CACHE);
+            // Using a more resilient approach: cache what we can
+            return Promise.allSettled(ASSETS_TO_CACHE.map(url => cache.add(url)));
         })
     );
     self.skipWaiting();
@@ -41,7 +44,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // Skip API calls for default fetch-caching, handle them with Network-First logic
+    // 1. API - Network first, then fallback to cache
     if (url.pathname.startsWith('/api/')) {
         event.respondWith(
             fetch(event.request)
@@ -52,30 +55,41 @@ self.addEventListener('fetch', event => {
                     }
                     return response;
                 })
-                .catch(() => {
-                    return caches.match(event.request, { ignoreSearch: true });
-                })
+                .catch(() => caches.match(event.request, { ignoreSearch: true }))
         );
         return;
     }
 
-    // Navigation requests: handle extensionless URLs and fallback to offline.html
-    if (event.request.mode === 'navigate') {
+    // 2. Navigation - Cache first, with extensionless & manual fallback
+    if (event.request.mode === 'navigate' || (event.request.method === 'GET' && event.request.headers.get('accept').includes('text/html'))) {
         event.respondWith(
-            caches.match(event.request, { ignoreSearch: true }).then(response => {
-                if (response) return response;
+            caches.match(event.request, { ignoreSearch: true }).then(cacheResponse => {
+                if (cacheResponse) return cacheResponse;
 
-                // Fallback to .html if requested without extension
-                const path = url.pathname === '/' ? '/index.html' : url.pathname + '.html';
-                return caches.match(path, { ignoreSearch: true }).then(htmlResponse => {
-                    return htmlResponse || fetch(event.request).catch(() => caches.match('/offline.html'));
-                });
+                // Try common extensions
+                const possiblePaths = [
+                    url.pathname + '.html',
+                    url.pathname === '/' ? '/index.html' : url.pathname
+                ];
+
+                return (async () => {
+                    for (const path of possiblePaths) {
+                        const hit = await caches.match(path, { ignoreSearch: true });
+                        if (hit) return hit;
+                    }
+
+                    try {
+                        return await fetch(event.request);
+                    } catch (e) {
+                        return caches.match('/offline.html');
+                    }
+                })();
             })
         );
         return;
     }
 
-    // Default: Cache-First for assets
+    // 3. Static Assets - Cache first
     event.respondWith(
         caches.match(event.request, { ignoreSearch: true }).then(response => {
             return response || fetch(event.request);
@@ -83,9 +97,8 @@ self.addEventListener('fetch', event => {
     );
 });
 
-// Sync logic (optional if using simple window.online listener, but good for robust PWA)
 self.addEventListener('sync', event => {
     if (event.tag === 'sync-reports') {
-        // This will be handled in the main script
+        // Handled in main script
     }
 });
