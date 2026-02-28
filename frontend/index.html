@@ -587,9 +587,14 @@
                     if (success) {
                         await dbAPI.removeFromSyncQueue(item.id);
                     }
-                } catch (e) { console.error("Sync failed for item", item.id, e); }
+                } catch (e) {
+                    console.error("Sync failed for item", item.id, e);
+                    allSucceeded = false;
+                }
             }
-            alert("Всі офлайн-дані успішно синхронізовано!");
+            if (allSucceeded) {
+                dbAPI.showNotification("Всі офлайн-дані успішно синхронізовано!", "success");
+            }
             location.reload();
         }
 
@@ -772,7 +777,9 @@
             const pass = document.getElementById('loginPass').value;
             const btn = document.getElementById('loginBtn');
 
-            if (!op || !pass) return alert("Введіть прізвище та пароль!");
+            if (!op || !pass) {
+                return dbAPI.showNotification("Введіть прізвище та пароль!", "warning");
+            }
 
             btn.disabled = true;
             btn.innerText = "ПЕРЕВІРКА...";
@@ -790,10 +797,10 @@
                     localStorage.setItem('uav_op', normalizeOperatorName(op));
                     location.reload();
                 } else {
-                    alert(data.message || "Помилка авторизації");
+                    dbAPI.showNotification(data.message || "Помилка авторизації", "error");
                 }
             } catch (e) {
-                alert("Помилка з'єднання з сервером");
+                dbAPI.showNotification("Помилка з'єднання з сервером. Перевірте мережу.", "error");
                 console.error(e);
             } finally {
                 btn.disabled = false;
@@ -862,7 +869,7 @@
             const landingInput = document.getElementById('t2');
 
             if (!takeoffInput || !landingInput || !takeoffInput.value || !landingInput.value) {
-                return alert("Спочатку вкажіть ЧАС зльоту та посадки!");
+                return dbAPI.showNotification("Спочатку вкажіть ЧАС зльоту та посадки!", "warning");
             }
 
             const getVal = (id, def) => {
@@ -983,9 +990,12 @@
             renderDraft();
         }
 
-        function copyText(id) {
-            const el = document.getElementById(id); if (el.value === "---") return;
-            navigator.clipboard.writeText(el.value); alert("Скопійовано!");
+        function copyField(id) {
+            const el = document.getElementById(id);
+            if (el.value === "---") return;
+            el.select();
+            navigator.clipboard.writeText(el.value);
+            dbAPI.showNotification("Скопійовано!", "success");
         }
 
         async function publishAll() {
@@ -1010,7 +1020,7 @@
 
             if (!navigator.onLine) {
                 await dbAPI.addToSyncQueue('flight', payload);
-                alert("Офлайн режим: дані збережено в чергу синхронізації. Вони будуть відправлені автоматично при появі інтернету.");
+                dbAPI.showNotification("Офлайн режим: дані збережено в чергу синхронізації. Вони будуть відправлені автоматично при появі інтернету.", "info");
                 cleanupAfterPublish();
                 return;
             }
@@ -1021,15 +1031,14 @@
             try {
                 const success = await sendFlightData(payload);
                 if (success) {
-                    alert("Успішно опубліковано!");
+                    dbAPI.showNotification("Успішно опубліковано!", "success");
                     cleanupAfterPublish();
                 }
             } catch (e) {
                 console.error(e);
-                if (confirm("Помилка відправки. Додати в чергу синхронізації?")) {
-                    await dbAPI.addToSyncQueue('flight', payload);
-                    cleanupAfterPublish();
-                }
+                await dbAPI.addToSyncQueue('flight', payload);
+                dbAPI.showNotification("Серверна помилка. Дані збережено в чергу.", "info");
+                cleanupAfterPublish();
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Опублікувати донесення';
