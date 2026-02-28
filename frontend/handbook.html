@@ -1,21 +1,62 @@
 <!DOCTYPE html>
 <html lang="uk">
+
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Довідник</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/icon.png">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; padding: 12px; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 1.5rem; }
-        .contact-card { background: rgba(15, 23, 42, 0.6); padding: 16px; border-radius: 1.25rem; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px; transition: transform 0.2s; }
-        .contact-card:active { transform: scale(0.98); }
-        .call-btn { background: rgba(45, 212, 191, 0.1); color: #2dd4bf; border: 1px solid rgba(45, 212, 191, 0.2); border-radius: 0.75rem; padding: 8px 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+
+        body {
+            background: #0f172a;
+            font-family: 'Inter', sans-serif;
+            color: white;
+            padding: 12px;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+        }
+
+        .contact-card {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 16px;
+            border-radius: 1.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 12px;
+            transition: transform 0.2s;
+        }
+
+        .contact-card:active {
+            transform: scale(0.98);
+        }
+
+        .call-btn {
+            background: rgba(45, 212, 191, 0.1);
+            color: #2dd4bf;
+            border: 1px solid rgba(45, 212, 191, 0.2);
+            border-radius: 0.75rem;
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
     </style>
 </head>
+
 <body class="max-w-2xl mx-auto pb-10">
-    
+
     <div class="flex items-center gap-4 mb-6 pt-4 px-2">
         <button onclick="window.location.href='/'" class="p-2 bg-slate-800 rounded-xl text-slate-400">
             <i class="fa-solid fa-arrow-left text-sm"></i>
@@ -27,7 +68,7 @@
     </div>
 
     <div class="space-y-3">
-        
+
         <div class="contact-card">
             <div class="flex justify-between items-start mb-3">
                 <div class="flex items-center gap-3">
@@ -35,7 +76,8 @@
                         <i class="fa-solid fa-user-tie"></i>
                     </div>
                     <div>
-                        <div class="text-[10px] font-black uppercase text-blue-400 tracking-tighter">Старший офіцер</div>
+                        <div class="text-[10px] font-black uppercase text-blue-400 tracking-tighter">Старший офіцер
+                        </div>
                         <div class="text-sm font-black">Ігор Степанович</div>
                     </div>
                 </div>
@@ -71,7 +113,8 @@
                         <i class="fa-solid fa-user-astronaut"></i>
                     </div>
                     <div>
-                        <div class="text-[10px] font-black uppercase text-orange-400 tracking-tighter">Старший оператор</div>
+                        <div class="text-[10px] font-black uppercase text-orange-400 tracking-tighter">Старший оператор
+                        </div>
                         <div class="text-sm font-black">Микола</div>
                     </div>
                 </div>
@@ -89,7 +132,8 @@
                         <i class="fa-solid fa-screwdriver-wrench"></i>
                     </div>
                     <div>
-                        <div class="text-[10px] font-black uppercase text-purple-400 tracking-tighter">Технік-майстер</div>
+                        <div class="text-[10px] font-black uppercase text-purple-400 tracking-tighter">Технік-майстер
+                        </div>
                         <div class="text-sm font-black">Сергій</div>
                     </div>
                 </div>
@@ -107,7 +151,8 @@
                         <i class="fa-solid fa-box-open"></i>
                     </div>
                     <div>
-                        <div class="text-[10px] font-black uppercase text-yellow-400 tracking-tighter">Начальник складу</div>
+                        <div class="text-[10px] font-black uppercase text-yellow-400 tracking-tighter">Начальник складу
+                        </div>
                         <div class="text-sm font-black">Ірина</div>
                     </div>
                 </div>
@@ -120,6 +165,17 @@
 
     </div>
 
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('SW Registered:', reg.scope);
+                }).catch(err => {
+                    console.log('SW Registration Failed:', err);
+                });
+            });
+        }
+    </script>
 </body>
 
 </html>
