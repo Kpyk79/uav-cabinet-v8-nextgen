@@ -9,6 +9,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#16a34a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/icon.png">
     <style>
         * {
             box-sizing: border-box;
@@ -398,7 +403,7 @@
                 <!-- Route -->
                 <div>
                     <label class="label-style">Маршрут</label>
-                    <input type="text" id="route" class="" placeholder="в межах п/з 0000/01-1000/00..."
+                    <input type="text" id="route" class="" placeholder="Введіть маршрут..."
                         oninput="saveState(this.id)">
                 </div>
 
@@ -543,10 +548,50 @@
         </div>
     </div>
 
+    <script src="/libs/db.js"></script>
     <script>
         const API = window.location.origin + "/api";
         let draft = [];
         let editingId = null;
+
+        // Offline Status Sync
+        function updateOnlineStatus() {
+            const badge = document.getElementById('userBadge');
+            if (!navigator.onLine) {
+                badge.classList.add('border-red-500', 'text-red-400');
+                badge.classList.remove('text-green-400');
+                badge.innerHTML += ' | <span class="animate-pulse">OFFLINE</span>';
+            } else {
+                badge.classList.remove('border-red-500', 'text-red-400');
+                badge.classList.add('text-green-400');
+                const u = localStorage.getItem('uav_unit'), o = localStorage.getItem('uav_op');
+                badge.innerText = `${u} | ${o}`;
+                syncOfflineData();
+            }
+        }
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+
+        async function syncOfflineData() {
+            if (!navigator.onLine) return;
+            const queue = await dbAPI.getSyncQueue();
+            if (queue.length === 0) return;
+
+            console.log("Syncing offline data...", queue.length);
+            for (const item of queue) {
+                try {
+                    let success = false;
+                    if (item.type === 'flight') {
+                        success = await sendFlightData(item.payload);
+                    }
+                    if (success) {
+                        await dbAPI.removeFromSyncQueue(item.id);
+                    }
+                } catch (e) { console.error("Sync failed for item", item.id, e); }
+            }
+            alert("Всі офлайн-дані успішно синхронізовано!");
+            location.reload();
+        }
 
         function normalizeOperatorName(name) {
             if (!name) return "";
@@ -657,12 +702,23 @@
         window.onload = async function () {
             checkAnnouncement();
 
-            const res = await fetch(API + "/get_options");
-            const opt = await res.json();
-            document.getElementById('loginUnit').innerHTML = opt.units.map(u => "<option>" + u + "</option>").join('');
-            document.getElementById('weather').innerHTML = opt.weather.map(w => "<option>" + w + "</option>").join('');
-            document.getElementById('mode').innerHTML = opt.flight_modes.map(m => "<option>" + m + "</option>").join('');
-            document.getElementById('result').innerHTML = opt.results.map(r => "<option>" + r + "</option>").join('');
+            // 1. Load from Cache/DB first
+            const cachedMeta = await dbAPI.getMeta();
+            if (cachedMeta) applyOptions(cachedMeta);
+
+            const cachedDrafts = await dbAPI.getDrafts();
+            if (cachedDrafts.length > 0) {
+                draft = cachedDrafts;
+                renderDraft();
+            }
+
+            // 2. Try network update
+            try {
+                const res = await fetch(API + "/get_options");
+                const opt = await res.json();
+                applyOptions(opt);
+                dbAPI.saveMeta(opt); // Update local cache
+            } catch (e) { console.log("Offline or API error, using cache"); }
 
             restoreFields();
 
@@ -674,19 +730,34 @@
                 showMain(u);
             } else document.getElementById('loginScreen').classList.remove('hidden');
 
-            const cached = localStorage.getItem('uav_draft_cache');
-            if (cached) { draft = JSON.parse(cached); renderDraft(); }
+            updateOnlineStatus();
         };
+
+        function applyOptions(opt) {
+            document.getElementById('loginUnit').innerHTML = opt.units.map(u => "<option>" + u + "</option>").join('');
+            document.getElementById('weather').innerHTML = opt.weather.map(w => "<option>" + w + "</option>").join('');
+            document.getElementById('mode').innerHTML = opt.flight_modes.map(m => "<option>" + m + "</option>").join('');
+            document.getElementById('result').innerHTML = opt.results.map(r => "<option>" + r + "</option>").join('');
+        }
 
         async function showMain(unit) {
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('mainScreen').classList.remove('hidden');
 
-            const resD = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(unit));
-            const allDrones = await resD.json();
+            // Try local first
+            const cachedDrones = await dbAPI.getDrones(unit);
+            if (cachedDrones.length > 0) applyDrones(cachedDrones);
 
+            try {
+                const resD = await fetch(API + "/get_unit_drones?unit=" + encodeURIComponent(unit));
+                const allDrones = await resD.json();
+                applyDrones(allDrones);
+                dbAPI.saveDrones(unit, allDrones); // Cache them
+            } catch (e) { console.log("Offline, using cached drones"); }
+        }
+
+        function applyDrones(allDrones) {
             const activeDrones = allDrones.filter(d => !d.status || d.status === 'Active');
-
             document.getElementById('drone').innerHTML = activeDrones.map(d =>
                 '<option value="' + d.model + ' (S/N: ' + d.serial_number + ')">' + d.model + ' [' + d.serial_number + ']</option>'
             ).join('');
@@ -848,7 +919,7 @@
                 localStorage.removeItem('saved_comment');
             }
 
-            localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
+            dbAPI.saveDrafts(draft);
             renderDraft();
         }
 
@@ -908,7 +979,7 @@
         function removeFromDraft(id) {
             if (editingId === id) cancelEdit();
             draft = draft.filter(f => f.id !== id);
-            localStorage.setItem('uav_draft_cache', JSON.stringify(draft));
+            dbAPI.saveDrafts(draft);
             renderDraft();
         }
 
@@ -920,9 +991,53 @@
         async function publishAll() {
             if (draft.length === 0) return;
             const btn = document.getElementById('publishBtn');
+            const ph = document.getElementById('photos');
+
+            // Helper to get Base64 of files
+            const readAsBase64 = (file) => new Promise(r => {
+                const reader = new FileReader();
+                reader.onload = () => r(reader.result);
+                reader.readAsDataURL(file);
+            });
+
+            const photosData = ph && ph.files.length > 0 ?
+                await Promise.all(Array.from(ph.files).map(f => readAsBase64(f))) : [];
+
+            const payload = {
+                draft: [...draft],
+                photos: photosData
+            };
+
+            if (!navigator.onLine) {
+                await dbAPI.addToSyncQueue('flight', payload);
+                alert("Офлайн режим: дані збережено в чергу синхронізації. Вони будуть відправлені автоматично при появі інтернету.");
+                cleanupAfterPublish();
+                return;
+            }
+
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>НАДСИЛАННЯ...';
 
+            try {
+                const success = await sendFlightData(payload);
+                if (success) {
+                    alert("Успішно опубліковано!");
+                    cleanupAfterPublish();
+                }
+            } catch (e) {
+                console.error(e);
+                if (confirm("Помилка відправки. Додати в чергу синхронізації?")) {
+                    await dbAPI.addToSyncQueue('flight', payload);
+                    cleanupAfterPublish();
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Опублікувати донесення';
+            }
+        }
+
+        async function sendFlightData(payload) {
+            const { draft, photos } = payload;
             const first = draft[0];
             const currentShift = first.shift_time || "08:00-20:00";
             const currentRoute = first.route || "Не вказано";
@@ -946,59 +1061,69 @@
                 if (statusParts.length > 0) report += "   └ " + statusParts.join(" | ") + "\n";
             });
 
-            try {
-                for (const f of draft) {
-                    let dbDate;
-                    if (f.date && f.date.includes('.')) {
-                        let [d, m, y] = f.date.split('.');
-                        dbDate = `${y}-${m}-${d}`;
-                    } else {
-                        dbDate = f.date || new Date().toISOString().split('T')[0];
-                    }
-
-                    const toDb = {
-                        ...f,
-                        date: dbDate,
-                        duration: Math.floor(Number(f.duration)) || 0,
-                        distance: Math.floor(Number(f.distance)) || 0,
-                        battery_cycles: Math.floor(Number(f.battery_cycles)) || 0
-                    };
-                    delete toDb.id;
-
-                    await fetch(API + "/add_flight", {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(toDb)
-                    });
+            // 1. Add flights to DB
+            for (const f of draft) {
+                let dbDate;
+                if (f.date && f.date.includes('.')) {
+                    let [d, m, y] = f.date.split('.');
+                    dbDate = `${y}-${m}-${d}`;
+                } else {
+                    dbDate = f.date || new Date().toISOString().split('T')[0];
                 }
 
-                const fd = new FormData();
-                fd.append('report_text', report);
-                const ph = document.getElementById('photos');
-                if (ph && ph.files.length > 0) {
-                    Array.from(ph.files).forEach(file => fd.append('images', file));
-                }
+                const toDb = {
+                    ...f,
+                    date: dbDate,
+                    duration: Math.floor(Number(f.duration)) || 0,
+                    distance: Math.floor(Number(f.distance)) || 0,
+                    battery_cycles: Math.floor(Number(f.battery_cycles)) || 0
+                };
+                delete toDb.id;
 
-                const resT = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
-                if ((await resT.json()).status === "ok") {
-                    alert("Успішно опубліковано!");
-                    draft = [];
-                    localStorage.removeItem('uav_draft_cache');
-                    Object.keys(localStorage).forEach(key => {
-                        if (key.startsWith('saved_')) localStorage.removeItem(key);
-                    });
-                    location.reload();
-                }
-            } catch (e) {
-                alert("Помилка при відправці!");
-                console.error(e);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Опублікувати донесення';
+                await fetch(API + "/add_flight", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(toDb)
+                });
             }
+
+            // 2. Send to Telegram
+            const fd = new FormData();
+            fd.append('report_text', report);
+
+            if (photos && photos.length > 0) {
+                for (let i = 0; i < photos.length; i++) {
+                    const blob = await (await fetch(photos[i])).blob();
+                    fd.append('images', blob, `photo_${i}.jpg`);
+                }
+            }
+
+            const resT = await fetch(API + "/publish_with_telegram", { method: 'POST', body: fd });
+            const dataT = await resT.json();
+            return dataT.status === "ok";
+        }
+
+        function cleanupAfterPublish() {
+            draft = [];
+            dbAPI.saveDrafts([]);
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('saved_')) localStorage.removeItem(key);
+            });
+            location.reload();
         }
 
         function logout() { if (confirm("Вийти?")) { localStorage.clear(); location.reload(); } }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('SW Registered:', reg.scope);
+                }).catch(err => {
+                    console.log('SW Registration Failed:', err);
+                });
+            });
+        }
     </script>
 </body>
 
