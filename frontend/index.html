@@ -990,12 +990,23 @@
             renderDraft();
         }
 
-        function copyField(id) {
+        async function copyText(id) {
             const el = document.getElementById(id);
-            if (el.value === "---") return;
-            el.select();
-            navigator.clipboard.writeText(el.value);
-            dbAPI.showNotification("Скопійовано!", "success");
+            if (!el || el.value === "---") return;
+
+            try {
+                await navigator.clipboard.writeText(el.value);
+                dbAPI.showNotification("Скопійовано!", "success");
+            } catch (err) {
+                // Fallback for older browsers or non-secure contexts
+                el.select();
+                try {
+                    document.execCommand('copy');
+                    dbAPI.showNotification("Скопійовано!", "success");
+                } catch (e) {
+                    dbAPI.showNotification("Помилка копіювання", "error");
+                }
+            }
         }
 
         async function publishAll() {
