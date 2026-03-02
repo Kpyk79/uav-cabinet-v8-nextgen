@@ -481,7 +481,7 @@
                                 <div class="info-card flex justify-between items-center text-[10px] mb-1.5">
                                     <div class="flex items-center gap-2 overflow-hidden">
                                         <span class="status-dot ${statusClass}"></span>
-                                        <span class="font-bold text-slate-300 truncate">${d.model}</span>
+                                        <span class="font-bold text-slate-300 truncate">${d.model} <span class="text-blue-500 ml-1 opacity-70">[${d.battery_count || 0}]</span></span>
                                     </div>
                                     <span class="font-mono text-slate-600 text-[8px] tracking-tighter">${d.serial_number || '---'}</span>
                                 </div>`;
@@ -563,62 +563,72 @@
         }
 
         function exportPersonnelToExcel() {
-            if (allFlights.length === 0) return dbAPI.showNotification("Немає даних для експорту", "warning");
-            const unitMap = {};
-            allFlights.forEach(f => {
-                const u = f.unit || "Не вказано";
-                const op = f.operator || "Невідомий";
-                const dur = parseInt(f.duration) || 0;
-                if (!unitMap[u]) unitMap[u] = {};
-                if (!unitMap[u][op]) unitMap[u][op] = { flights: 0, time: 0 };
-                if (f.result !== "Польоти не здійснювались") {
-                    unitMap[u][op].flights++;
-                    unitMap[u][op].time += dur;
-                }
-            });
-
-            const sheetData = [
-                ["ЗВІТ: Особовий склад (Пілоти)"], [],
-                ["Підрозділ", "Прізвище", "К-сть вильотів", "Наліт (хв)", "Наліт (год)"]
-            ];
-
-            Object.entries(unitMap).forEach(([unitName, pilotsObj]) => {
-                Object.entries(pilotsObj).forEach(([name, stats]) => {
-                    sheetData.push([unitName, name, stats.flights, stats.time, (stats.time / 60).toFixed(1)]);
+            try {
+                if (allFlights.length === 0) return dbAPI.showNotification("Немає даних для експорту", "warning");
+                const unitMap = {};
+                allFlights.forEach(f => {
+                    const u = f.unit || "Не вказано";
+                    const op = f.operator || "Невідомий";
+                    const dur = parseInt(f.duration) || 0;
+                    if (!unitMap[u]) unitMap[u] = {};
+                    if (!unitMap[u][op]) unitMap[u][op] = { flights: 0, time: 0 };
+                    if (f.result !== "Польоти не здійснювались") {
+                        unitMap[u][op].flights++;
+                        unitMap[u][op].time += dur;
+                    }
                 });
-            });
 
-            const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Personnel");
-            XLSX.writeFile(wb, `Global_Personnel_Report_${new Date().toLocaleDateString()}.xlsx`);
+                const sheetData = [
+                    ["ЗВІТ: ПЕРСОНАЛ (ГЛОБАЛЬНИЙ)"], [],
+                    ["Підрозділ", "Оператор", "К-ть польотів", "Загальний час (хв)"]
+                ];
+
+                Object.keys(unitMap).sort().forEach(u => {
+                    Object.keys(unitMap[u]).sort().forEach(op => {
+                        sheetData.push([u, op, unitMap[u][op].flights, unitMap[u][op].time]);
+                    });
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Personnel");
+                const safeDate = new Date().toISOString().split('T')[0];
+                XLSX.writeFile(wb, `Global_Personnel_Report_${safeDate}.xlsx`);
+            } catch (e) {
+                dbAPI.showNotification("Помилка експорту: " + e.message, "error");
+            }
         }
 
         function exportFleetToExcel() {
-            if (globalFleetData.length === 0) return dbAPI.showNotification("Дані ще зчитуються...", "info");
-            const sheetData = [
-                ["ЗВІТ: Парк БпЛА (ГЛОБАЛЬНИЙ)"], [],
-                ["Підрозділ", "Модель", "Серійний номер", "АКБ", "Статус"]
-            ];
-            globalFleetData.forEach(({ unit, drones }) => {
-                if (drones && drones.length > 0) {
-                    drones.forEach(d => {
-                        sheetData.push([
-                            unit,
-                            d.model,
-                            d.serial_number || "---",
-                            (d.battery_count !== undefined && d.battery_count !== null) ? d.battery_count : 0,
-                            d.status || "Active"
-                        ]);
-                    });
-                } else {
-                    sheetData.push([unit, "ПОРОЖНЬО", "", "", ""]);
-                }
-            });
-            const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Fleet");
-            XLSX.writeFile(wb, `Global_Fleet_Report_${new Date().toLocaleDateString()}.xlsx`);
+            try {
+                if (globalFleetData.length === 0) return dbAPI.showNotification("Дані ще зчитуються...", "info");
+                const sheetData = [
+                    ["ЗВІТ: Парк БпЛА (ГЛОБАЛЬНИЙ)"], [],
+                    ["Підрозділ", "Модель", "Серійний номер", "АКБ", "Статус"]
+                ];
+                globalFleetData.forEach(({ unit, drones }) => {
+                    if (drones && drones.length > 0) {
+                        drones.forEach(d => {
+                            sheetData.push([
+                                unit,
+                                d.model,
+                                d.serial_number || "---",
+                                (d.battery_count !== undefined && d.battery_count !== null) ? d.battery_count : 0,
+                                d.status || "Active"
+                            ]);
+                        });
+                    } else {
+                        sheetData.push([unit, "ПОРОЖНЬО", "", "", ""]);
+                    }
+                });
+                const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Fleet");
+                const safeDate = new Date().toISOString().split('T')[0];
+                XLSX.writeFile(wb, `Global_Fleet_Report_${safeDate}.xlsx`);
+            } catch (e) {
+                dbAPI.showNotification("Помилка експорту БпЛА: " + e.message, "error");
+            }
         }
 
         function renderPersonnel(flights) {
@@ -805,7 +815,8 @@
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "LogStream");
-            XLSX.writeFile(wb, `UAV_Global_Journal_${new Date().toLocaleDateString()}.xlsx`);
+            const safeDate = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `UAV_Global_Journal_${safeDate}.xlsx`);
         }
 
         window.onload = async () => {
