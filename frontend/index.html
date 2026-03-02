@@ -403,7 +403,7 @@
                 <!-- Route -->
                 <div>
                     <label class="label-style">Маршрут</label>
-                    <input type="text" id="route" class="" placeholder="п/з 0001/00-1000/00..."
+                    <input type="text" id="route" class="" placeholder="Введіть маршрут..."
                         oninput="saveState(this.id)">
                 </div>
 
@@ -605,7 +605,7 @@
                 "мл. с-нт", "ст. с-нт", "мл.", "ст.", "с-нт", "лт", "кпт", "м-р", "п-к", "ген",
                 "рядовий", "старшина", "прапорщик"
             ];
-            let res = name;
+            let res = name.trim();
             ranks.forEach(rank => {
                 const escapedRank = rank.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const regex = new RegExp("\\b" + escapedRank + "\\.?\\s*", "gi");
@@ -616,10 +616,10 @@
             res = res.trim().replace(/^[\s._,-]+|[\s._,-]+$/g, "");
             const words = res.split(/\s+/);
             if (words.length > 0 && words[0]) {
-                res = words[0];
+                res = words[0].trim();
                 res = res.charAt(0).toUpperCase() + res.slice(1).toLowerCase();
             }
-            return res;
+            return res.trim();
         }
 
         const loginOpInput = document.getElementById('loginOp');
