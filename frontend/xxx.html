@@ -607,6 +607,33 @@
             XLSX.writeFile(wb, `Звіт_Управління_${currentUnit}.xlsx`);
         }
 
+        function exportFleetToExcel() {
+            if (globalFleetData.length === 0) return alert("Дані ще зчитуються...");
+            const sheetData = [
+                ["ЗВІТ: Парк БпЛА (СЕКТОР: " + currentUnit + ")"], [],
+                ["Підрозділ", "Модель", "Серійний номер", "АКБ", "Статус"]
+            ];
+            globalFleetData.forEach(({ unit, drones }) => {
+                if (drones && drones.length > 0) {
+                    drones.forEach(d => {
+                        sheetData.push([
+                            unit,
+                            d.model,
+                            d.serial_number || "---",
+                            (d.battery_count !== undefined && d.battery_count !== null) ? d.battery_count : 0,
+                            d.status || "Active"
+                        ]);
+                    });
+                } else {
+                    sheetData.push([unit, "ПОРОЖНЬО", "", "", ""]);
+                }
+            });
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Fleet");
+            XLSX.writeFile(wb, `Fleet_Report_${currentUnit}_${new Date().toLocaleDateString()}.xlsx`);
+        }
+
         init();
     </script>
 </body>
