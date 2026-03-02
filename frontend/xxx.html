@@ -395,11 +395,11 @@
 
                         return `
                             <div class="info-card flex justify-between items-center text-[11px] mb-1.5">
-                                <div class="flex items-center gap-2.5 overflow-hidden">
-                                    <span class="status-dot ${statusClass}"></span>
-                                    <span class="font-bold text-slate-200 truncate">${d.model}</span>
-                                </div>
-                                <span class="font-mono text-slate-500 text-[9px] tracking-tighter">${d.serial_number || 'S/N ---'}</span>
+                                    <div class="flex items-center gap-2.5 overflow-hidden">
+                                        <span class="status-dot ${statusClass}"></span>
+                                        <span class="font-bold text-slate-200 truncate">${d.model} <span class="text-blue-500 ml-1 opacity-70">[${d.battery_count || 0}]</span></span>
+                                    </div>
+                                    <span class="font-mono text-slate-500 text-[9px] tracking-tighter">${d.serial_number || 'S/N ---'}</span>
                             </div>`;
                     }).join('');
                 } else {
@@ -595,43 +595,55 @@
         }
 
         function exportToExcel() {
-            if (filteredData.length === 0) return alert("Немає даних для експорту!");
-            const dataForExcel = filteredData.map(f => ({
-                'Дата': f.date, 'Підрозділ': f.unit, 'Оператор': f.operator, 'БпЛА': f.drone,
-                'Зліт': fmtTime(f.takeoff), 'Посадка': fmtTime(f.landing), 'Тривалість (хв)': f.duration,
-                'Результат': f.result, 'Маршрут': f.route
-            }));
-            const ws = XLSX.utils.json_to_sheet(dataForExcel);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Звіт");
-            XLSX.writeFile(wb, `Звіт_Управління_${currentUnit}.xlsx`);
+            try {
+                if (filteredData.length === 0) return alert("Немає даних для експорту!");
+                const dataForExcel = filteredData.map(f => ({
+                    'Дата': f.date, 'Підрозділ': f.unit, 'Оператор': f.operator, 'БпЛА': f.drone,
+                    'Зліт': fmtTime(f.takeoff), 'Посадка': fmtTime(f.landing), 'Тривалість (хв)': f.duration,
+                    'Результат': f.result, 'Маршрут': f.route
+                }));
+                const ws = XLSX.utils.json_to_sheet(dataForExcel);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Звіт");
+                const safeUnit = (currentUnit || "Global").replace(/["'\\\/]/g, '').trim();
+                const safeDate = new Date().toISOString().split('T')[0];
+                XLSX.writeFile(wb, `Звіт_Управління_${safeUnit}_${safeDate}.xlsx`);
+            } catch (e) {
+                alert("Помилка експорту: " + e.message);
+            }
         }
 
         function exportFleetToExcel() {
-            if (globalFleetData.length === 0) return alert("Дані ще зчитуються...");
-            const sheetData = [
-                ["ЗВІТ: Парк БпЛА (СЕКТОР: " + currentUnit + ")"], [],
-                ["Підрозділ", "Модель", "Серійний номер", "АКБ", "Статус"]
-            ];
-            globalFleetData.forEach(({ unit, drones }) => {
-                if (drones && drones.length > 0) {
-                    drones.forEach(d => {
-                        sheetData.push([
-                            unit,
-                            d.model,
-                            d.serial_number || "---",
-                            (d.battery_count !== undefined && d.battery_count !== null) ? d.battery_count : 0,
-                            d.status || "Active"
-                        ]);
-                    });
-                } else {
-                    sheetData.push([unit, "ПОРОЖНЬО", "", "", ""]);
-                }
-            });
-            const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Fleet");
-            XLSX.writeFile(wb, `Fleet_Report_${currentUnit}_${new Date().toLocaleDateString()}.xlsx`);
+            try {
+                if (globalFleetData.length === 0) return alert("Дані ще зчитуються...");
+                const sheetData = [
+                    ["ЗВІТ: Парк БпЛА (СЕКТОР: " + (currentUnit || "Всі") + ")"], [],
+                    ["Підрозділ", "Модель", "Серійний номер", "АКБ", "Статус"]
+                ];
+                globalFleetData.forEach(({ unit, drones }) => {
+                    if (drones && drones.length > 0) {
+                        drones.forEach(d => {
+                            sheetData.push([
+                                unit,
+                                d.model,
+                                d.serial_number || "---",
+                                (d.battery_count !== undefined && d.battery_count !== null) ? d.battery_count : 0,
+                                d.status || "Active"
+                            ]);
+                        });
+                    } else {
+                        sheetData.push([unit, "ПОРОЖНЬО", "", "", ""]);
+                    }
+                });
+                const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Fleet");
+                const safeUnit = (currentUnit || "Global").replace(/["'\\\/]/g, '').trim();
+                const safeDate = new Date().toISOString().split('T')[0];
+                XLSX.writeFile(wb, `Fleet_Report_${safeUnit}_${safeDate}.xlsx`);
+            } catch (e) {
+                alert("Помилка експорту БпЛА: " + e.message);
+            }
         }
 
         init();
