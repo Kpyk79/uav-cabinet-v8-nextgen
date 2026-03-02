@@ -289,7 +289,6 @@
 
 <body class="flex items-center justify-center">
 
-    <!-- ═══ ANNOUNCEMENT MODAL ═══ -->
     <div id="announcementCard"
         class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
         <div class="glass w-full max-w-sm p-7 rounded-2xl border-l-4 border-yellow-500 shadow-2xl relative animate-pop">
@@ -311,7 +310,6 @@
         </div>
     </div>
 
-    <!-- ═══ LOGIN SCREEN ═══ -->
     <div id="loginScreen" class="w-full max-w-md glass p-8 rounded-[2rem] hidden animate-fade">
         <div class="text-center mb-8">
             <div
@@ -344,13 +342,10 @@
         </div>
     </div>
 
-    <!-- ═══ MAIN SCREEN ═══ -->
     <div id="mainScreen" class="w-full max-w-6xl mx-auto flex flex-col lg:flex-row gap-5 hidden">
 
-        <!-- ── LEFT PANEL: FORM ── -->
         <div class="lg:w-1/2 glass p-5 rounded-[1.5rem] h-fit animate-fade">
 
-            <!-- Toolbar -->
             <div class="flex justify-between items-center mb-5">
                 <div id="userBadge" class="user-badge text-[11px] font-bold text-green-400 tracking-wide"></div>
                 <div class="flex flex-wrap gap-1.5 justify-end">
@@ -376,7 +371,6 @@
             </div>
 
             <form id="flightForm" class="space-y-3.5">
-                <!-- Date & Shift -->
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="label-style">Дата</label>
@@ -393,7 +387,6 @@
                     </div>
                 </div>
 
-                <!-- Drone -->
                 <div>
                     <label class="label-style">БпЛА</label>
                     <select id="drone" class="text-green-400 font-semibold" onchange="saveState(this.id)">
@@ -401,14 +394,12 @@
                     </select>
                 </div>
 
-                <!-- Route -->
                 <div>
                     <label class="label-style">Маршрут</label>
                     <input type="text" id="route" class="" placeholder="Введіть маршрут..."
                         oninput="saveState(this.id)">
                 </div>
 
-                <!-- Takeoff / Landing -->
                 <div class="grid grid-cols-2 gap-3">
                     <div class="time-pill takeoff">
                         <label class="label-style text-green-400 flex items-center justify-center gap-1.5">
@@ -428,7 +419,6 @@
                     </div>
                 </div>
 
-                <!-- Distance / Battery / Cycles -->
                 <div class="grid grid-cols-3 gap-3">
                     <div>
                         <label class="label-style">Дист. (м)</label>
@@ -448,7 +438,6 @@
 
                 <div class="section-divider"></div>
 
-                <!-- Weather / Mode / Result -->
                 <div class="grid grid-cols-3 gap-3">
                     <div>
                         <label class="label-style">Погодні умови</label>
@@ -471,7 +460,6 @@
                         oninput="saveState(this.id)"></textarea>
                 </div>
 
-                <!-- Photos -->
                 <div class="glass-inner p-3.5">
                     <label class="label-style flex items-center gap-1.5 mb-2">
                         <i class="fa-solid fa-camera text-blue-400 text-[9px]"></i> Скріншоти / Фото
@@ -479,7 +467,6 @@
                     <input type="file" id="photos" multiple accept="image/*" class="text-[11px] text-slate-500">
                 </div>
 
-                <!-- Action Buttons -->
                 <div class="flex gap-2 pt-1">
                     <button type="button" id="submitBtn" onclick="addToDraft()"
                         class="w-full btn-action py-3.5 rounded-xl text-white text-sm">
@@ -493,10 +480,8 @@
             </form>
         </div>
 
-        <!-- ── RIGHT PANEL: DRAFT ── -->
         <div class="lg:w-1/2 glass p-5 rounded-[1.5rem] flex flex-col animate-fade" style="animation-delay: 0.1s;">
 
-            <!-- Draft Header -->
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xs font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                     <i class="fa-solid fa-clipboard-list text-blue-500"></i>
@@ -513,7 +498,6 @@
 
             <div id="draftList" class="flex-grow space-y-2 overflow-y-auto max-h-[250px] mb-4 pr-1"></div>
 
-            <!-- CUS Blocks -->
             <div class="grid grid-cols-2 gap-3 mb-4">
                 <div class="cus-box">
                     <div class="flex justify-between items-center mb-2">
@@ -545,7 +529,6 @@
                 </div>
             </div>
 
-            <!-- Publish Button -->
             <button id="publishBtn" onclick="publishAll()" disabled
                 class="w-full btn-primary py-4 rounded-xl text-white mt-auto text-sm flex items-center justify-center gap-2">
                 <i class="fa-solid fa-paper-plane"></i>
@@ -584,6 +567,7 @@
             if (queue.length === 0) return;
 
             console.log("Syncing offline data...", queue.length);
+            let allSucceeded = true;
             for (const item of queue) {
                 try {
                     let success = false;
@@ -592,6 +576,8 @@
                     }
                     if (success) {
                         await dbAPI.removeFromSyncQueue(item.id);
+                    } else {
+                        allSucceeded = false;
                     }
                 } catch (e) {
                     console.error("Sync failed for item", item.id, e);
@@ -1049,7 +1035,7 @@
             if (!navigator.onLine) {
                 await dbAPI.addToSyncQueue('flight', payload);
                 dbAPI.showNotification("Офлайн режим: дані збережено в чергу синхронізації. Вони будуть відправлені автоматично при появі інтернету.", "info");
-                cleanupAfterPublish();
+                await cleanupAfterPublish();
                 return;
             }
 
@@ -1060,13 +1046,13 @@
                 const success = await sendFlightData(payload);
                 if (success) {
                     dbAPI.showNotification("Успішно опубліковано!", "success");
-                    cleanupAfterPublish();
+                    await cleanupAfterPublish();
                 }
             } catch (e) {
                 console.error(e);
                 await dbAPI.addToSyncQueue('flight', payload);
                 dbAPI.showNotification("Серверна помилка. Дані збережено в чергу.", "info");
-                cleanupAfterPublish();
+                await cleanupAfterPublish();
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Опублікувати донесення';
@@ -1140,9 +1126,11 @@
             return dataT.status === "ok";
         }
 
-        function cleanupAfterPublish() {
+        async function cleanupAfterPublish() {
             draft = [];
-            dbAPI.saveDrafts([]);
+            if (window.dbAPI && typeof dbAPI.saveDrafts === 'function') {
+                await dbAPI.saveDrafts([]);
+            }
             Object.keys(localStorage).forEach(key => {
                 if (key.startsWith('saved_')) localStorage.removeItem(key);
             });
