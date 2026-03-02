@@ -14,6 +14,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icon.png">
+    <link rel="icon" type="image/png" href="/icon.png">
     <style>
         * {
             box-sizing: border-box;
@@ -503,6 +504,11 @@
                     <span class="bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-md text-[10px] font-black"
                         id="draftCount">0</span>
                 </h2>
+                <button onclick="clearDraft()" id="clearDraftBtn"
+                    class="text-[9px] font-black uppercase tracking-widest text-red-500/60 hover:text-red-500 transition-all flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-red-500/10">
+                    <i class="fa-solid fa-trash-can text-[10px]"></i>
+                    Очистити все
+                </button>
             </div>
 
             <div id="draftList" class="flex-grow space-y-2 overflow-y-auto max-h-[250px] mb-4 pr-1"></div>
@@ -982,6 +988,17 @@
             document.getElementById('cusAfter').value = a || "---";
         }
         // ------------------------
+
+        function clearDraft() {
+            if (draft.length === 0) return;
+            if (!confirm("Ви впевнені, що хочете видалити ВЕСЬ чорновик? Цю дію неможливо скасувати.")) return;
+
+            draft = [];
+            dbAPI.saveDrafts(draft);
+            renderDraft();
+            cancelEdit();
+            dbAPI.showNotification("Чорновик очищено", "info");
+        }
 
         function removeFromDraft(id) {
             if (editingId === id) cancelEdit();
