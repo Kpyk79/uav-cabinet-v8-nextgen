@@ -12,6 +12,7 @@
     <link rel="apple-touch-icon" href="/icon.png">
     <link rel="icon" type="image/png" href="/icon.png">
     <link rel="manifest" href="/manifest.json">
+    <script src="libs/FileSaver.min.js"></script>
     <meta name="theme-color" content="#16a34a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -381,8 +382,7 @@
 
                 applyOptions(options);
                 dbAPI.saveMeta(options);
-                dbAPI.saveDrafts(allFlights); // Reuse drafts store for all flights in report context? 
-                // Actually maybe a separate store for all_flights? I'll just use a local variable for now as it's large.
+                // allFlights is used locally for report generation, do not save as drafts
 
                 // Auto-fill from URL
                 const params = new URLSearchParams(window.location.search);
@@ -397,8 +397,9 @@
                 if (pRoute) document.getElementById('reportRoute').value = pRoute;
 
                 generateReport();
-                console.log("loadInitData: Success");
+                console.log("loadInitData: Success", { flightsCount: allFlights.length });
             } catch (e) {
+                console.error("loadInitData Error:", e);
                 if (!cachedMeta) dbAPI.showNotification("Помилка підключення до сервера. Перевірте мережу. " + e.message, "error");
             }
         }
@@ -423,8 +424,12 @@
 
             const rDate = document.getElementById('reportDate').value || (date ? date.split('-').reverse().join('.') : "___");
 
-            // Filter
-            const filtered = allFlights.filter(f => f.date === date && f.unit === unit && f.result !== "Польоти не здійснювались");
+            console.log("Generating report for:", { date, unit });
+
+            // Filter - added trim() for robustness
+            const filtered = allFlights.filter(f => f.date === date && f.unit?.trim() === unit?.trim() && f.result !== "Польоти не здійснювались");
+
+            console.log("Filtered flights:", filtered.length);
 
             let flightsBlock = "";
             const uniqueDrones = new Set();
@@ -480,7 +485,8 @@
             const rDate = document.getElementById('reportDate').value || (date ? date.split('-').reverse().join('.') : "___");
 
             // Збирання даних польотів для таблиці
-            const filtered = allFlights.filter(f => f.date === date && f.unit === unit && f.result !== "Польоти не здійснювались");
+            const filtered = allFlights.filter(f => f.date === date && f.unit?.trim() === unit?.trim() && f.result !== "Польоти не здійснювались");
+            console.log("Downloading DOCX. Filtered flights:", filtered.length);
             const stats = {};
             const uniqueDrones = new Set();
 
@@ -550,7 +556,9 @@
                 photo: photoBase64
             };
 
-            const fileName = (`${unit}_${date}`).replace(/[\/\\?%*:|"<>]/g, '-') + ".docx";
+            const safeDate = (date || new Date().toISOString().slice(0, 10));
+            // User requested purely Latin filenames to avoid ANY encoding issues
+            const fileName = `Flight_Report_${safeDate}.docx`;
 
             if (!navigator.onLine) {
                 await dbAPI.addToSyncQueue('report', { reportData, fileName });
@@ -558,33 +566,40 @@
                 return;
             }
 
-            btn.innerHTML = '<div class="spinner"></div> Форматування...';
+            btn.innerHTML = '<div class="spinner"></div> Формування...';
+            btn.disabled = true;
 
-            setTimeout(() => {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '/api/generate_docx';
-                form.target = '_blank';
-                form.style.display = 'none';
+            try {
+                // Step 1: POST report data, server generates DOCX and returns a token
+                const formData = new FormData();
+                formData.append('report_data', JSON.stringify(reportData));
+                formData.append('filename', fileName);
 
-                const dataInput = document.createElement('input');
-                dataInput.type = 'hidden';
-                dataInput.name = 'report_data';
-                dataInput.value = JSON.stringify(reportData);
-                form.appendChild(dataInput);
+                const res = await fetch('/api/generate_docx', { method: 'POST', body: formData });
+                if (!res.ok) {
+                    const err = await res.text();
+                    throw new Error(`Помилка сервера: ${res.status} — ${err}`);
+                }
 
-                const fileInput = document.createElement('input');
-                fileInput.type = 'hidden';
-                fileInput.name = 'filename';
-                fileInput.value = fileName;
-                form.appendChild(fileInput);
+                // Fetch file as blob directly
+                const blob = await res.blob();
+                // Ensure the blob has the correct Word MIME type
+                const wordBlob = new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+                // Use FileSaver.js for guaranteed filename preservation across all browsers
+                saveAs(wordBlob, fileName);
 
-                document.body.appendChild(form);
-                form.submit();
-                document.body.removeChild(form);
+                dbAPI.showNotification('DOCX завантажено!', 'success');
+            } catch (e) {
+                console.error('DOCX download error:', e);
+                dbAPI.showNotification('Помилка: ' + e.message, 'error');
+            } finally {
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fa-solid fa-file-word"></i> Скачати DOCX';
+                    btn.disabled = false;
+                }, 2000);
+            }
 
-                btn.innerHTML = '<i class="fa-solid fa-file-word"></i> Скачати DOCX';
-            }, 500);
+
         }
 
         async function syncOfflineData() {
@@ -595,29 +610,35 @@
         }
         window.addEventListener('online', syncOfflineData);
 
-        function downloadTestDoc() {
+        async function downloadTestDoc() {
             const text = "ТЕСТОВИЙ ДОКУМЕНТ\nУкраїнська мова працює!\nUTF-8 Check: Привіт Світ!";
+            const fileName = "ТЕСТ_УСПІХ.docx";
 
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/api/generate_docx';
-            form.style.display = 'none';
+            try {
+                const formData = new FormData();
+                formData.append('report_data', JSON.stringify({ flights: [], header: text, date: "__", unit: "__" }));
+                formData.append('filename', fileName);
 
-            const textInput = document.createElement('input');
-            textInput.type = 'hidden';
-            textInput.name = 'text';
-            textInput.value = text;
-            form.appendChild(textInput);
+                const res = await fetch('/api/generate_docx', { method: 'POST', body: formData });
+                if (!res.ok) throw new Error("Сервер не відповідає");
 
-            const fileInput = document.createElement('input');
-            fileInput.type = 'hidden';
-            fileInput.name = 'filename';
-            fileInput.value = "ТЕСТ_УСПІХ.docx";
-            form.appendChild(fileInput);
+                const blob = await res.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
 
-            document.body.appendChild(form);
-            form.submit();
-            document.body.removeChild(form);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(blobUrl);
+                }, 1000);
+            } catch (e) {
+                alert("Помилка тестування: " + e.message);
+            }
         }
 
         function toggleResultInput() {
