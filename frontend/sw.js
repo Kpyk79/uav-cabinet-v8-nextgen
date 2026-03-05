@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uav-v8-cache-v10.2';
+const CACHE_NAME = 'uav-v8-cache-v11.0';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
@@ -15,7 +15,6 @@ const ASSETS_TO_CACHE = [
     '/libs/db.js',
     '/icon.png',
     '/manifest.json',
-    'https://cdn.tailwindcss.com',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css',
@@ -25,7 +24,6 @@ const ASSETS_TO_CACHE = [
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => {
-            // Using a more resilient approach: cache what we can
             return Promise.allSettled(ASSETS_TO_CACHE.map(url => cache.add(url)));
         })
     );
@@ -44,13 +42,17 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // 1. API - Network first, then fallback to cache
+    // 1. API - Network first, no caching of POST requests
     if (url.pathname.startsWith('/api/')) {
+        // Don't intercept POST method (e.g. generate_docx) - let it pass through
+        if (event.request.method !== 'GET') return;
+
         event.respondWith(
             fetch(event.request)
                 .then(response => {
-                    const clonedResponse = response.clone();
+                    // Only cache lightweight option endpoints
                     if (url.pathname === '/api/get_options' || url.pathname === '/api/get_unit_drones') {
+                        const clonedResponse = response.clone();
                         caches.open(CACHE_NAME).then(cache => cache.put(event.request, clonedResponse));
                     }
                     return response;
@@ -60,36 +62,27 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // 2. Navigation - Cache first, with extensionless & manual fallback
-    if (event.request.mode === 'navigate' || (event.request.method === 'GET' && event.request.headers.get('accept').includes('text/html'))) {
+    // 2. Navigation (HTML pages) - Network first, cache as offline fallback
+    // Use event.request.mode === 'navigate' ONLY, to avoid crashes on null accept header
+    if (event.request.mode === 'navigate') {
         event.respondWith(
-            caches.match(event.request, { ignoreSearch: true }).then(cacheResponse => {
-                if (cacheResponse) return cacheResponse;
-
-                // Try common extensions
-                const possiblePaths = [
-                    url.pathname + '.html',
-                    url.pathname === '/' ? '/index.html' : url.pathname
-                ];
-
-                return (async () => {
-                    for (const path of possiblePaths) {
-                        const hit = await caches.match(path, { ignoreSearch: true });
-                        if (hit) return hit;
+            fetch(event.request)
+                .then(response => {
+                    if (response.ok) {
+                        const cloned = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, cloned));
                     }
-
-                    try {
-                        return await fetch(event.request);
-                    } catch (e) {
-                        return caches.match('/offline.html');
-                    }
-                })();
-            })
+                    return response;
+                })
+                .catch(() => {
+                    return caches.match(event.request, { ignoreSearch: true })
+                        .then(cached => cached || caches.match('/offline.html'));
+                })
         );
         return;
     }
 
-    // 3. Static Assets - Cache first
+    // 3. Static Assets (CSS, JS, fonts, images) - Cache first, network fallback
     event.respondWith(
         caches.match(event.request, { ignoreSearch: true }).then(response => {
             return response || fetch(event.request);
@@ -102,5 +95,3 @@ self.addEventListener('sync', event => {
         // Handled in main script
     }
 });
-
-
