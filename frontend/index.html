@@ -925,7 +925,11 @@
         function renderDraft() {
             document.getElementById('draftCount').innerText = draft.length;
             document.getElementById('publishBtn').disabled = draft.length === 0;
-            document.getElementById('draftList').innerHTML = draft.map(f => {
+
+            // Limit rendering to 100 items for performance
+            const displayDraft = draft.slice(0, 100);
+
+            document.getElementById('draftList').innerHTML = displayDraft.map(f => {
                 const isEmpty = f.result === "Польоти не здійснювались";
                 const highlightClass = isEmpty ? 'draft-empty-result' : '';
                 const commentHtml = (isEmpty && f.comment) ? `<div class="text-[9px] text-yellow-500/80 italic mt-1 font-medium">📝 ${f.comment}</div>` : '';
@@ -938,7 +942,7 @@
                             ${f.takeoff} → ${f.landing} 
                             <span class="text-slate-500 font-normal text-[9px]">${f.duration} хв</span>
                         </div>
-                        <div class="text-slate-500 uppercase truncate mt-0.5">${f.drone.split(' (')[0]}</div>
+                        <div class="text-slate-500 uppercase truncate mt-0.5">${f.drone ? f.drone.split(' (')[0] : 'БпЛА'}</div>
                         ${commentHtml}
                     </div>
                     <div class="flex items-center gap-0.5">
@@ -951,6 +955,11 @@
                     </div>
                 </div>`;
             }).join('');
+
+            if (draft.length > 100) {
+                document.getElementById('draftList').innerHTML += `<div class="text-center text-[10px] p-2 text-slate-500 italic">Показано перші 100 із ${draft.length}...</div>`;
+            }
+
             generateCUS();
         }
 
@@ -976,14 +985,24 @@
         // ------------------------
 
         function clearDraft() {
+            console.log("clearDraft: triggered. Current count:", draft.length);
             if (draft.length === 0) return;
-            if (!confirm("Ви впевнені, що хочете видалити ВЕСЬ чорновик? Цю дію неможливо скасувати.")) return;
 
+            if (!confirm(`Ви впевнені, що хочете видалити ВЕСЬ чорновик (${draft.length} записів)? Цю дію неможливо скасувати.`)) {
+                return;
+            }
+
+            console.log("clearDraft: processing...");
             draft = [];
-            dbAPI.saveDrafts(draft);
+            dbAPI.saveDrafts([]).then(() => {
+                console.log("clearDraft: DB cleared successfully");
+            }).catch(e => {
+                console.error("clearDraft: DB error", e);
+            });
+
             renderDraft();
             cancelEdit();
-            dbAPI.showNotification("Чорновик очищено", "info");
+            dbAPI.showNotification("Чорновик повністю очищено", "info");
         }
 
         function removeFromDraft(id) {
@@ -1065,23 +1084,29 @@
             const currentShift = first.shift_time || "08:00-20:00";
             const currentRoute = first.route || "Не вказано";
 
-            let report = "<b>Донесення:</b> " + first.unit + "\n" +
-                "<b>Пілот:</b> " + first.operator + "\n" +
+            let report = "<b>🚁 ДОНЕСЕННЯ ПРО ПОЛІТ</b>\n\n" +
+                "<b>Підрозділ:</b> " + first.unit + "\n" +
+                "<b>Оператор:</b> " + first.operator + "\n" +
                 "<b>Дата:</b> " + first.date + "\n" +
                 "<b>Час завдання:</b> " + currentShift + "\n" +
                 "<b>БпЛА:</b> " + first.drone + "\n" +
                 "<b>Маршрут:</b> " + currentRoute + "\n" +
                 "━━━━━━━━━━━━━━━\n" +
-                "<b>Вильоти:</b>\n";
+                "<b>📊 ВИЛЬОТИ:</b>\n";
 
             draft.forEach((f, i) => {
-                report += (i + 1) + ". " + f.takeoff + "-" + f.landing + " (" + f.duration + " хв)\n";
+                const dur = Math.floor(Number(f.duration)) || 0;
+                report += `<b>${i + 1}.</b> ${f.takeoff} — ${f.landing} (<b>${dur} хв</b>)\n`;
+
                 let statusParts = [];
                 if (f.weather && f.weather !== "Нормальні") statusParts.push("☁️ " + f.weather);
                 if (f.conditions && f.conditions !== "Норма") statusParts.push("⚠️ " + f.conditions);
                 if (f.result && f.result !== "Без ознак порушення") statusParts.push("🎯 <b>" + f.result + "</b>");
                 if (f.result === "Польоти не здійснювались" && f.comment) statusParts.push("💬 " + f.comment);
-                if (statusParts.length > 0) report += "   └ " + statusParts.join(" | ") + "\n";
+
+                if (statusParts.length > 0) {
+                    report += "   └ " + statusParts.join(" | ") + "\n";
+                }
             });
 
             // 1. Add flights to DB
