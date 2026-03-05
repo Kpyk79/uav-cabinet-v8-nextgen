@@ -41,6 +41,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"]
 )
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
@@ -253,6 +254,9 @@ def normalize_operator_name(name: str) -> str:
     """Нормалізує ім'я оператора: прибирає звання, ініціали та зайві знаки, залишаючи лише прізвище."""
     if not name: return "Невідомо"
     
+    # 0. Початкове очищення від пробілів
+    res_name = name.strip()
+    
     # Список звань та скорочень для видалення
     ranks = [
         r"солдат", r"сержант", r"лейтенант", r"капітан", r"майор", r"підполковник", r"полковник",
@@ -261,16 +265,15 @@ def normalize_operator_name(name: str) -> str:
     ]
     
     # 1. Прибираємо звання (регістронезалежно)
-    res_name = name
     for rank in ranks:
         res_name = re.sub(rf'\b{rank}\b\.?\s*', '', res_name, flags=re.IGNORECASE)
     
     # 2. Прибираємо ініціали (напр. "О.Г.", "О. Г.", "Гонцов О.")
     # Видаляємо поодинокі букви з крапками або без
-    res_name = re.sub(r'\b[А-ЯЁA-Z]\.\s*', '', res_name)
-    res_name = re.sub(r'\s+[А-ЯЁA-Z](\.|$)', '', res_name)
+    res_name = re.sub(r'\b[А-ЯЁІЇЄA-Z]\.\s*', '', res_name, flags=re.IGNORECASE)
+    res_name = re.sub(r'\s+[А-ЯЁІЇЄA-Z](\.|$)', '', res_name, flags=re.IGNORECASE)
     
-    # 3. Прибираємо зайві знаки
+    # 3. Прибираємо зайві знаки та пробіли
     res_name = res_name.strip(' ._,-')
     
     # 4. Беремо лише перше слово (зазвичай це прізвище після очищення)
@@ -278,9 +281,9 @@ def normalize_operator_name(name: str) -> str:
     if words:
         res_name = words[0]
     
-    # 5. Вирівнюємо регістр
+    # 5. Вирівнюємо регістр та фінально чистимо
     if res_name:
-        res_name = res_name.capitalize()
+        res_name = res_name.strip().capitalize()
     
     return res_name or "Невідомо"
 
@@ -467,21 +470,22 @@ async def publish_report(report_text: str = Form(...), images: List[UploadFile] 
             else:
                 media = []
                 files = {}
-                if images:
-                    for i, img in enumerate(images):
-                        file_id = f"pic{i}"
+                for i, img in enumerate(images):
+                    file_id = f"pic{i}"
                     img_content = await img.read()
                     files[file_id] = (img.filename, img_content)
                     
                     media_item = {
                         "type": "photo",
-                        "media": f"attach://{file_id}",
-                        "parse_mode": "HTML"
+                        "media": f"attach://{file_id}"
                     }
+                    # Додаємо підпис тільки до першого фото
                     if i == 0:
                         media_item["caption"] = report_text
+                        media_item["parse_mode"] = "HTML"
                     media.append(media_item)
-
+                
+                # Відправка медіагрупи всередині контекстного менеджера
                 await client.post(
                     f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMediaGroup",
                     data={"chat_id": TELEGRAM_CHAT_ID, "media": json.dumps(media)},
@@ -519,6 +523,13 @@ async def get_all_flights():
 async def delete_flight(id: int):
     supabase.table("flights").delete().eq("id", id).execute()
     return {"status": "deleted"}
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    icon_path = os.path.join(FRONTEND_DIR, "icon.png")
+    if os.path.exists(icon_path):
+        return FileResponse(icon_path)
+    return Response(status_code=204)
 
 # --- PAGE ROUTES ---
 @app.get("/")
@@ -712,10 +723,23 @@ class DocxRequest(BaseModel):
     text: str
     filename: str
 
+# In-memory cache for generated DOCX files (cleared after download or timeout)
+_docx_cache: dict = {}
+
 @app.post("/api/generate_docx")
 async def generate_docx(report_data: str = Form(...), filename: str = Form(...)):
+    print(f"Generating DOCX: {filename}")
     try:
-        data = json.loads(report_data)
+        try:
+            data = json.loads(report_data)
+        except json.JSONDecodeError as je:
+            print(f"JSON Decode Error: {je}")
+            raise HTTPException(status_code=400, detail=f"Invalid JSON data: {str(je)}")
+
+        print(f"Report Data Keys: {list(data.keys())}")
+        if 'flights' in data:
+            print(f"Flights count: {len(data['flights'])}")
+            
         doc = Document()
         
         # --- Налаштування шрифту (Times New Roman, 12pt) ---
@@ -821,47 +845,54 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
         sign_text = data.get('commander_short', '___')
         doc.add_paragraph(sign_text)
 
-        # Зберігаємо в тимчасовий файл
-        temp_id = str(uuid.uuid4())
-        temp_filepath = os.path.join("app", f"{temp_id}.docx")
-        doc.save(temp_filepath)
+        from io import BytesIO
+        from urllib.parse import quote
+        
+        file_stream = BytesIO()
+        doc.save(file_stream)
+        file_bytes = file_stream.getvalue()
 
         # Визначаємо безпечну назву файлу
         if not filename.lower().endswith(".docx"):
             filename += ".docx"
-            
-        def cleanup_temp_files(doc_path: str, photo_path: str = None):
-            try:
-                if os.path.exists(doc_path):
-                    os.remove(doc_path)
-                if photo_path and os.path.exists(photo_path):
-                    os.remove(photo_path)
-            except Exception as e:
-                print(f"Error deleting temp files: {e}")
-
-        from fastapi import BackgroundTasks
-        background_tasks = BackgroundTasks()
-        background_tasks.add_task(cleanup_temp_files, temp_filepath, temp_photo_path)
 
         encoded_filename = quote(filename)
         safe_ascii = "report.docx"
 
-        return FileResponse(
-            path=temp_filepath,
+        return Response(
+            content=file_bytes,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            background=background_tasks,
-            headers={
-                "Content-Disposition": f"attachment; filename=\"{safe_ascii}\"; filename*=UTF-8''{encoded_filename}"
-            }
+            headers={"Content-Disposition": f"attachment; filename=\"{safe_ascii}\"; filename*=UTF-8''{encoded_filename}"}
         )
+
     except Exception as e:
         print(f"DOCX Generation Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/download_docx/{token}/{filename}")
+async def download_docx(token: str, filename: str):
+    entry = _docx_cache.get(token)
+    if not entry:
+        raise HTTPException(status_code=404, detail="File not found or expired")
+    data = entry['data']
+    # Remove from cache after serving
+    del _docx_cache[token]
+    from io import BytesIO
+    from urllib.parse import quote
+    
+    encoded_filename = quote(filename)
+    safe_ascii = "report.docx"
+    
+    return StreamingResponse(
+        BytesIO(data),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename=\"{safe_ascii}\"; filename*=UTF-8''{encoded_filename}"}
+    )
 
 # Serving all static files from root for PWA compatibility
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8001)
-
+    uvicorn.run(app, host="127.0.0.1", port=8000)
