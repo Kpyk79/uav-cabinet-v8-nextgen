@@ -6,6 +6,11 @@ import uuid
 from datetime import datetime
 from typing import Optional, List
 from urllib.parse import quote
+import asyncio
+import openmeteo_requests
+import requests_cache
+import pandas as pd
+from retry_requests import retry
 
 from fastapi import FastAPI, HTTPException, Form, UploadFile, File, Query, Response, BackgroundTasks
 from fastapi.responses import FileResponse, StreamingResponse
@@ -32,6 +37,11 @@ FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 KNOWLEDGE_DIR = os.path.join(BASE_DIR, "knowledge_base")
 os.makedirs(KNOWLEDGE_DIR, exist_ok=True)
 knowledge_files_cache = [] # Тут зберігатимуться завантажені документи
+
+# Setup the Open-Meteo API client with cache and retry on error
+cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
+retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
+openmeteo = openmeteo_requests.Client(session = retry_session)
 
 app = FastAPI(title="UAV Command System v10.6")
 
@@ -225,6 +235,14 @@ class AuthCheck(BaseModel):
 class StatusUpdate(BaseModel):
     id: int
     status: str
+
+class WeatherAnalysisRequest(BaseModel):
+    lat: float
+    lon: float
+    date: str
+    time: str
+    uav_model: str
+    altitude: int
 
 class FlightResultUpdate(BaseModel):
     id: int
@@ -889,6 +907,155 @@ async def download_docx(token: str, filename: str):
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f"attachment; filename=\"{safe_ascii}\"; filename*=UTF-8''{encoded_filename}"}
     )
+
+@app.post("/api/weather_analysis")
+async def weather_analysis(req: WeatherAnalysisRequest):
+    try:
+        url = "https://api.open-meteo.com/v1/forecast"
+        params = {
+            "latitude": req.lat,
+            "longitude": req.lon,
+            "hourly": ["temperature_2m", "apparent_temperature", "precipitation_probability", "precipitation", "visibility", "wind_speed_80m", "wind_speed_120m", "wind_speed_180m", "wind_direction_80m", "wind_direction_120m", "wind_direction_180m", "wind_gusts_10m", "temperature_80m", "temperature_120m", "temperature_180m", "wind_speed_10m", "pressure_msl", "dew_point_2m", "relative_humidity_2m", "wind_direction_10m", "cloud_cover"],
+            "wind_speed_unit": "ms",
+            "start_date": req.date,
+            "end_date": req.date,
+            "timezone": "auto"
+        }
+        
+        responses = await asyncio.to_thread(openmeteo.weather_api, url, params=params)
+        response = responses[0]
+        
+        hourly = response.Hourly()
+        hourly_data = {"date": pd.date_range(
+            start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
+            end =  pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
+            freq = pd.Timedelta(seconds = hourly.Interval()),
+            inclusive = "left"
+        )}
+
+        hourly_data["temperature_2m"] = hourly.Variables(0).ValuesAsNumpy()
+        hourly_data["apparent_temperature"] = hourly.Variables(1).ValuesAsNumpy()
+        hourly_data["precipitation_probability"] = hourly.Variables(2).ValuesAsNumpy()
+        hourly_data["precipitation"] = hourly.Variables(3).ValuesAsNumpy()
+        hourly_data["visibility"] = hourly.Variables(4).ValuesAsNumpy()
+        hourly_data["wind_speed_80m"] = hourly.Variables(5).ValuesAsNumpy()
+        hourly_data["wind_speed_120m"] = hourly.Variables(6).ValuesAsNumpy()
+        hourly_data["wind_speed_180m"] = hourly.Variables(7).ValuesAsNumpy()
+        hourly_data["wind_direction_80m"] = hourly.Variables(8).ValuesAsNumpy()
+        hourly_data["wind_direction_120m"] = hourly.Variables(9).ValuesAsNumpy()
+        hourly_data["wind_direction_180m"] = hourly.Variables(10).ValuesAsNumpy()
+        hourly_data["wind_gusts_10m"] = hourly.Variables(11).ValuesAsNumpy()
+        hourly_data["temperature_80m"] = hourly.Variables(12).ValuesAsNumpy()
+        hourly_data["temperature_120m"] = hourly.Variables(13).ValuesAsNumpy()
+        hourly_data["temperature_180m"] = hourly.Variables(14).ValuesAsNumpy()
+        hourly_data["wind_speed_10m"] = hourly.Variables(15).ValuesAsNumpy()
+        hourly_data["pressure_msl"] = hourly.Variables(16).ValuesAsNumpy()
+        hourly_data["dew_point_2m"] = hourly.Variables(17).ValuesAsNumpy()
+        hourly_data["relative_humidity_2m"] = hourly.Variables(18).ValuesAsNumpy()
+        hourly_data["wind_direction_10m"] = hourly.Variables(19).ValuesAsNumpy()
+        hourly_data["cloud_cover"] = hourly.Variables(20).ValuesAsNumpy()
+
+        hourly_dataframe = pd.DataFrame(data = hourly_data)
+        
+        # Adjust UTC to Local Time to match req.time
+        utc_offset_seconds = response.UtcOffsetSeconds()
+        hourly_dataframe['local_time'] = hourly_dataframe['date'] + pd.Timedelta(seconds=utc_offset_seconds)
+        
+        req_hour = int(req.time.split(":")[0])
+        target_row = hourly_dataframe[hourly_dataframe['local_time'].dt.hour == req_hour]
+        
+        if not target_row.empty:
+            weather_data = target_row.iloc[0].to_dict()
+            weather_data['date'] = str(weather_data['date'])
+            weather_data['local_time'] = str(weather_data['local_time'])
+        else:
+            weather_data = hourly_dataframe.iloc[0].to_dict() # Fallback to first hour
+            weather_data['date'] = str(weather_data['date'])
+            weather_data['local_time'] = str(weather_data['local_time'])
+
+        # UAV specs for AI context
+        uav_specs = {
+            "DJI Mavic 3":    "Макс. вітростійкість: 12 м/с. Захист: IP43. Мін. темп.: -10°C.",
+            "DJI Matrice 4T": "Макс. вітростійкість: 15 м/с. Захист: IP55. Мін. темп.: -20°C.",
+            "DJI Matrice 30T": "Макс. вітростійкість: 15 м/с. Захист: IP55. Мін. темп.: -20°C.",
+            "DJI Matrice 300": "Макс. вітростійкість: 15 м/с. Захист: IP45. Мін. темп.: -20°C.",
+            "Autel EVO Max 4T": "Макс. вітростійкість: 15 м/с. Захист: IP43. Мін. темп.: -20°C.",
+        }
+        uav_spec_info = uav_specs.get(req.uav_model, f"Модель: {req.uav_model} (тТХ не відомі)")
+
+        system_prompt = (
+            "Ти — експерт з авіаційної метеорології для БпЛА. "
+            "Аналізуй отримані погодні дані та надавай структуровану відповідь у форматі JSON. "
+            "Враховуй ТТХ зазначеного БпЛА (макс. вітростійкість, мін. температура, пориви вітру) при оцінці ризиків. "
+            "Додай оцінку (ІДЕАЛЬНО/НОРМА/НЕСПРИЯТЛИВО/НЕПРИЙНЯТНО) до поля вітер і поривів вітру, зіставляючи з макс.свого БпЛА."
+        )
+        
+        user_prompt = f"""
+Аналізуй погодні умови для польоту БпЛА:
+Координати: {req.lat}, {req.lon}
+Час польоту: {req.date} {req.time}
+Модель БпЛА: {req.uav_model}
+ТТХ БпЛА: {uav_spec_info}
+Висота польоту: {req.altitude} м
+
+Дані погодної моделі (Open-Meteo SDK):
+{json.dumps(weather_data, indent=2, ensure_ascii=False)}
+
+ЗАВДАННЯ:
+1. `wind_speed_10m` + `wind_gusts_10m` + `wind_direction_10m` — вітер біля землі (додай оцінку ІДЕАЛЬНО/НОРМА/НЕСПРИЯТЛИВО відносно ТТХ БпЛА).
+2. `wind_gusts_10m` — окремий пункт wind_gusts (оціни безпеку зіставляючи з макс.вітростійкістью БпЛА).
+3. `wind_speed_80m/120m/180m` і `wind_direction_80m/120m/180m` — вітер по висоті.
+4. `temperature_80m/120m/180m` — ризик обледеніння з урах.мін.темп.експлуатації БпЛА.
+5. `cloud_cover` — хмарність у відсотках.
+6. `pressure_msl` — щільнісна висота.
+7. Всі числові дані конвертуй у зрозумілий формат (напр. 5.2 м/с).
+
+ПОВЕРНИ ВІДПОВІДЬ СУВОРО В JSON. НЕ ЗМІНЮЙ КЛЮЧІ:
+{{
+  "wind_surface": "швидкість, напрямок, оцінка (ІДЕАЛЬНО/НОРМА/НЕСПРИЯТЛИВО)",
+  "wind_gusts": "пориви м/с, оцінка безпеки для цього БпЛА",
+  "wind_altitude": {{
+    "80m": "швидкість і напрямок",
+    "120m": "швидкість і напрямок",
+    "180m": "швидкість і напрямок",
+    "target": "прогноз для {req.altitude}м"
+  }},
+  "cloudiness": "хмарність % (cloud_cover)",
+  "visibility": "видимість в м або км",
+  "precipitation": "опади та ймовірність",
+  "density_altitude": "щільнісна висота в м",
+  "icing_risk": "ризик (Низький/Середній/Високий)",
+  "wind_shear": "зсув вітру (різниця між висотами)",
+  "pessimistic_estimate": "песимістична оцінка",
+  "confidence": {{
+    "score": 92,
+    "summary": "короткий опис",
+    "details": {{
+      "fog": 95, "precipitation": 92, "temperature": 94, "visibility": 88, "wind": 90
+    }}
+  }}
+}}
+"""
+        if not ai_client:
+            raise HTTPException(status_code=500, detail="AI Client not configured")
+
+        response_ai = await ai_client.aio.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                response_mime_type="application/json"
+            )
+        )
+        
+        return json.loads(response_ai.text)
+
+    except Exception as e:
+        print(f"Weather Analysis Error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # Serving all static files from root for PWA compatibility
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")
