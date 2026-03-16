@@ -4,296 +4,363 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Технічна допомога | UAV Pro</title>
+    <title>Метео Аналіз | UAV Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#1e293b">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="/icon.png">
-    <link rel="icon" type="image/png" href="/icon.png">
+    <meta name="theme-color" content="#0f172a">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
 
         body {
             background: #0f172a;
             font-family: 'Inter', sans-serif;
-            color: white;
-            padding: 8px;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
+            color: #f8fafc;
+            min-height: 100vh;
         }
 
         .glass {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .chat-container {
-            height: calc(100vh - 120px);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .messages-area {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 1rem;
-        }
-
-        .message {
-            margin-bottom: 1rem;
-            max-width: 85%;
-            padding: 0.75rem 1rem;
+        .gradient-border {
+            position: relative;
             border-radius: 1rem;
-            font-size: 14px;
-            line-height: 1.5;
         }
 
-        .message.user {
-            align-self: flex-end;
-            background: #2563eb;
-            color: white;
-            border-bottom-right-radius: 0.25rem;
+        .gradient-border::before {
+            content: "";
+            position: absolute;
+            inset: -1px;
+            background: linear-gradient(45deg, #3b82f6, #06b6d4);
+            border-radius: inherit;
+            z-index: -1;
+            opacity: 0.3;
         }
 
-        .message.ai {
-            align-self: flex-start;
-            background: rgba(30, 41, 59, 0.9);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            border-bottom-left-radius: 0.25rem;
+        input,
+        select {
+            background: rgba(15, 23, 42, 0.6) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
         }
 
-        .input-area {
-            padding: 1rem;
-            background: rgba(15, 23, 42, 0.8);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        input:focus,
+        select:focus {
+            border-color: #3b82f6 !important;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
         }
 
-        .typing-indicator {
-            font-size: 10px;
-            color: #64748b;
-            margin-bottom: 0.5rem;
-            display: none;
+        .progress-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
         }
 
-        .messages-area::-webkit-scrollbar {
-            width: 4px;
+        .progress-fill {
+            height: 100%;
+            background: #10b981;
+            transition: width 1s ease-out;
         }
 
-        .messages-area::-webkit-scrollbar-track {
-            background: transparent;
+        .loading-shimmer {
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.05) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
         }
 
-        .messages-area::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 10px;
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
         }
     </style>
 </head>
 
-<body class="max-w-4xl mx-auto">
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-4">
+                <button onclick="window.location.href='/'"
+                    class="bg-slate-800 p-2.5 rounded-xl text-slate-400 hover:text-white transition-all">
+                    <i class="fa-solid fa-house"></i>
+                </button>
+                <div>
+                    <h1 class="text-2xl font-black uppercase tracking-tighter text-blue-500 italic">Метео Аналіз</h1>
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">ICON + GFS + GEM + AI
+                        SYNTHESIS</p>
+                </div>
+            </div>
+            <div
+                class="bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-xs font-bold border border-blue-500/20">
+                AI ACTIVE
+            </div>
+        </div>
 
-    <div class="flex justify-between items-center mb-4 pt-4 px-2">
-        <div class="flex items-center gap-4">
-            <button onclick="nav('/')"
-                class="bg-slate-800 p-2 rounded-lg text-slate-400 hover:text-white transition-all">
-                <i class="fa-solid fa-house text-sm"></i>
+        <!-- Form Card -->
+        <div class="glass p-6 rounded-3xl mb-8 relative overflow-hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Row 1: Coords -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-400 uppercase ml-1">Широта, Довгота</label>
+                    <div class="relative">
+                        <input type="text" id="coordsInput" placeholder="48.46, 35.04"
+                            class="w-full px-4 py-3 rounded-xl text-sm">
+                        <button onclick="getUserLocation()"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 hover:text-blue-300">
+                            <i class="fa-solid fa-location-crosshairs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Row 2: Date & Time -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-400 uppercase ml-1">Дата</label>
+                        <input type="date" id="dateInput" class="w-full px-4 py-3 rounded-xl text-sm">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-400 uppercase ml-1">Час</label>
+                        <input type="time" id="timeInput" class="w-full px-4 py-3 rounded-xl text-sm">
+                    </div>
+                </div>
+
+                <!-- Row 3: UAV & Altitude -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-400 uppercase ml-1">Модель БпЛА</label>
+                    <select id="uavInput" class="w-full px-4 py-3 rounded-xl text-sm">
+                        <option value="DJI Mavic 3">DJI Mavic 3/3T/3E/3 Pro</option>
+                        <option value="DJI Matrice 4T">DJI Matrice 4T/4E</option>
+                        <option value="DJI Matrice 30T">DJI Matrice 30T</option>
+                        <option value="DJI Matrice 300">DJI Matrice 300</option>
+                        <option value="Autel EVO Max 4T">Autel EVO Max 4T</option>
+                    </select>
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-400 uppercase ml-1">Висота польоту (m)</label>
+                    <input type="number" id="altitudeInput" value="100" class="w-full px-4 py-3 rounded-xl text-sm">
+                </div>
+            </div>
+
+            <button onclick="performAnalysis()" id="analyzeBtn"
+                class="w-full mt-6 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-black py-4 rounded-2xl transition-all active:scale-[0.98] shadow-lg shadow-blue-500/25 uppercase tracking-wider">
+                Аналізувати умови
             </button>
-            <h1 class="text-xl font-black uppercase italic text-blue-500 tracking-tighter">Технічна допомога (AI)</h1>
         </div>
-    </div>
 
-    <div class="glass rounded-2xl overflow-hidden chat-container flex flex-col">
-        <div id="messagesArea" class="messages-area flex flex-col">
-            <div class="message ai">
-                Вітаю! Я ваш інтелектуальний помічник UAV Pro. Чим можу допомогти вам сьогодні? Ви можете надіслати свої
-                координати для аналізу погоди та топографії.
+        <!-- Results Skeleton (Hidden) -->
+        <div id="loadingState" class="hidden space-y-4">
+            <div class="glass p-6 rounded-3xl animate-pulse">
+                <div class="h-4 bg-slate-700 rounded w-1/4 mb-4"></div>
+                <div class="space-y-3">
+                    <div class="h-3 bg-slate-800 rounded w-full"></div>
+                    <div class="h-3 bg-slate-800 rounded w-5/6"></div>
+                    <div class="h-3 bg-slate-800 rounded w-4/6"></div>
+                </div>
             </div>
         </div>
 
-        <div id="typingIndicator" class="px-4 typing-indicator">
-            <i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Асистент друкує...
-        </div>
-
-        <div id="imagePreviewContainer" class="px-4 pb-2 hidden">
-            <div class="relative w-20 h-20 rounded-lg overflow-hidden border border-blue-500/50">
-                <img id="imagePreview" src="" class="w-full h-full object-cover">
-                <button onclick="clearImage()"
-                    class="absolute top-0 right-0 bg-red-600 text-white p-1 text-[10px] rounded-bl-lg">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
+        <!-- Results Content -->
+        <div id="resultsArea" class="hidden space-y-6">
+            <!-- Analysis Details -->
+            <div class="glass p-6 rounded-3xl border-l-4 border-blue-500">
+                <h3 class="text-lg font-black mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-blue-400"></i>
+                    ДЕТАЛЬНИЙ ЗВІТ
+                </h3>
+                <ul id="analysisList" class="space-y-3 text-sm">
+                    <!-- Dynamic Items -->
+                </ul>
             </div>
-        </div>
 
-        <div class="input-area">
-            <div class="flex gap-2 items-center">
-                <button onclick="getUserLocation()"
-                    class="text-slate-400 hover:text-green-500 transition-all text-xl px-1"
-                    title="Додати мої координати">
-                    <i class="fa-solid fa-location-crosshairs"></i>
-                </button>
+            <!-- Confidence Widget -->
+            <div class="bg-[#0c1220] border border-slate-800 p-6 rounded-3xl">
+                <div class="flex justify-between items-start mb-6">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-12 h-12 bg-green-500/20 rounded-2xl flex items-center justify-center border border-green-500/30">
+                            <i class="fa-solid fa-shield-check text-green-500 text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-black uppercase text-green-500 tracking-tight"
+                                id="confidenceHeader">ДОВІРА ДО ПРОГНОЗУ: ДУЖЕ ВИСОКА</h3>
+                            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest"
+                                id="confidenceSub">Аналіз моделей (ICON+GFS+GEM)</p>
+                        </div>
+                    </div>
+                    <div class="bg-green-500 text-black px-3 py-1 rounded-lg text-lg font-black" id="confidenceScore">
+                        90%</div>
+                </div>
 
-                <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="handleImageSelect(this)">
-                <button onclick="document.getElementById('imageInput').click()"
-                    class="text-slate-400 hover:text-blue-500 transition-all text-xl px-1">
-                    <i class="fa-solid fa-image"></i>
-                </button>
+                <p class="text-sm font-semibold mb-6 text-slate-300" id="confidenceSummary">Прогноз стабільний, моделі
+                    узгоджені</p>
 
-                <input type="text" id="userInput" placeholder="Введіть запитання або координати (напр. 48.46, 35.04)..."
-                    class="flex-grow bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-all text-white">
-                <button onclick="sendMessage()" id="sendBtn"
-                    class="bg-blue-600 hover:bg-blue-500 p-3 rounded-xl transition-all active:scale-95">
-                    <i class="fa-solid fa-paper-plane"></i>
-                </button>
+                <div class="space-y-4" id="confidenceBars">
+                    <!-- Progress Bar Item -->
+                    <div class="grid grid-cols-4 items-center gap-4">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Туман</span>
+                        <div class="col-span-2 progress-bar">
+                            <div class="progress-fill" style="width: 95%"></div>
+                        </div>
+                        <i class="fa-solid fa-circle-check text-green-500 justify-self-end text-xs"></i>
+                    </div>
+                    <!-- Repeat for others -->
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        const API = window.location.origin + "/api";
-        const msgArea = document.getElementById('messagesArea');
-        const input = document.getElementById('userInput');
-        const typing = document.getElementById('typingIndicator');
-        const imageInput = document.getElementById('imageInput');
-        const previewContainer = document.getElementById('imagePreviewContainer');
-        const previewImg = document.getElementById('imagePreview');
+        // Init dates
+        const now = new Date();
+        document.getElementById('dateInput').value = now.toISOString().split('T')[0];
+        document.getElementById('timeInput').value = now.getHours().toString().padStart(2, '0') + ':00';
 
-        let selectedImage = null;
-
-        function nav(path) {
-            const token = new URLSearchParams(window.location.search).get('token');
-            window.location.href = token ? `${path}?token=${token}` : path;
-        }
-
-        // Нова функція для отримання координат пілота
         function getUserLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
-                        const lat = pos.coords.latitude.toFixed(5);
-                        const lon = pos.coords.longitude.toFixed(5);
-                        const currentText = input.value.trim();
-                        input.value = currentText ? `${currentText} ${lat}, ${lon}` : `${lat}, ${lon}`;
-                        input.focus();
+                        document.getElementById('coordsInput').value = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
                     },
-                    (err) => alert("Не вдалося отримати локацію. Перевірте дозволи браузера на GPS.")
+                    () => alert("Не вдалося отримати локацію.")
                 );
-            } else {
-                alert("Ваш браузер не підтримує геолокацію.");
             }
         }
 
-        function handleImageSelect(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    previewImg.src = e.target.result;
-                    previewContainer.classList.remove('hidden');
-                    selectedImage = input.files[0];
-                }
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
+        async function performAnalysis() {
+            const coords = document.getElementById('coordsInput').value.split(',').map(s => s.trim());
+            if (coords.length !== 2) return alert("Введіть коректні координати (lat, lon)");
 
-        function clearImage() {
-            selectedImage = null;
-            imageInput.value = '';
-            previewContainer.classList.add('hidden');
-            previewImg.src = '';
-        }
+            const payload = {
+                lat: parseFloat(coords[0]),
+                lon: parseFloat(coords[1]),
+                date: document.getElementById('dateInput').value,
+                time: document.getElementById('timeInput').value,
+                uav_model: document.getElementById('uavInput').value || "DJI Mavic 3",
+                altitude: parseInt(document.getElementById('altitudeInput').value) || 100
+            };
 
-        async function sendMessage() {
-            const text = input.value.trim();
-            if (!text && !selectedImage) return;
+            const btn = document.getElementById('analyzeBtn');
+            const loading = document.getElementById('loadingState');
+            const results = document.getElementById('resultsArea');
 
-            if (selectedImage) {
-                addMessage(text || "[Зображення]", 'user', previewImg.src);
-            } else {
-                addMessage(text, 'user');
-            }
-
-            input.value = '';
-            const currentImage = selectedImage;
-            clearImage();
-
-            typing.style.display = 'block';
-            msgArea.scrollTop = msgArea.scrollHeight;
-
-            const aiMsgDiv = addMessage("", 'ai');
-            const aiMsgSpan = aiMsgDiv.querySelector('span');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Аналіз...';
+            loading.classList.remove('hidden');
+            results.classList.add('hidden');
 
             try {
-                const fd = new FormData();
-                fd.append('message', text);
-                if (currentImage) {
-                    fd.append('image', currentImage);
-                }
-
-                const res = await fetch(API + "/chat", {
+                const res = await fetch('/api/weather_analysis', {
                     method: 'POST',
-                    body: fd
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
 
-                if (!res.ok) throw new Error("Server error");
+                if (!res.ok) throw new Error("Server Error");
+                const data = await res.json();
 
-                typing.style.display = 'none';
-
-                const reader = res.body.getReader();
-                const decoder = new TextDecoder();
-                let fullText = "";
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    const chunk = decoder.decode(value, { stream: true });
-                    fullText += chunk;
-                    aiMsgSpan.innerText = fullText;
-                    msgArea.scrollTop = msgArea.scrollHeight;
-                }
-
+                renderResults(data);
+                results.classList.remove('hidden');
             } catch (e) {
-                console.error(e);
-                typing.style.display = 'none';
-                aiMsgSpan.innerText = "Вибачте, сталася помилка з'єднання з сервером.";
+                alert("Помилка під час аналізу: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Аналізувати умови';
+                loading.classList.add('hidden');
             }
         }
 
-        function addMessage(text, side, imageUrl = null) {
-            const div = document.createElement('div');
-            div.className = `message ${side}`;
+        function renderResults(data) {
+            const list = document.getElementById('analysisList');
+            list.innerHTML = '';
 
-            if (imageUrl) {
-                const img = document.createElement('img');
-                img.src = imageUrl;
-                img.className = "rounded-lg mb-2 max-w-full h-auto";
-                div.appendChild(img);
-            }
+            const mappings = [
+                { label: 'Вітер', value: data.wind_surface, icon: 'fa-wind' },
+                { label: 'Пориви вітру', value: data.wind_gusts, icon: 'fa-tornado' },
+                { label: 'Вітер по висоті (80/120/180м)', value: `${data.wind_altitude['80m']} / ${data.wind_altitude['120m']} / ${data.wind_altitude['180m']}`, icon: 'fa-arrows-up-down' },
+                { label: 'Хмарність', value: data.cloudiness, icon: 'fa-cloud' },
+                { label: 'Видимість', value: data.visibility, icon: 'fa-eye' },
+                { label: 'Опади', value: data.precipitation, icon: 'fa-cloud-showers-heavy' },
+                { label: 'Щільнісна висота', value: data.density_altitude, icon: 'fa-mountain' },
+                { label: 'Ризик обледеніння', value: data.icing_risk, icon: 'fa-snowflake' },
+                { label: 'Зсув вітру', value: data.wind_shear, icon: 'fa-bolt-lightning' }
+            ];
 
-            const span = document.createElement('span');
-            span.innerText = text;
-            div.appendChild(span);
+            mappings.forEach(item => {
+                const li = document.createElement('li');
+                li.className = "flex items-start gap-4 p-2 rounded-lg hover:bg-white/5 transition-colors";
+                li.innerHTML = `
+                    <div class="w-5 text-slate-500 mt-0.5"><i class="fa-solid ${item.icon}"></i></div>
+                    <div class="flex-grow">
+                        <span class="font-bold text-slate-400 capitalize">${item.label}:</span>
+                        <span class="text-white ml-1">${item.value}</span>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
 
-            msgArea.appendChild(div);
-            msgArea.scrollTop = msgArea.scrollHeight;
-            return div;
-        }
+            // Pessimistic separate
+            const pesLi = document.createElement('li');
+            pesLi.className = "mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-200";
+            pesLi.innerHTML = `<span class="font-black text-[10px] uppercase tracking-widest block mb-1">Песимістична оцінка:</span>${data.pessimistic_estimate}`;
+            list.appendChild(pesLi);
 
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-    </script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(reg => {
-                    console.log('SW Registered:', reg.scope);
-                }).catch(err => {
-                    console.log('SW Registration Failed:', err);
+            // Confidence UI
+            document.getElementById('confidenceScore').innerText = data.confidence.score + '%';
+            document.getElementById('confidenceSummary').innerText = data.confidence.summary;
+
+            const score = data.confidence.score;
+            const header = document.getElementById('confidenceHeader');
+            if (score > 80) { header.innerText = 'ДОВІРА ДО ПРОГНОЗУ: ДУЖЕ ВИСОКА'; header.className = 'text-lg font-black uppercase text-green-500 tracking-tight'; }
+            else if (score > 50) { header.innerText = 'ДОВІРА ДО ПРОГНОЗУ: СЕРЕДНЯ'; header.className = 'text-lg font-black uppercase text-yellow-500 tracking-tight'; }
+            else { header.innerText = 'ДОВІРА ДО ПРОГНОЗУ: НИЗЬКА'; header.className = 'text-lg font-black uppercase text-red-500 tracking-tight'; }
+
+            const bars = document.getElementById('confidenceBars');
+            bars.innerHTML = '';
+
+            const barItems = [
+                { label: 'Туман', value: data.confidence.details.fog },
+                { label: 'Опади', value: data.confidence.details.precipitation },
+                { label: 'Температура', value: data.confidence.details.temperature },
+                { label: 'Видимість', value: data.confidence.details.visibility },
+                { label: 'Вітер', value: data.confidence.details.wind }
+            ];
+
+            barItems.forEach(item => {
+                const color = item.value >= 80 ? '#10b981' : item.value >= 50 ? '#f59e0b' : '#ef4444';
+                const icon = item.value >= 50
+                    ? 'fa-circle-check text-green-500'
+                    : 'fa-circle-exclamation text-yellow-500';
+                const barHtml = `
+                    <div class="grid grid-cols-4 items-center gap-4">
+                        <span class="text-xs font-bold text-slate-400 uppercase">${item.label}</span>
+                        <div class="col-span-2 progress-bar">
+                            <div class="progress-fill" data-target="${item.value}" style="width: 0%; background: ${color}; transition: width 1.5s ease-out"></div>
+                        </div>
+                        <i class="fa-solid ${icon} justify-self-end text-[10px]"></i>
+                    </div>
+                `;
+                const div = document.createElement('div');
+                div.innerHTML = barHtml;
+                const el = div.firstElementChild;
+                bars.appendChild(el);
+            });
+
+            // Animate all bars after they are in the DOM
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    bars.querySelectorAll('.progress-fill').forEach(fill => {
+                        fill.style.width = fill.dataset.target + '%';
+                    });
                 });
             });
         }
