@@ -7,3 +7,7 @@ httpx
 python-multipart
 google-genai
 python-docx
+openmeteo-requests
+requests-cache
+retry-requests
+pandas
