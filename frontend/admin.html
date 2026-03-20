@@ -389,11 +389,44 @@
             class="hidden text-center py-20 text-slate-700 text-[10px] uppercase font-black tracking-[0.4em] italic">
             База даних не містить записів
         </div>
+        
+        <!-- Pagination Controls -->
+        <div id="paginationControls" class="flex flex-wrap items-center justify-between gap-4 p-4 border-t border-white/5 bg-white/[0.02]">
+            <div class="flex items-center gap-3">
+                <button onclick="changePage(currentPage - 1)" class="w-8 h-8 flex items-center justify-center bg-slate-800 text-slate-400 rounded-lg hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed" id="prevPage">
+                    <i class="fa-solid fa-chevron-left text-xs"></i>
+                </button>
+                <div class="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-400">
+                    Сторінка 
+                    <input type="number" id="pageInput" class="w-12 bg-slate-900 border border-white/10 rounded px-2 py-1 text-center text-white outline-none focus:border-blue-500" min="1" value="1" onchange="goToPage(this.value)">
+                    з <span id="totalPages" class="text-slate-200">1</span>
+                </div>
+                <button onclick="changePage(currentPage + 1)" class="w-8 h-8 flex items-center justify-center bg-slate-800 text-slate-400 rounded-lg hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed" id="nextPage">
+                    <i class="fa-solid fa-chevron-right text-xs"></i>
+                </button>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2">
+                    <select id="pageSizeSelect" onchange="changePageSize(this.value)" class="bg-slate-900 border border-white/10 rounded px-3 py-1.5 text-[10px] font-black uppercase text-slate-300 outline-none focus:border-blue-500">
+                        <option value="50">50 рядків</option>
+                        <option value="100">100 рядків</option>
+                        <option value="200">200 рядків</option>
+                        <option value="1000000">Усі</option>
+                    </select>
+                </div>
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                    Всього: <span id="totalRecords" class="text-blue-500">0</span> записів
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         let allFlights = [];
         let globalFleetData = [];
+        let currentPage = 1;
+        let pageSize = 50;
+        let filteredFlights = [];
 
         function fmtTime(t) { return t ? t.substring(0, 5) : '--:--'; }
 
@@ -763,16 +796,61 @@
             renderTable(allFlights);
         }
 
+        function changePage(p) {
+            const max = Math.ceil(filteredFlights.length / pageSize);
+            if (p < 1 || p > max) return;
+            currentPage = p;
+            renderTableSlice();
+        }
+
+        function goToPage(p) {
+            let val = parseInt(p);
+            if (isNaN(val)) val = 1;
+            changePage(val);
+        }
+
+        function changePageSize(s) {
+            pageSize = parseInt(s);
+            currentPage = 1;
+            renderTableSlice();
+        }
+
         function renderTable(flights) {
+            filteredFlights = flights;
+            currentPage = 1;
+            renderTableSlice();
+        }
+
+        function renderTableSlice() {
+            const flights = filteredFlights;
             const tbody = document.getElementById('tableBody');
             const noData = document.getElementById('noDataMessage');
+            const pagination = document.getElementById('paginationControls');
+
+            // Update pagination display
+            const totalRecords = flights.length;
+            const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+            
+            document.getElementById('totalRecords').innerText = totalRecords;
+            document.getElementById('totalPages').innerText = totalPages;
+            document.getElementById('pageInput').value = currentPage;
+            document.getElementById('prevPage').disabled = currentPage <= 1;
+            document.getElementById('nextPage').disabled = currentPage >= totalPages;
+
             if (flights.length === 0) {
                 tbody.innerHTML = '';
                 noData.classList.remove('hidden');
+                pagination.classList.add('hidden');
                 return;
             }
             noData.classList.add('hidden');
-            tbody.innerHTML = flights.map(f => {
+            pagination.classList.remove('hidden');
+
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const slice = flights.slice(start, end);
+
+            tbody.innerHTML = slice.map(f => {
                 const dateF = f.date && f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date;
                 const isNoFly = f.result === "Польоти не здійснювались";
                 return `
