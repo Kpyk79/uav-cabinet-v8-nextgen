@@ -971,7 +971,7 @@
                     <td><span class="route-badge">${f.route || '---'}</span></td>
                     <td class="font-mono text-slate-400 text-xs">${fmtTime(f.takeoff)} → ${fmtTime(f.landing)}</td>
                     <td class="font-black text-blue-400 font-mono">${f.duration}<span class="text-[9px] text-slate-600 lowercase ml-1">хв</span></td>
-                    <td class="font-mono text-[11px] font-bold text-purple-400">${f.distance ? f.distance + '<span class="text-[9px] text-slate-600 ml-1">км</span>' : '<span class="text-slate-700">---</span>'}</td>
+                    <td class="font-mono text-[11px] font-bold text-purple-400">${f.distance ? f.distance + '<span class="text-[9px] text-slate-600 ml-1">м</span>' : '<span class="text-slate-700">---</span>'}</td>
                     <td>
                         <select onchange="updateFlightResult(${f.id}, this.value)" 
                             class="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer hover:text-white transition-colors ${f.result === 'Затримання' ? 'text-red-500' : 'text-slate-500'}">
