@@ -62,6 +62,57 @@
             font-size: 13px;
         }
 
+        /* ── DateTime Picker ── */
+        .dt-picker-wrap {
+            display: flex;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            padding: 0.45rem 0.75rem;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .dt-picker-wrap:focus-within {
+            border-color: #22c55e;
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.15);
+        }
+        .dt-picker-wrap input[type="datetime-local"] {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #f8fafc;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            min-width: 0;
+        }
+        .dt-picker-wrap input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            display: none;
+        }
+        .dt-picker-wrap .dt-cal-icon {
+            color: #64748b;
+            font-size: 12px;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .dt-picker-wrap:hover .dt-cal-icon {
+            color: #94a3b8;
+        }
+        .dt-sep {
+            color: #475569;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            white-space: nowrap;
+            padding-top: 1.4rem;
+        }
+
         .input-dark:focus {
             border-color: #22c55e !important;
             box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.15);
@@ -343,21 +394,35 @@
                 <i id="filterArrow"
                     class="fa-solid fa-chevron-right text-slate-600 transition-transform duration-300 group-hover:text-white"></i>
             </h3>
-            <button onclick="event.stopPropagation(); resetFilters()"
-                class="text-[9px] text-slate-600 hover:text-white uppercase font-black tracking-widest transition-colors flex items-center gap-2">
-                <i class="fa-solid fa-rotate-left"></i> Скинути фільтри
-            </button>
+            <div class="flex items-center gap-3">
+                <button onclick="event.stopPropagation(); exportFilteredToExcel()"
+                    class="text-[9px] bg-green-600/10 text-green-500 hover:bg-green-600 hover:text-white uppercase font-black tracking-widest transition-all flex items-center gap-2 px-3 py-1.5 rounded-lg border border-green-500/20">
+                    <i class="fa-solid fa-file-excel"></i> Експорт фільтру
+                </button>
+                <button onclick="event.stopPropagation(); resetFilters()"
+                    class="text-[9px] text-slate-600 hover:text-white uppercase font-black tracking-widest transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-rotate-left"></i> Скинути фільтри
+                </button>
+            </div>
         </div>
         <div id="filterContainer"
-            class="hidden mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
-            <div><label class="label-mini">З дати</label><input type="date" id="filterDateFrom" oninput="filterData()"
-                    class="input-dark"></div>
-            <div><label class="label-mini">По дату</label><input type="date" id="filterDateTo" oninput="filterData()"
-                    class="input-dark"></div>
-            <div><label class="label-mini">Зліт з</label><input type="time" id="filterTimeFrom" oninput="filterData()"
-                    class="input-dark"></div>
-            <div><label class="label-mini">Зліт по</label><input type="time" id="filterTimeTo" oninput="filterData()"
-                    class="input-dark"></div>
+            class="hidden mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5 items-end">
+            <div>
+                <label class="label-mini">Початок</label>
+                <div class="dt-picker-wrap" onclick="this.querySelector('input').showPicker()">
+                    <input type="datetime-local" id="filterDateTimeFrom" oninput="filterData()">
+                    <i class="fa-regular fa-calendar dt-cal-icon"></i>
+                </div>
+            </div>
+            <div class="flex items-end gap-3">
+                <div class="flex-1">
+                    <label class="label-mini">Кінець</label>
+                    <div class="dt-picker-wrap" onclick="this.querySelector('input').showPicker()">
+                        <input type="datetime-local" id="filterDateTimeTo" oninput="filterData()">
+                        <i class="fa-regular fa-calendar dt-cal-icon"></i>
+                    </div>
+                </div>
+            </div>
             <div><label class="label-mini">Підрозділ</label><input type="text" id="filterUnit" oninput="filterData()"
                     placeholder="..." class="input-dark"></div>
             <div><label class="label-mini">Пілот</label><input type="text" id="filterOp" oninput="filterData()"
@@ -378,6 +443,7 @@
                         <th>Маршрут / Завдання</th>
                         <th>Час (Зліт-Пос)</th>
                         <th>Наліт</th>
+                        <th>Дистанція</th>
                         <th>Підсумок</th>
                         <th class="text-right pr-6">Керування</th>
                     </tr>
@@ -772,28 +838,71 @@
         }
 
         function filterData() {
-            const dFrom = document.getElementById('filterDateFrom').value;
-            const dTo = document.getElementById('filterDateTo').value;
-            const tFrom = document.getElementById('filterTimeFrom').value;
-            const tTo = document.getElementById('filterTimeTo').value;
-            const sUnit = document.getElementById('filterUnit').value.toLowerCase();
-            const sOp = document.getElementById('filterOp').value.toLowerCase();
+            const dtFrom = document.getElementById('filterDateTimeFrom').value; // "YYYY-MM-DDTHH:MM"
+            const dtTo   = document.getElementById('filterDateTimeTo').value;
+            const sUnit  = document.getElementById('filterUnit').value.toLowerCase();
+            const sOp    = document.getElementById('filterOp').value.toLowerCase();
 
             const filtered = allFlights.filter(f => {
-                if (dFrom && f.date < dFrom) return false;
-                if (dTo && f.date > dTo) return false;
-                if (tFrom && f.takeoff < tFrom) return false;
-                if (tTo && f.takeoff > tTo) return false;
-                if (sUnit && !f.unit.toLowerCase().includes(sUnit)) return false;
-                if (sOp && !f.operator.toLowerCase().includes(sOp)) return false;
+                // Build comparable datetime string: "YYYY-MM-DDTHH:MM"
+                const flightDt = f.date + 'T' + (f.takeoff ? f.takeoff.substring(0, 5) : '00:00');
+                if (dtFrom && flightDt < dtFrom) return false;
+                if (dtTo   && flightDt > dtTo)   return false;
+                if (sUnit  && !f.unit.toLowerCase().includes(sUnit)) return false;
+                if (sOp    && !f.operator.toLowerCase().includes(sOp)) return false;
                 return true;
             });
             renderTable(filtered);
         }
 
         function resetFilters() {
+            document.getElementById('filterDateTimeFrom').value = '';
+            document.getElementById('filterDateTimeTo').value = '';
             document.querySelectorAll('.input-dark').forEach(i => i.value = '');
             renderTable(allFlights);
+        }
+
+        function exportFilteredToExcel() {
+            try {
+                const data = filteredFlights.length > 0 ? filteredFlights : allFlights;
+                if (data.length === 0) return dbAPI.showNotification("Немає даних для експорту!", "warning");
+
+                const dtFrom = document.getElementById('filterDateTimeFrom').value;
+                const dtTo   = document.getElementById('filterDateTimeTo').value;
+                const unit   = document.getElementById('filterUnit').value;
+                const op     = document.getElementById('filterOp').value;
+
+                const dataForExcel = data.map(f => ({
+                    'Дата':             f.date,
+                    'Підрозділ':        f.unit,
+                    'Оператор':         f.operator,
+                    'БпЛА':             f.drone,
+                    'Зліт':             fmtTime(f.takeoff),
+                    'Посадка':          fmtTime(f.landing),
+                    'Тривалість (хв)':  f.duration,
+                    'Дистанція':        f.distance,
+                    'Результат':        f.result,
+                    'Маршрут':          f.route
+                }));
+
+                const ws = XLSX.utils.json_to_sheet(dataForExcel);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Фільтр');
+
+                // Build descriptive filename
+                const parts = ['Лог_Адмін'];
+                if (dtFrom) parts.push('від_' + dtFrom.replace('T', '_').substring(0, 16));
+                if (dtTo)   parts.push('до_' + dtTo.replace('T', '_').substring(0, 16));
+                if (unit)   parts.push(unit.trim());
+                if (op)     parts.push(op.trim());
+                const safeDate = new Date().toISOString().split('T')[0];
+                const fileName = parts.join('_').replace(/[:\\/"']/g, '-') + '_' + safeDate + '.xlsx';
+
+                XLSX.writeFile(wb, fileName);
+                dbAPI.showNotification(`Експортовано ${data.length} записів`, 'success');
+            } catch (e) {
+                dbAPI.showNotification('Помилка експорту: ' + e.message, 'error');
+            }
         }
 
         function changePage(p) {
@@ -862,6 +971,7 @@
                     <td><span class="route-badge">${f.route || '---'}</span></td>
                     <td class="font-mono text-slate-400 text-xs">${fmtTime(f.takeoff)} → ${fmtTime(f.landing)}</td>
                     <td class="font-black text-blue-400 font-mono">${f.duration}<span class="text-[9px] text-slate-600 lowercase ml-1">хв</span></td>
+                    <td class="font-mono text-[11px] font-bold text-purple-400">${f.distance ? f.distance + '<span class="text-[9px] text-slate-600 ml-1">км</span>' : '<span class="text-slate-700">---</span>'}</td>
                     <td>
                         <select onchange="updateFlightResult(${f.id}, this.value)" 
                             class="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer hover:text-white transition-colors ${f.result === 'Затримання' ? 'text-red-500' : 'text-slate-500'}">
