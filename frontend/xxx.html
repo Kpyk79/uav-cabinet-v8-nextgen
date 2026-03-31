@@ -602,18 +602,28 @@
             const drones = {};
             filteredData.forEach(f => {
                 if (f.result !== "Польоти не здійснювались") {
-                    const model = f.drone.split(' (')[0];
-                    if (!drones[model]) drones[model] = { count: 0, time: 0 };
-                    drones[model].count++;
-                    drones[model].time += parseInt(f.duration) || 0;
+                    const fullName = f.drone || "Невідомий БпЛА";
+                    let model = fullName;
+                    let serial = "";
+                    if (fullName.includes(' (')) {
+                        const parts = fullName.split(' (');
+                        model = parts[0];
+                        serial = parts[1].replace(')', '');
+                    }
+                    if (!drones[fullName]) drones[fullName] = { count: 0, time: 0, model: model, serial: serial };
+                    drones[fullName].count++;
+                    drones[fullName].time += parseInt(f.duration) || 0;
                 }
             });
             const sortedDrones = Object.entries(drones).sort((a, b) => b[1].count - a[1].count);
             document.getElementById('droneUsageContainer').innerHTML = sortedDrones.map(([name, data]) => `
                 <div class="space-y-2">
                     <div class="flex justify-between items-center font-black uppercase text-[10px] tracking-widest text-slate-300">
-                        <span>${name}</span>
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-col pr-2 truncate">
+                            <span class="truncate">${data.model}</span>
+                            ${data.serial ? `<span class="text-[8px] text-slate-500 font-mono tracking-tighter mt-0.5 truncate">${data.serial}</span>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
                             <span class="text-slate-500 font-mono text-[9px] bg-slate-900 px-1.5 py-0.5 rounded border border-white/5">${Math.floor(data.time / 60)}г ${data.time % 60}хв</span>
                             <span class="text-blue-500">${data.count}</span>
                         </div>
