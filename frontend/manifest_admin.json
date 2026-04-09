@@ -1,0 +1,23 @@
+{
+  "name": "Admin Panel | UAV Monitor",
+  "short_name": "Admin",
+  "description": "Панель адміністратора",
+  "start_url": "/admin?pwa=true",
+  "display": "standalone",
+  "background_color": "#060b18",
+  "theme_color": "#22c55e",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "orientation": "portrait"
+}
