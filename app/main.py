@@ -16,6 +16,7 @@ from fastapi import FastAPI, HTTPException, Form, UploadFile, File, Query, Respo
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
 from dotenv import load_dotenv
@@ -43,6 +44,10 @@ cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
 retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
 openmeteo = openmeteo_requests.Client(session = retry_session)
 
+# ВНУТРІШНІЙ КЕШ
+_options_cache = {"data": None, "timestamp": 0}
+_CACHE_TTL = 300 # 5 хвилин
+
 app = FastAPI(title="UAV Command System v10.6")
 
 app.add_middleware(
@@ -53,6 +58,7 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["Content-Disposition"]
 )
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
@@ -516,25 +522,112 @@ async def publish_report(report_text: str = Form(...), images: List[UploadFile] 
 
 @app.get("/api/get_options")
 async def get_options():
-    return {
+    now = datetime.now().timestamp()
+    if _options_cache["data"] and (now - _options_cache["timestamp"] < _CACHE_TTL):
+        return _options_cache["data"]
+        
+    data = {
         "units": UNITS, 
         "weather": ["Нормальні", "Складні умови", "Несприятливі умови"], 
         "flight_modes": ["Normal", "АТТІ"], 
         "results": ["Без ознак порушення", "Затримання", "Польоти не здійснювались"]
     }
+    _options_cache["data"] = data
+    _options_cache["timestamp"] = now
+    return data
+
+@app.get("/api/get_stats_summary")
+async def get_stats_summary(units: Optional[str] = Query(None)):
+    """Повертає короткий підсумок для дашбордів без завантаження всіх логів."""
+    try:
+        query = supabase.table("flights").select("duration, result, unit")
+        if units:
+            units_list = [u.strip() for u in units.split(",")]
+            query = query.in_("unit", units_list)
+        
+        res = query.execute()
+        data = res.data
+        
+        total_flights = len([f for f in data if f['result'] != "Польоти не здійснювались"])
+        total_duration = sum([int(f['duration']) for f in data if f['duration']])
+        detentions = len([f for f in data if f['result'] == "Затримання"])
+        
+        return {
+            "total_flights": total_flights,
+            "total_duration": total_duration,
+            "detentions": detentions
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/get_units_drones")
+async def get_units_drones(units: str = Query(...)):
+    """Отримує дрони для спислу підрозділів (через кому)."""
+    units_list = [u.strip() for u in units.split(",")]
+    res = supabase.table("drones").select("*").in_("unit", units_list).execute()
+    return res.data
 
 @app.get("/api/get_all_flights")
-async def get_all_flights():
+async def get_all_flights(
+    unit: Optional[str] = None, 
+    units: Optional[str] = Query(None),
+    operator: Optional[str] = None,
+    from_dt: Optional[str] = None,
+    to_dt: Optional[str] = None,
+    limit: Optional[int] = Query(None), 
+    offset: Optional[int] = Query(0)
+):
+    query = supabase.table("flights").select("*", count="exact").order("id", desc=True)
+    
+    if unit:
+        query = query.eq("unit", unit)
+    elif units:
+        units_list = [u.strip() for u in units.split(",")]
+        query = query.in_("unit", units_list)
+        
+    if operator:
+        query = query.ilike("operator", f"%{operator}%")
+    
+    if from_dt:
+        # Expected format: "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM"
+        query = query.gte("date", from_dt.split('T')[0])
+    if to_dt:
+        query = query.lte("date", to_dt.split('T')[0])
+    
+    if limit is not None:
+        res = query.range(offset, offset + limit - 1).execute()
+        return {
+            "data": res.data,
+            "total": res.count
+        }
+    
+    # Fallback for old pages
     all_data = []
-    limit = 1000
-    start = 0
+    batch_limit = 1000
+    start = offset
     while True:
-        res = supabase.table("flights").select("*").order("id", desc=True).range(start, start + limit - 1).execute()
+        batch_query = supabase.table("flights").select("*").order("id", desc=True).range(start, start + batch_limit - 1)
+        if unit:
+            batch_query = batch_query.eq("unit", unit)
+        elif units:
+            units_list = [u.strip() for u in units.split(",")]
+            batch_query = batch_query.in_("unit", units_list)
+        
+        if operator:
+            batch_query = batch_query.ilike("operator", f"%{operator}%")
+        
+        if from_dt:
+            batch_query = batch_query.gte("date", from_dt.split('T')[0])
+        if to_dt:
+            batch_query = batch_query.lte("date", to_dt.split('T')[0])
+            
+        res = batch_query.execute()
         batch = res.data
         if not batch: break
         all_data.extend(batch)
-        if len(batch) < limit: break
-        start += limit
+        if len(batch) < batch_limit: break
+        start += batch_limit
+        if limit and len(all_data) >= limit: break
     return all_data
 
 @app.delete("/api/delete_flight/{id}")
