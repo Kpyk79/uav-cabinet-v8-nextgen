@@ -182,9 +182,17 @@
             }
 
             try {
-                const res = await fetch("/api/get_all_flights");
+                // Оптимізовано: фільтрація на сервері за оператором та підрозділом
+                const res = await fetch(`/api/get_all_flights?unit=${encodeURIComponent(currentUnit)}&operator=${encodeURIComponent(currentOp)}`);
                 const data = await res.json();
-                allFlights = data.filter(f => f.operator === currentOp && f.unit === currentUnit);
+                
+                // Якщо сервер повернув пагінований результат {data, total}
+                if (data.data !== undefined) {
+                    allFlights = data.data;
+                } else {
+                    allFlights = data;
+                }
+                
                 renderLogs(allFlights);
             } catch (e) {
                 console.error(e);

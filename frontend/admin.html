@@ -501,13 +501,43 @@
             window.location.href = token ? `${path}?token=${token}` : path;
         }
 
+        let flightsTotalCount = 0;
+
         async function loadAllFlights() {
+            const dtFrom = document.getElementById('filterDateTimeFrom').value;
+            const dtTo   = document.getElementById('filterDateTimeTo').value;
+            const sUnit  = document.getElementById('filterUnit').value;
+            const sOp    = document.getElementById('filterOp').value;
+
             try {
-                const res = await fetch("/api/get_all_flights");
-                allFlights = await res.json();
-                renderTable(allFlights);
-                renderPersonnel(allFlights);
-            } catch (e) { console.error(e); }
+                // Побудова запиту з параметрами фільтрації та пагінації
+                let url = `/api/get_all_flights?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`;
+                if (sUnit) url += `&unit=${encodeURIComponent(sUnit)}`;
+                if (sOp) url += `&operator=${encodeURIComponent(sOp)}`;
+                if (dtFrom) url += `&from_dt=${encodeURIComponent(dtFrom)}`;
+                if (dtTo) url += `&to_dt=${encodeURIComponent(dtTo)}`;
+
+                const res = await fetch(url);
+                const result = await res.json();
+                
+                // Якщо сервер повернув об'єкт з data та total (новий API)
+                if (result.data !== undefined) {
+                    filteredFlights = result.data;
+                    flightsTotalCount = result.total;
+                } else {
+                    // Fallback для звичайного списку (якщо ліміт не спрацював як очікувалось)
+                    filteredFlights = result;
+                    flightsTotalCount = result.length;
+                }
+                
+                renderTableSlice();
+                
+                // Оновлюємо персонал лише якщо це перший запуск або пошук
+                // (Для швидкості можна робити це окремим запитом або рідше)
+                if (allFlights.length === 0 || sUnit || sOp || dtFrom || dtTo) {
+                    renderPersonnel(filteredFlights); 
+                }
+            } catch (e) { console.error("Load flights error:", e); }
         }
 
         function toggleSection(containerId, arrowId) {
@@ -558,14 +588,21 @@
                 }
 
                 container.innerHTML = '';
-                const promises = units.map(async (unit) => {
-                    try {
-                        const resDrones = await fetch(`/api/get_unit_drones?unit=${encodeURIComponent(unit)}`);
-                        return { unit, drones: await resDrones.json() };
-                    } catch (e) { return { unit, drones: [] }; }
-                });
+                
+                try {
+                    const unitsParam = units.join(",");
+                    const resDrones = await fetch(`/api/get_units_drones?units=${encodeURIComponent(unitsParam)}`);
+                    const allDrones = await resDrones.json();
+                    
+                    globalFleetData = units.map(unit => ({
+                        unit,
+                        drones: allDrones.filter(d => d.unit === unit)
+                    }));
+                } catch (e) {
+                    console.error("Fleet fetch error:", e);
+                    globalFleetData = units.map(unit => ({ unit, drones: [] }));
+                }
 
-                globalFleetData = await Promise.all(promises);
                 renderProblematicDrones();
 
                 globalFleetData.forEach(({ unit, drones }) => {
@@ -816,50 +853,34 @@
                 });
                 if (res.ok) {
                     const json = await res.json();
-                    console.log("Updated flight response:", json);
-                    const flight = allFlights.find(f => f.id == id);
+                    // Оновлюємо локально в поточній сторінці
+                    const flight = filteredFlights.find(f => f.id == id);
                     if (flight) {
                         flight.result = newResult;
                         flight.duration = json.new_duration;
                         flight.distance = json.new_distance;
-                        console.log("Local flight object updated:", flight);
-                    } else {
-                        console.warn("Flight not found in local allFlights array", id);
                     }
-                    filterData();
+                    renderTableSlice();
+                    dbAPI.showNotification("Результат оновлено", "success");
                 } else {
-                    const err = await res.text();
-                    dbAPI.showNotification(`Помилка оновлення: ${res.status}`, "error");
+                    dbAPI.showNotification(`Помилка: ${res.status}`, "error");
                 }
             } catch (e) {
-                console.error(e);
-                dbAPI.showNotification(`Сервер не відповідає: ${e.message}`, "error");
+                dbAPI.showNotification(`Помилка: ${e.message}`, "error");
             }
         }
 
         function filterData() {
-            const dtFrom = document.getElementById('filterDateTimeFrom').value; // "YYYY-MM-DDTHH:MM"
-            const dtTo   = document.getElementById('filterDateTimeTo').value;
-            const sUnit  = document.getElementById('filterUnit').value.toLowerCase();
-            const sOp    = document.getElementById('filterOp').value.toLowerCase();
-
-            const filtered = allFlights.filter(f => {
-                // Build comparable datetime string: "YYYY-MM-DDTHH:MM"
-                const flightDt = f.date + 'T' + (f.takeoff ? f.takeoff.substring(0, 5) : '00:00');
-                if (dtFrom && flightDt < dtFrom) return false;
-                if (dtTo   && flightDt > dtTo)   return false;
-                if (sUnit  && !f.unit.toLowerCase().includes(sUnit)) return false;
-                if (sOp    && !f.operator.toLowerCase().includes(sOp)) return false;
-                return true;
-            });
-            renderTable(filtered);
+            currentPage = 1;
+            loadAllFlights();
         }
 
         function resetFilters() {
             document.getElementById('filterDateTimeFrom').value = '';
             document.getElementById('filterDateTimeTo').value = '';
             document.querySelectorAll('.input-dark').forEach(i => i.value = '');
-            renderTable(allFlights);
+            currentPage = 1;
+            loadAllFlights();
         }
 
         function exportFilteredToExcel() {
@@ -906,10 +927,10 @@
         }
 
         function changePage(p) {
-            const max = Math.ceil(filteredFlights.length / pageSize);
+            const max = Math.ceil(flightsTotalCount / pageSize);
             if (p < 1 || p > max) return;
             currentPage = p;
-            renderTableSlice();
+            loadAllFlights();
         }
 
         function goToPage(p) {
@@ -921,32 +942,24 @@
         function changePageSize(s) {
             pageSize = parseInt(s);
             currentPage = 1;
-            renderTableSlice();
-        }
-
-        function renderTable(flights) {
-            filteredFlights = flights;
-            currentPage = 1;
-            renderTableSlice();
+            loadAllFlights();
         }
 
         function renderTableSlice() {
-            const flights = filteredFlights;
             const tbody = document.getElementById('tableBody');
             const noData = document.getElementById('noDataMessage');
             const pagination = document.getElementById('paginationControls');
 
             // Update pagination display
-            const totalRecords = flights.length;
-            const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+            const totalPages = Math.ceil(flightsTotalCount / pageSize) || 1;
             
-            document.getElementById('totalRecords').innerText = totalRecords;
+            document.getElementById('totalRecords').innerText = flightsTotalCount;
             document.getElementById('totalPages').innerText = totalPages;
             document.getElementById('pageInput').value = currentPage;
             document.getElementById('prevPage').disabled = currentPage <= 1;
             document.getElementById('nextPage').disabled = currentPage >= totalPages;
 
-            if (flights.length === 0) {
+            if (filteredFlights.length === 0) {
                 tbody.innerHTML = '';
                 noData.classList.remove('hidden');
                 pagination.classList.add('hidden');
@@ -955,9 +968,7 @@
             noData.classList.add('hidden');
             pagination.classList.remove('hidden');
 
-            const start = (currentPage - 1) * pageSize;
-            const end = start + pageSize;
-            const slice = flights.slice(start, end);
+            const slice = filteredFlights;
 
             tbody.innerHTML = slice.map(f => {
                 const dateF = f.date && f.date.includes('-') ? f.date.split('-').reverse().join('.') : f.date;

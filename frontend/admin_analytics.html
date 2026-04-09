@@ -293,7 +293,7 @@
                 <table class="tech-table min-w-[450px]">
                     <thead>
                         <tr>
-                            <th class="pl-4">Суб'єкт</th>
+                            <th class="pl-4">Підрозділ</th>
                             <th class="text-center">Вильоти</th>
                             <th class="text-center">Сумарний наліт</th>
                             <th class="text-right pr-4">Затримання</th>
@@ -336,12 +336,50 @@
 
         async function loadData() {
             try {
-                const res = await fetch("/api/get_all_flights");
-                allFlights = await res.json();
-                updateAnalytics();
+                // Завантажуємо базову статистику швидким запитом
+                const resStats = await fetch("/api/get_stats_summary");
+                const summary = await resStats.json();
+
+                document.getElementById('totalFlights').innerText = summary.total_flights;
+                document.getElementById('totalHours').innerText = `${Math.floor(summary.total_duration / 60)}г ${summary.total_duration % 60}хв`;
+                document.getElementById('totalDetentions').innerText = summary.detentions;
+
+                // Завантажуємо основні дані (обмежено для швидкості або з фільтрами)
+                await updateAnalytics();
             } catch (e) {
                 console.error(e);
             }
+        }
+
+        async function updateAnalytics() {
+            const m = document.getElementById('monthSelect').value;
+            const y = document.getElementById('yearSelect').value;
+            const search = document.getElementById('pilotSearch').value.toLowerCase();
+            const resFilter = document.getElementById('resultFilter').value;
+
+            try {
+                // Побудова запиту з фільтром по датах для сервера
+                let url = `/api/get_all_flights?`;
+                if (y) {
+                    const startMonth = m === "all" ? "01" : m;
+                    const endMonth = m === "all" ? "12" : m;
+                    url += `from_dt=${y}-${startMonth}-01&to_dt=${y}-${endMonth}-31`;
+                }
+
+                const res = await fetch(url);
+                const data = await res.json();
+                allFlights = (data.data !== undefined) ? data.data : data;
+
+                // Локальна фільтрація за пошуком та результатом (якщо потрібно)
+                const filtered = allFlights.filter(f => {
+                    const matchesPilot = search === '' ? true : f.operator.toLowerCase().includes(search);
+                    const matchesResult = resFilter === 'all' ? true : f.result === resFilter;
+                    return matchesPilot && matchesResult;
+                });
+
+                // Продовження рендерінгу...
+                renderVisuals(filtered);
+            } catch (e) { console.error(e); }
         }
 
         function switchTab(tab) {
@@ -361,21 +399,7 @@
             updateAnalytics();
         }
 
-        function updateAnalytics() {
-            const m = document.getElementById('monthSelect').value;
-            const y = document.getElementById('yearSelect').value;
-            const search = document.getElementById('pilotSearch').value.toLowerCase();
-            const resFilter = document.getElementById('resultFilter').value;
-
-            const filtered = allFlights.filter(f => {
-                if (!f.date) return false;
-                const matchesYear = f.date.startsWith(y);
-                const matchesMonth = m === 'all' ? true : f.date.includes(`-${m}-`);
-                const matchesPilot = search === '' ? true : f.operator.toLowerCase().includes(search);
-                const matchesResult = resFilter === 'all' ? true : f.result === resFilter;
-                return matchesYear && matchesMonth && matchesPilot && matchesResult;
-            });
-
+        function renderVisuals(filtered) {
             let totalMin = 0, detentions = 0, realFlights = 0;
             const pilots = {}, units = {}, drones = {}, batteries = {};
             const timeDistribution = [0, 0, 0, 0, 0, 0];
