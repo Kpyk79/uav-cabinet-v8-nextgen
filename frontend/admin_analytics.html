@@ -252,7 +252,7 @@
             class="h-10 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all border border-white/5 sm:col-span-2 lg:col-span-1">Скинути</button>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 px-4">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 px-4">
         <!-- Daily Activity -->
         <div class="glass p-6 overflow-hidden">
             <h2 class="text-[11px] font-black uppercase mb-6 text-slate-400 italic flex items-center gap-3">
@@ -272,6 +272,28 @@
                 <i class="fa-solid fa-chart-pie text-cyan-500 text-sm"></i> Структура виконання завдань
             </h2>
             <div id="resultsStats" class="space-y-4 overflow-y-auto max-h-[150px] pr-2 custom-scrollbar"></div>
+        </div>
+
+        <!-- Averages -->
+        <div class="glass p-6 flex flex-col">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-[11px] font-black uppercase text-slate-400 italic flex items-center gap-3">
+                    <i class="fa-solid fa-calculator text-emerald-500 text-sm"></i> Середні значення
+                </h2>
+                <select id="avgPeriodSelect" onchange="updateAnalytics()"
+                    class="bg-slate-800 text-white text-[9px] uppercase font-black tracking-widest border border-white/10 rounded-lg px-2 py-1 outline-none">
+                    <option value="day">За добу</option>
+                    <option value="week">За тиждень</option>
+                    <option value="month">За місяць</option>
+                </select>
+            </div>
+
+            <div class="bg-slate-800/40 border border-white/5 rounded-xl p-4 mb-4 flex justify-between items-center">
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Всі підрозділи</span>
+                <span id="avgTotal" class="text-xl font-black text-emerald-400 font-mono">0</span>
+            </div>
+            <div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mb-2 pl-2">По підрозділах:</div>
+            <div id="avgUnitsList" class="space-y-2 overflow-y-auto max-h-[120px] pr-2 custom-scrollbar flex-1"></div>
         </div>
     </div>
 
@@ -363,7 +385,8 @@
                 if (y) {
                     const startMonth = m === "all" ? "01" : m;
                     const endMonth = m === "all" ? "12" : m;
-                    url += `from_dt=${y}-${startMonth}-01&to_dt=${y}-${endMonth}-31`;
+                    const lastDay = new Date(y, parseInt(endMonth), 0).getDate();
+                    url += `from_dt=${y}-${startMonth}-01&to_dt=${y}-${endMonth}-${lastDay}`;
                 }
 
                 const res = await fetch(url);
@@ -404,8 +427,10 @@
             const pilots = {}, units = {}, drones = {}, batteries = {};
             const timeDistribution = [0, 0, 0, 0, 0, 0];
             const resultsDist = {};
+            const uniqueDates = new Set();
 
             filtered.forEach(f => {
+                if (f.date) uniqueDates.add(f.date);
                 const isNoFly = f.result === "Польоти не здійснювались";
                 const dur = isNoFly ? 0 : (parseInt(f.duration) || 0);
 
@@ -518,7 +543,7 @@
             const maxT = Math.max(...timeDistribution, 1);
             document.getElementById('timeChart').innerHTML = timeDistribution.map((v, i) => {
                 const colors = ['#3b82f6', '#22c55e', '#a855f7', '#ec4899', '#f59e0b', '#ef4444'];
-                return `<div class="bar" style="height: ${(v / maxT) * 100}%; background: ${colors[i]}; opacity: 0.6;" title="${v} вильотів"></div>`;
+                return `<div class="bar flex justify-center items-start pt-1 text-[9px] font-black text-white" style="height: ${(v / maxT) * 100}%; background: ${colors[i]}; opacity: 0.6;" title="${v} вильотів">${v > 0 ? v : ''}</div>`;
             }).join('');
 
             const sortedD = Object.entries(drones).sort((a, b) => b[1] - a[1]);
@@ -536,6 +561,26 @@
                     </div>
                 </div>`;
             }).join('');
+
+            // Averages
+            const avgMult = document.getElementById('avgPeriodSelect').value === 'month' ? 30 : (document.getElementById('avgPeriodSelect').value === 'week' ? 7 : 1);
+            const daysCount = Math.max(uniqueDates.size, 1); // Avoid division by zero
+
+            const totalAvg = (realFlights / daysCount) * avgMult;
+            document.getElementById('avgTotal').innerText = Number.isInteger(totalAvg) ? totalAvg : totalAvg.toFixed(1);
+
+            const avgUnitsHtml = Object.entries(units)
+                .sort((a, b) => b[1].flights - a[1].flights)
+                .map(([uName, uData]) => {
+                    const uAvg = (uData.flights / daysCount) * avgMult;
+                    const uAvgFormatted = Number.isInteger(uAvg) ? uAvg : uAvg.toFixed(1);
+                    return `
+                    <div class="flex justify-between items-center bg-slate-800/20 px-3 py-2 rounded-lg border border-white/5">
+                        <span class="text-[10px] font-bold text-slate-300 truncate pr-2">${uName}</span>
+                        <span class="text-[11px] font-black text-emerald-500/80 font-mono">${uAvgFormatted}</span>
+                    </div>`;
+                }).join('');
+            document.getElementById('avgUnitsList').innerHTML = avgUnitsHtml || '<div class="text-[10px] text-slate-600 text-center uppercase font-bold py-4">Немає даних</div>';
         }
 
         window.onload = loadData;
