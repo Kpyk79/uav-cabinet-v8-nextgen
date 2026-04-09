@@ -294,6 +294,10 @@
             </div>
             <div class="text-[9px] text-slate-500 uppercase font-black tracking-widest mb-2 pl-2">По підрозділах:</div>
             <div id="avgUnitsList" class="space-y-2 overflow-y-auto max-h-[120px] pr-2 custom-scrollbar flex-1"></div>
+            <button onclick="copyAverages(this)"
+                class="mt-4 w-full bg-slate-800/80 hover:bg-slate-700 text-emerald-400 text-[10px] uppercase font-black py-2.5 rounded-xl transition-all border border-emerald-500/20 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-copy"></i> Скопіювати
+            </button>
         </div>
     </div>
 
@@ -566,21 +570,69 @@
             const avgMult = document.getElementById('avgPeriodSelect').value === 'month' ? 30 : (document.getElementById('avgPeriodSelect').value === 'week' ? 7 : 1);
             const daysCount = Math.max(uniqueDates.size, 1); // Avoid division by zero
 
-            const totalAvg = (realFlights / daysCount) * avgMult;
-            document.getElementById('avgTotal').innerText = Number.isInteger(totalAvg) ? totalAvg : totalAvg.toFixed(1);
+            const totalAvg = Math.round((realFlights / daysCount) * avgMult);
+            document.getElementById('avgTotal').innerText = totalAvg;
 
-            const avgUnitsHtml = Object.entries(units)
-                .sort((a, b) => b[1].flights - a[1].flights)
-                .map(([uName, uData]) => {
-                    const uAvg = (uData.flights / daysCount) * avgMult;
-                    const uAvgFormatted = Number.isInteger(uAvg) ? uAvg : uAvg.toFixed(1);
-                    return `
-                    <div class="flex justify-between items-center bg-slate-800/20 px-3 py-2 rounded-lg border border-white/5">
-                        <span class="text-[10px] font-bold text-slate-300 truncate pr-2">${uName}</span>
-                        <span class="text-[11px] font-black text-emerald-500/80 font-mono">${uAvgFormatted}</span>
-                    </div>`;
-                }).join('');
-            document.getElementById('avgUnitsList').innerHTML = avgUnitsHtml || '<div class="text-[10px] text-slate-600 text-center uppercase font-bold py-4">Немає даних</div>';
+            window.latestAverages = {
+                total: totalAvg,
+                units: {}
+            };
+
+            const order = [
+                'впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"',
+                'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"',
+                'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"',
+                'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"',
+                'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"',
+                'віпс "Кучурган"', 'віпс "Лиманське"', "Група ВОПРтаПБпПС"
+            ];
+
+            const avgUnitsHtml = order.map(uName => {
+                const uData = units[uName];
+                const uAvg = uData ? (uData.flights / daysCount) * avgMult : 0;
+                const uAvgFormatted = Math.round(uAvg);
+                window.latestAverages.units[uName] = uAvgFormatted;
+
+                return `
+                <div class="flex justify-between items-center bg-slate-800/20 px-3 py-2 rounded-lg border border-white/5">
+                    <span class="text-[10px] font-bold text-slate-300 truncate pr-2">${uName}</span>
+                    <span class="text-[11px] font-black text-emerald-500/80 font-mono">${uAvgFormatted}</span>
+                </div>`;
+            }).join('');
+            document.getElementById('avgUnitsList').innerHTML = avgUnitsHtml;
+        }
+
+        async function copyAverages(btn) {
+            if (!window.latestAverages) return;
+            const order = [
+                'впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"',
+                'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"',
+                'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"',
+                'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"',
+                'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"',
+                'віпс "Кучурган"', 'віпс "Лиманське"', "Група ВОПРтаПБпПС"
+            ];
+
+            const periodSelect = document.getElementById('avgPeriodSelect');
+            const periodText = periodSelect.options[periodSelect.selectedIndex].text;
+
+            let text = `Середні значення (${periodText}):\n`;
+            text += `Всі підрозділи: ${window.latestAverages.total}\n\n`;
+            text += `По підрозділах:\n`;
+            order.forEach(uName => {
+                const val = window.latestAverages.units[uName];
+                text += `${uName}: ${val || 0}\n`;
+            });
+
+            try {
+                await navigator.clipboard.writeText(text);
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Скопійовано`;
+                setTimeout(() => btn.innerHTML = originalHTML, 2000);
+            } catch (e) {
+                console.error(e);
+                alert("Помилка копіювання до буфера обміну");
+            }
         }
 
         window.onload = loadData;
