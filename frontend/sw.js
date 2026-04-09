@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uav-v8-cache-v11.0';
+const CACHE_NAME = 'uav-v8-cache-v11.1';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
