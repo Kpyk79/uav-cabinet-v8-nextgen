@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "UAV Pilot Cabinet",
   "short_name": "UAV Pilot",
   "description": "Автоматизоване робоче місце пілота БпЛА з офлайн-режимом",

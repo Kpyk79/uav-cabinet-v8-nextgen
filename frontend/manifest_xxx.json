@@ -1,6 +1,7 @@
 {
-  "name": "Панель начальника відділення",
-  "short_name": "Управління",
+  "id": "/xxx",
+  "name": "Панель начальника відділення | UAV Pro",
+  "short_name": "Панель начальника",
   "description": "Секторне управління UAV",
   "start_url": "/xxx?pwa=true",
   "display": "standalone",

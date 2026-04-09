@@ -16,6 +16,7 @@ const ASSETS_TO_CACHE = [
     '/icon.png',
     '/manifest.json',
     '/manifest_admin.json',
+    '/manifest_admin_analytics.json',
     '/manifest_xxx.json',
     '/xxx.html',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',

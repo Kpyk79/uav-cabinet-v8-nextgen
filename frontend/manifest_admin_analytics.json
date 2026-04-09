@@ -1,12 +1,12 @@
 {
-  "id": "/admin",
-  "name": "Admin Panel | UAV Monitor",
-  "short_name": "Admin Panel",
-  "description": "Панель адміністратора",
-  "start_url": "/admin?pwa=true",
+  "id": "/admin_analytics",
+  "name": "Global Analytics | Admin",
+  "short_name": "Global Analytics",
+  "description": "Аналітика для адміністратора",
+  "start_url": "/admin_analytics?pwa=true",
   "display": "standalone",
   "background_color": "#060b18",
-  "theme_color": "#16a34a",
+  "theme_color": "#f97316",
   "icons": [
     {
       "src": "/icon.png",
