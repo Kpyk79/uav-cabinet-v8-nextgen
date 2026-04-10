@@ -927,7 +927,14 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
 
         # 3. Базові дані — лейбли жирні+підкреслені
         add_labeled("Дата вильотів", f": {data.get('date', '__.__.____')}")
-        add_labeled("Ділянка", f": {data.get('unit', '___')}")
+        vips = data.get('unit', '___')
+        vps = data.get('sector_vps', '')
+
+        sector_display = f"віпс {vips}"
+        if vps:
+            sector_display += f" впс {vps}"
+
+        add_labeled("Ділянка", f": {sector_display}")
         add_labeled("Район виконання завдань", f": {data.get('task_area_coords', '___')}")
         add_labeled("Вильоти", ":")
 
