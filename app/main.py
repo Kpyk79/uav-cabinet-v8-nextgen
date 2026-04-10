@@ -851,46 +851,97 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
         if 'flights' in data:
             print(f"Flights count: {len(data['flights'])}")
             
+        # ──────────────────────────────────────────────────────────────────────────
+    # ЗАМІНИТИ весь блок generate_docx починаючи від "doc = Document()" і до
+    # кінця функції (перед "except Exception as e:") на код нижче.
+    # ──────────────────────────────────────────────────────────────────────────
+
         doc = Document()
-        
+
         # --- Налаштування шрифту (Times New Roman, 12pt) ---
         style = doc.styles['Normal']
         font = style.font
         font.name = 'Times New Roman'
         font.size = Pt(12)
-        
-        # Виправлення для відображення назви шрифту в Word
+
         r = style.element.rPr.rFonts
         r.set(qn('w:ascii'), 'Times New Roman')
         r.set(qn('w:hAnsi'), 'Times New Roman')
 
-        # 1. Шапка документа
-        header = doc.add_paragraph()
-        header.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        header.add_run(data.get('header', "Начальнику відділу організації повітряної розвідки\nта протидії безпілотним повітряним суднам штабу\nпідполковнику            Армену МКРТЧЯН"))
+        # --- Хелпер: абзац з жирним підкресленим лейблом + звичайний текст ---
+        def add_labeled(label: str, value: str = "", align=None, newline_before=False):
+            """Додає абзац: [жирний підкреслений label][звичайний value]."""
+            p = doc.add_paragraph()
+            if align:
+                p.alignment = align
+            if newline_before:
+                p.add_run("\n")
+            run_label = p.add_run(label)
+            run_label.bold = True
+            run_label.underline = True
+            if value:
+                p.add_run(value)
+            return p
 
-        # 2. Назва документа
-        title = doc.add_paragraph()
-        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        title_run = title.add_run("\nДОНЕСЕННЯ ПРО ПОЛІТ")
+        # --- Хелпер: лише звичайний абзац ---
+        def add_plain(text: str, align=None):
+            p = doc.add_paragraph(text)
+            if align:
+                p.alignment = align
+            return p
+
+        # 1. Шапка документа (вирівняна праворуч)
+        from docx.shared import Cm
+        from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
+        header_p = doc.add_paragraph()
+
+        # Налаштовуємо форматування параграфа
+        fmt = header_p.paragraph_format
+        # 1. Робимо відступ зліва 9 см (як на лінійці в скріншоті)
+        fmt.left_indent = Cm(8)
+        # 2. Додаємо точку табуляції на правому краї (наприклад, 16.5 см)
+        # Це дозволить рознести "підполковнику" та "Армену МКРТЧЯН"
+        fmt.tab_stops.add_tab_stop(Cm(16.5), WD_TAB_ALIGNMENT.RIGHT)
+
+        # Важливо: прибираємо WD_ALIGN_PARAGRAPH.RIGHT, 
+        # щоб текст всередині блоку був вирівняний по лівому краю
+        header_p.alignment = WD_ALIGN_PARAGRAPH.LEFT 
+
+        # Формуємо текст
+        # Зверніть увагу на символ \t (табуляція) в останньому рядку
+        header_text = data.get(
+            'header',
+            "Начальнику відділу організації повітряної\n"
+            "розвідки та протидії безпілотним\n"
+            "повітряним суднам штабу\n"
+            "підполковнику\tАрмену МКРТЧЯН"
+        )
+
+        header_p.add_run(header_text)
+
+        # 2. Назва документа (по центру, жирна)
+        title_p = doc.add_paragraph()
+        title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title_run = title_p.add_run("\nДОНЕСЕННЯ ПРО ПОЛІТ")
         title_run.bold = True
 
-        # 3. БАЗОВІ ДАНІ
-        doc.add_paragraph(f"Дата вильотів : {data.get('date', '__.__.____')}")
-        doc.add_paragraph(f"Ділянка : {data.get('unit', '___')}")
-        doc.add_paragraph("Вильоти:")
+        # 3. Базові дані — лейбли жирні+підкреслені
+        add_labeled("Дата вильотів", f": {data.get('date', '__.__.____')}")
+        add_labeled("Ділянка", f": {data.get('unit', '___')}")
+        add_labeled("Район виконання завдань", f": {data.get('task_area_coords', '___')}")
+        add_labeled("Вильоти", ":")
 
-        # 4. ТАБЛИЦЯ ПОЛЬОТІВ
+        # 4. Таблиця польотів
         flights = data.get('flights', [])
         table = doc.add_table(rows=1, cols=4)
         table.style = 'Table Grid'
-        
+
         hdr_cells = table.rows[0].cells
         hdr_cells[0].text = 'Прізвище екіпажу'
         hdr_cells[1].text = 'К-сть'
         hdr_cells[2].text = 'Тип БпАК'
         hdr_cells[3].text = 'Час та дистанція вильотів'
-        
+
         if not flights:
             row_cells = table.add_row().cells
             row_cells[0].text = 'Немає даних'
@@ -903,24 +954,23 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
                 row_cells[0].text = flight.get('operator', '')
                 row_cells[1].text = str(flight.get('count', ''))
                 row_cells[2].text = flight.get('drone', '')
-                # Strip seconds from time: "05:54:00" → "05:54"
-                import re
+                import re as _re
                 details_raw = flight.get('details', '')
-                details_clean = re.sub(r'(\d{2}:\d{2}):\d{2}', r'\1', details_raw)
+                details_clean = _re.sub(r'(\d{2}:\d{2}):\d{2}', r'\1', details_raw)
                 row_cells[3].text = details_clean
 
-        # 5. МАРШРУТ ТА ЕКІПАЖ
-        doc.add_paragraph(f"\n Маршрут : {data.get('route', '___')}")
-        doc.add_paragraph(f"БпАК  : {data.get('drones_list', '___')}")
-        doc.add_paragraph("Склад екіпажу:")
-        doc.add_paragraph(f"командир зовнішнього екіпажу: {data.get('commander', '___')};")
-        doc.add_paragraph(f"оператор: {data.get('operators', '___')}.")
-        
-        # 6. РЕЗУЛЬТАТИ
-        doc.add_paragraph("Результати:")
-        doc.add_paragraph(data.get('result', "Під час польотів порушень ОПДК не виявлено."))
+        # 5. Маршрут та екіпаж
+        add_labeled("\nМаршрут", f": {data.get('route', '___')}")
+        add_labeled("БпАК", f": {data.get('drones_list', '___')}")
+        add_labeled("Склад екіпажу", ":")
+        add_plain(f"оператор: {data.get('commander', '___')};")
+        add_plain(f"оператор: {data.get('operators', '___')}.")
 
-        # 7. ФОТОФІКСАЦІЯ (ЯКЩО Є ФОТО)
+        # 6. Результати
+        add_labeled("Результати", ":")
+        add_plain(data.get('result', "Під час польотів порушень ОПДК не виявлено."))
+
+        # 7. Фотофіксація (якщо є фото)
         photo_b64 = data.get('photo')
         temp_photo_path = None
         if photo_b64 and photo_b64.startswith('data:image'):
@@ -931,39 +981,36 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
                 temp_photo_path = os.path.join("app", f"{uuid.uuid4()}.jpg")
                 with open(temp_photo_path, "wb") as f:
                     f.write(photo_data)
-                
                 pic_para = doc.add_paragraph()
                 pic_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 pic_para.add_run().add_picture(temp_photo_path, width=Cm(15))
             except Exception as e:
                 print(f"Помилка завантаження фото: {e}")
 
-        # 8. ЗВ'ЯЗОК
-        doc.add_paragraph("\nЗв'язок на кордоні підтримувався :")
-        doc.add_paragraph(f"з ПН, ОЧ {data.get('unit', '___')} по р/ст. по радіомережі;")
-        doc.add_paragraph("відео-, фотодокументування здійснювалися штатною апаратурою БпАК.")
-        
-        # 9. ПОГОДА ТА СТАН ТЕХНІКИ
-        doc.add_paragraph(f"\nПогода по маршруту:  {data.get('weather', '___')}")
-        doc.add_paragraph("Готовність екіпажу та стан БпАК: БпАК справний, недоліків у роботі техніки не виявлено.")
-        doc.add_paragraph("Політ виконано в штатному режимі, відмов у системах керування та телеметрії не зафіксовано. Зауважень немає.")
+        # 8. Зв'язок
+        add_labeled("\nЗв'язок на кордоні підтримувався", ":")
+        add_plain(f"з ПН, ОЧ {data.get('unit', '___')} по р/ст. по радіомережі;")
+        add_plain("відео-, фотодокументування здійснювалися штатною апаратурою БпАК.")
 
-        # 10. ПІДПИС
-        doc.add_paragraph("\nДонесення склав")
-        doc.add_paragraph("Командир зовнішнього екіпажу:")
-        
-        # Форматування підпису (Звання зліва, ПІБ справа)
-        sign_text = data.get('commander_short', '___')
-        doc.add_paragraph(sign_text)
+        # 9. Погода та стан техніки
+        add_labeled("\nПогода по маршруту", f": {data.get('weather', '___')}")
+        add_labeled("Готовність екіпажу та стан БпАК", ":")
+        add_plain("БпАК справний, недоліків у роботі техніки не виявлено.")
+        add_plain("Політ виконано в штатному режимі, відмов у системах керування та телеметрії не зафіксовано. Зауважень немає.")
 
+        # 10. Підпис
+        add_labeled("\nДонесення склав", "")
+        add_plain("Оператор:")
+        add_plain(data.get('commander_short', '___'))
+
+        # ── Збереження та відповідь ────────────────────────────────────────────
         from io import BytesIO
         from urllib.parse import quote
-        
+
         file_stream = BytesIO()
         doc.save(file_stream)
         file_bytes = file_stream.getvalue()
 
-        # Визначаємо безпечну назву файлу
         if not filename.lower().endswith(".docx"):
             filename += ".docx"
 
@@ -973,7 +1020,12 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
         return Response(
             content=file_bytes,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers={"Content-Disposition": f"attachment; filename=\"{safe_ascii}\"; filename*=UTF-8''{encoded_filename}"}
+            headers={
+                "Content-Disposition": (
+                    f"attachment; filename=\"{safe_ascii}\"; "
+                    f"filename*=UTF-8''{encoded_filename}"
+                )
+            }
         )
 
     except Exception as e:
