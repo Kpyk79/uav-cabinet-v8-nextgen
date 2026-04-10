@@ -684,6 +684,7 @@
                 title: r.title,
                 date: r.dates.value,
                 unit: r.sector.vips || unit,
+                sector_vps: r.sector.vps || '',
                 task_area_coords: r.task_area.coordinates.map(c => `${c.lat}, ${c.lon}`).join(', '),
                 flights: flightsData,
                 result: r.results.description,
