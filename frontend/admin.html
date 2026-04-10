@@ -266,8 +266,8 @@
             </button>
             <button onclick="exportAllToExcel()"
                 class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-2xl text-white font-black uppercase text-[11px] tracking-widest shadow-lg shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-3">
-                <i class="fa-solid fa-file-excel text-sm"></i> <span class="hidden sm:inline">Експорт логів</span> <span
-                    class="sm:hidden">Експорт</span>
+                <i class="fa-solid fa-file-excel text-sm"></i> <span class="hidden sm:inline">Експорт журналу</span>
+                <span class="sm:hidden">Експорт</span>
             </button>
             <button onclick="nav('/admin_analytics')"
                 class="flex-1 sm:flex-none bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-2xl text-white font-black uppercase text-[11px] tracking-widest shadow-lg shadow-orange-500/20 transition-all active:scale-95 flex items-center justify-center gap-3">
@@ -354,8 +354,7 @@
         <!-- Personnel Card -->
         <div class="card p-7">
             <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center gap-3 cursor-pointer select-none group"
-                    onclick="toggleSection('personnelContainer', 'personnelArrow')">
+                <div class="flex items-center gap-3 cursor-pointer select-none group" onclick="togglePersonnel()">
                     <h3 class="text-xs font-black uppercase text-yellow-500 flex items-center gap-3 tracking-[0.2em]">
                         <i class="fa-solid fa-users text-sm"></i> Особовий Склад
                         <i id="personnelArrow"
@@ -403,7 +402,7 @@
             <div class="flex items-center gap-3">
                 <button onclick="event.stopPropagation(); exportFilteredToExcel()"
                     class="text-[9px] bg-green-600/10 text-green-500 hover:bg-green-600 hover:text-white uppercase font-black tracking-widest transition-all flex items-center gap-2 px-3 py-1.5 rounded-lg border border-green-500/20">
-                    <i class="fa-solid fa-file-excel"></i> Експорт фільтру
+                    <i class="fa-solid fa-file-excel"></i> Експорт за фільтром
                 </button>
                 <button onclick="event.stopPropagation(); resetFilters()"
                     class="text-[9px] text-slate-600 hover:text-white uppercase font-black tracking-widest transition-colors flex items-center gap-2">
@@ -547,9 +546,9 @@
 
                 // Оновлюємо персонал лише якщо це перший запуск або пошук
                 // (Для швидкості можна робити це окремим запитом або рідше)
-                if (allFlights.length === 0 || sUnit || sOp || dtFrom || dtTo) {
-                    renderPersonnel(filteredFlights);
-                }
+                //if (allFlights.length === 0 || sUnit || sOp || dtFrom || dtTo) {
+                renderPersonnel(filteredFlights);
+                //}
             } catch (e) { console.error("Load flights error:", e); }
         }
 
@@ -628,13 +627,20 @@
                             else if (d.status === 'Lost' || d.status === 'Broken') statusClass = 'bg-lost';
 
                             return `
-                                <div class="info-card flex justify-between items-center text-[10px] mb-1.5">
+                            <div class="info-card flex flex-col gap-1.5 text-[10px] mb-2 p-2.5">
+                                <div class="flex items-center justify-between w-full">
                                     <div class="flex items-center gap-2 overflow-hidden">
-                                        <span class="status-dot ${statusClass}"></span>
-                                        <span class="font-bold text-slate-300 truncate">${d.model} <span class="text-blue-500 ml-1 opacity-70">[${d.battery_count || 0}]</span></span>
+                                        <span class="status-dot ${statusClass} flex-shrink-0"></span>
+                                        <span class="font-bold text-slate-200 truncate text-[11px]">${d.model}</span>
                                     </div>
-                                    <span class="font-mono text-slate-600 text-[8px] tracking-tighter">${d.serial_number || '---'}</span>
-                                </div>`;
+                                    <span class="text-blue-400 font-mono text-[9px] bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded-md font-black flex-shrink-0" title="Кількість АКБ">
+                                        ${d.battery_count || 0} АКБ
+                                    </span>
+                                </div>
+                                <div class="font-mono text-slate-500 text-[9px] tracking-[0.1em] pl-4 truncate opacity-80">
+                                    ${d.serial_number || '---'}
+                                </div>
+                            </div>`;
                         }).join('');
                     } else {
                         dronesHtml = '<div class="text-center text-[8px] text-slate-700 italic border border-white/5 py-2 rounded-lg">РЕЗЕРВ ПОРОЖНІЙ</div>';
@@ -785,40 +791,83 @@
             const container = document.getElementById('personnelContainer');
             if (flights.length === 0) return;
 
+            // 1. Збираємо статистику по підрозділах і пілотах
             const unitMap = {};
             flights.forEach(f => {
                 const u = f.unit || "Не вказано";
                 const op = f.operator || "Невідомий";
                 const dur = parseInt(f.duration) || 0;
+
                 if (!unitMap[u]) unitMap[u] = {};
                 if (!unitMap[u][op]) unitMap[u][op] = { flights: 0, time: 0 };
+
                 if (f.result !== "Польоти не здійснювались") {
                     unitMap[u][op].flights++;
                     unitMap[u][op].time += dur;
                 }
             });
+
             container.innerHTML = '';
-            Object.entries(unitMap).forEach(([unitName, pilotsObj]) => {
+
+            // 2. ЗАДАНА ПОСЛІДОВНІСТЬ ПІДРОЗДІЛІВ
+            const unitOrder = [
+                'впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"',
+                'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"',
+                'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"',
+                'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"',
+                'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"',
+                'віпс "Кучурган"', 'віпс "Лиманське"', 'Група ВОПРтаПБпПС'
+            ];
+
+            // Допоміжна функція: шукає індекс підрозділу в нашому списку (ігноруючи регістр літер)
+            const getUnitIndex = (name) => {
+                const lowerName = name.toLowerCase().trim();
+                const index = unitOrder.findIndex(u => u.toLowerCase() === lowerName);
+                // Якщо підрозділ з бази не знайдено в нашому масиві, ставимо його в самий кінець (999)
+                return index === -1 ? 999 : index;
+            };
+
+            // 3. Сортуємо підрозділи за заданим порядком
+            const sortedUnits = Object.entries(unitMap).sort((a, b) => getUnitIndex(a[0]) - getUnitIndex(b[0]));
+
+            // 4. Відмальовуємо
+            sortedUnits.forEach(([unitName, pilotsObj]) => {
+                // Пілотів всередині підрозділу сортуємо за кількістю вильотів (від найбільшого)
                 const pilotsList = Object.entries(pilotsObj).sort((a, b) => b[1].flights - a[1].flights);
+
+                // Новий дизайн карток пілотів
                 const pilotsHtml = pilotsList.map(([name, stats]) => `
-                    <div class="info-card flex justify-between items-center text-[10px] mb-1.5">
-                        <div class="flex items-center gap-3">
-                            <i class="fa-solid fa-user-pilot-tie text-slate-600"></i>
-                            <span class="font-bold text-slate-300 truncate">${name}</span>
-                        </div>
-                        <div class="flex gap-2">
-                            <span class="text-slate-500 font-mono text-[8px] bg-slate-900 border border-white/5 px-2 rounded-md font-black">${stats.flights} вил</span>
-                            <span class="text-blue-500 font-mono text-[8px] bg-blue-500/10 border border-blue-500/20 px-2 rounded-md font-black">${Math.floor(stats.time / 60)}год</span>
-                        </div>
-                    </div>`).join('');
+            <div class="info-card flex flex-col gap-2 p-2.5 mb-2">
+                <div class="flex items-center gap-2 overflow-hidden w-full pl-1">
+                    <i class="fa-solid fa-user-pilot-tie text-slate-500 text-[11px] flex-shrink-0"></i>
+                    <span class="font-bold text-slate-200 truncate text-[12px]">${name}</span>
+                </div>
+                
+                <div class="flex justify-between items-center bg-slate-900/80 rounded-lg py-1.5 px-4 border border-white/5">
+                    <div class="flex items-baseline gap-1.5" title="Кількість вильотів">
+                        <span class="text-slate-300 font-mono text-[11px] font-black">${stats.flights}</span>
+                        <span class="text-slate-500 text-[8px] uppercase font-bold tracking-widest">вил</span>
+                    </div>
+                    
+                    <div class="h-3 w-[1px] bg-white/10"></div>
+                    
+                    <div class="flex items-baseline gap-1.5" title="Загальний наліт">
+                        <span class="text-blue-400 font-mono text-[11px] font-black">${Math.floor(stats.time / 60)}</span>
+                        <span class="text-blue-600 text-[8px] uppercase font-bold tracking-widest">год</span>
+                    </div>
+                </div>
+            </div>`).join('');
+
+                // Блок самого підрозділу
                 const unitBlock = `
-                    <div class="bg-white/[0.02] border border-white/[0.03] rounded-2xl p-4 hover:border-white/10 transition-all">
-                        <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/5">
-                            <h4 class="text-[9px] font-black uppercase text-slate-400 truncate pr-3" title="${unitName}">${unitName}</h4>
-                            <span class="bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded text-[8px] font-black border border-yellow-500/20">${pilotsList.length} ПІЛ</span>
-                        </div>
-                        <div class="space-y-0.5">${pilotsHtml}</div>
-                    </div>`;
+            <div class="bg-white/[0.02] border border-white/[0.03] rounded-2xl p-4 hover:border-white/10 transition-all">
+                <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/5">
+                    <h4 class="text-[9px] font-black uppercase text-slate-400 truncate pr-3" title="${unitName}">${unitName}</h4>
+                    <span class="bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded text-[8px] font-black border border-yellow-500/20">${pilotsList.length} ПІЛ</span>
+                </div>
+                <div class="space-y-0.5">${pilotsHtml}</div>
+            </div>`;
+
                 container.insertAdjacentHTML('beforeend', unitBlock);
             });
         }
@@ -1013,23 +1062,114 @@
             }).join('');
         }
 
-        function exportAllToExcel() {
-            if (allFlights.length === 0) return dbAPI.showNotification("База порожня!", "warning");
-            const sheetData = [
-                ["ЖУРНАЛ ОБЛІКУ ПОЛЬОТІВ (ГЛОБАЛЬНИЙ ПОТІК)"], [],
-                ["№", "Дата", "Модель БпЛА", "Ділянка", "Зліт", "Посадка", "Наліт хв", "Підрозділ", "Оператор", "АКБ ID", "Цикли"]
-            ];
-            allFlights.forEach((f, i) => {
-                sheetData.push([
-                    i + 1, f.date, f.drone, f.route || "---", fmtTime(f.takeoff), fmtTime(f.landing),
-                    f.duration, f.unit, f.operator, f.battery_id || "", f.battery_cycles || ""
-                ]);
-            });
-            const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "LogStream");
-            const safeDate = new Date().toISOString().split('T')[0];
-            XLSX.writeFile(wb, `UAV_Global_Journal_${safeDate}.xlsx`);
+        async function exportAllToExcel() {
+            try {
+                dbAPI.showNotification("Збираємо дані для експорту... Це може зайняти кілька секунд.", "info");
+
+                let allExportData = [];
+                let offset = 0;
+                const batchSize = 1000; // Сервер віддає по 1000, тому просимо саме стільки
+                let keepFetching = true;
+
+                // Цикл завантаження: тягнемо по 1000 записів, поки вони не закінчаться
+                while (keepFetching) {
+                    const res = await fetch(`/api/get_all_flights?limit=${batchSize}&offset=${offset}`);
+                    let chunk = await res.json();
+
+                    let dataChunk = chunk.data !== undefined ? chunk.data : chunk;
+
+                    if (!dataChunk || dataChunk.length === 0) {
+                        keepFetching = false; // Дані закінчилися
+                    } else {
+                        allExportData = allExportData.concat(dataChunk); // Додаємо шматок до загального масиву
+                        offset += batchSize; // Зсуваємось на наступну тисячу
+
+                        // Якщо прийшло менше ніж 1000, значить це остання сторінка
+                        if (dataChunk.length < batchSize) {
+                            keepFetching = false;
+                        }
+                    }
+                }
+
+                if (allExportData.length === 0) {
+                    return dbAPI.showNotification("База порожня!", "warning");
+                }
+
+                // Формуємо Excel файл
+                const sheetData = [
+                    ["ЖУРНАЛ ОБЛІКУ ПОЛЬОТІВ (ГЛОБАЛЬНИЙ ПОТІК)"], [],
+                    ["№", "Дата", "Модель БпЛА", "Ділянка", "Зліт", "Посадка", "Наліт хв", "Підрозділ", "Оператор", "АКБ ID", "Цикли"]
+                ];
+
+                allExportData.forEach((f, i) => {
+                    sheetData.push([
+                        i + 1, f.date, f.drone, f.route || "---", fmtTime(f.takeoff), fmtTime(f.landing),
+                        f.duration, f.unit, f.operator, f.battery_id || "", f.battery_cycles || ""
+                    ]);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "LogStream");
+                const safeDate = new Date().toISOString().split('T')[0];
+
+                XLSX.writeFile(wb, `UAV_Global_Journal_${safeDate}.xlsx`);
+                dbAPI.showNotification(`Успішно експортовано ${allExportData.length} записів!`, "success");
+
+            } catch (e) {
+                dbAPI.showNotification("Помилка експорту: " + e.message, "error");
+            }
+        }
+
+        async function togglePersonnel() {
+            const container = document.getElementById('personnelContainer');
+            const arrow = document.getElementById('personnelArrow');
+
+            // Перемикаємо видимість
+            container.classList.toggle('hidden');
+
+            if (container.classList.contains('hidden')) {
+                arrow.classList.remove('rotate-90');
+            } else {
+                arrow.classList.add('rotate-90');
+
+                // Показуємо анімацію завантаження
+                container.innerHTML = '<div class="text-center text-[10px] text-slate-500 uppercase font-black py-10 col-span-2 tracking-widest animate-pulse">Зчитування даних...</div>';
+
+                try {
+                    let allPersonnelData = [];
+                    let offset = 0;
+                    const batchSize = 1000; // Серверний ліміт
+                    let keepFetching = true;
+
+                    // Цикл: тягнемо дані шматками по 1000, поки вони не закінчаться
+                    while (keepFetching) {
+                        const res = await fetch(`/api/get_all_flights?limit=${batchSize}&offset=${offset}`);
+                        let chunk = await res.json();
+
+                        let dataChunk = chunk.data !== undefined ? chunk.data : chunk;
+
+                        if (!dataChunk || dataChunk.length === 0) {
+                            keepFetching = false; // Дані закінчилися
+                        } else {
+                            allPersonnelData = allPersonnelData.concat(dataChunk); // Склеюємо масиви
+                            offset += batchSize; // Зсуваємось для наступного запиту
+
+                            // Якщо прийшло менше ніж 1000, це остання порція
+                            if (dataChunk.length < batchSize) {
+                                keepFetching = false;
+                            }
+                        }
+                    }
+
+                    // Відправляємо ПОВНИЙ масив даних у функцію малювання
+                    renderPersonnel(allPersonnelData);
+
+                } catch (e) {
+                    console.error("Personnel load error:", e);
+                    container.innerHTML = '<div class="text-center text-red-500/80 text-[10px] uppercase font-black py-10 col-span-2 tracking-widest">Помилка завантаження даних</div>';
+                }
+            }
         }
 
         window.onload = async () => {
