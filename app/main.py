@@ -927,12 +927,15 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
 
         # 3. Базові дані — лейбли жирні+підкреслені
         add_labeled("Дата вильотів", f": {data.get('date', '__.__.____')}")
-        vips = data.get('unit', '___')
+        vips = data.get('vips', '')
         vps = data.get('sector_vps', '')
 
-        sector_display = f"віпс {vips}"
+        sector_parts = []
+        if vips:
+            sector_parts.append(f"віпс {vips}")
         if vps:
-            sector_display += f" впс {vps}"
+            sector_parts.append(f"впс {vps}")
+        sector_display = ' '.join(sector_parts) if sector_parts else '___'
 
         add_labeled("Ділянка", f": {sector_display}")
         add_labeled("Район виконання завдань", f": {data.get('task_area_coords', '___')}")
@@ -964,14 +967,21 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
                 import re as _re
                 details_raw = flight.get('details', '')
                 details_clean = _re.sub(r'(\d{2}:\d{2}):\d{2}', r'\1', details_raw)
-                row_cells[3].text = details_clean
+                # Split sorties and put each on a new line inside the cell
+                sorties = [s.strip() for s in details_clean.split(';') if s.strip()]
+                cell = row_cells[3]
+                cell.text = ''  # clear default paragraph
+                for i, sortie in enumerate(sorties):
+                    if i == 0:
+                        cell.paragraphs[0].text = sortie
+                    else:
+                        cell.add_paragraph(sortie)
 
         # 5. Маршрут та екіпаж
         add_labeled("\nМаршрут", f": {data.get('route', '___')}")
         add_labeled("БпАК", f": {data.get('drones_list', '___')}")
         add_labeled("Склад екіпажу", ":")
         add_plain(f"оператор: {data.get('commander', '___')};")
-        add_plain(f"оператор: {data.get('operators', '___')}.")
 
         # 6. Результати
         add_labeled("Результати", ":")
@@ -994,16 +1004,15 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
             except Exception as e:
                 print(f"Помилка завантаження фото: {e}")
 
-        # 8. Зв'язок
+        # 8. Зв'язок (використовуємо той самий sector_display, що й у рядку "Ділянка")
         add_labeled("\nЗв'язок на кордоні підтримувався", ":")
-        add_plain(f"з ПН, ОЧ {data.get('unit', '___')} по р/ст. по радіомережі;")
-        add_plain("відео-, фотодокументування здійснювалися штатною апаратурою БпАК.")
+        comm_sector = f"з ПН, ОЧ {sector_display} " if sector_display != '___' else ''
+        add_plain(f"{comm_sector}по р/ст. по радіомережі; відео-, фотодокументування здійснювалися штатною апаратурою БпАК.")
 
         # 9. Погода та стан техніки
         add_labeled("\nПогода по маршруту", f": {data.get('weather', '___')}")
         add_labeled("Готовність екіпажу та стан БпАК", ":")
-        add_plain("БпАК справний, недоліків у роботі техніки не виявлено.")
-        add_plain("Політ виконано в штатному режимі, відмов у системах керування та телеметрії не зафіксовано. Зауважень немає.")
+        add_plain("БпАК справний, недоліків у роботі техніки не виявлено. Політ виконано в штатному режимі, відмов у системах керування та телеметрії не зафіксовано. Зауважень немає.")
 
         # 10. Підпис
         add_labeled("\nДонесення склав", "")
