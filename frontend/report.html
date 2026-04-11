@@ -707,7 +707,7 @@
                 photo: photoBase64
             };
 
-            const fileName = `Flight_Report_${date}.docx`;
+            const fileName = `Донесення_${date}.docx`;
 
             if (!navigator.onLine) {
                 await dbAPI.addToSyncQueue('report', { reportData, fileName });
