@@ -680,7 +680,7 @@
             const weather = `температура повітря ${parseFloat(temp) > 0 ? '+' + temp : temp}°C, польотна видимість ${r.weather.visibility_km} км, хмарність ${r.weather.cloud_cover_points}, вітер ${r.weather.wind_direction_deg}º / ${r.weather.wind_speed_ms} м/с, небезпечних явищ погоди не спостерігалось`;
 
             const addr = r.addressee;
-            const header = [addr.position, [addr.rank, addr.name].filter(Boolean).join(' ')].filter(Boolean).join('\n');
+            const header = [addr.position, [addr.rank, addr.name].filter(Boolean).join('\t')].filter(Boolean).join('\n');
             const cmdFull = [r.compiled_by.rank, r.compiled_by.name].filter(Boolean).join(' ');
             const commanderShort = `${r.compiled_by.rank}                                          ${r.compiled_by.name}`.trim();
 
