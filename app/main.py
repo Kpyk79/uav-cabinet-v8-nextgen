@@ -841,6 +841,7 @@ _docx_cache: dict = {}
 async def generate_docx(report_data: str = Form(...), filename: str = Form(...)):
     print(f"Generating DOCX: {filename}")
     try:
+        from docx.shared import Cm, Pt
         try:
             data = json.loads(report_data)
         except json.JSONDecodeError as je:
@@ -857,6 +858,14 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
     # ──────────────────────────────────────────────────────────────────────────
 
         doc = Document()
+
+        # --- НАЛАШТУВАННЯ ПОЛІВ ---
+        section = doc.sections[0]
+        section.top_margin = Cm(1.5)      # Верхнє поле
+        section.bottom_margin = Cm(1.0)   # Нижнє поле
+        section.left_margin = Cm(2.0)     # Ліве поле (зазвичай більше для підшивання)
+        section.right_margin = Cm(2.0)    # Праве поле
+        # -------------------------
 
         # --- Налаштування шрифту (Times New Roman, 12pt) ---
         style = doc.styles['Normal']
@@ -900,17 +909,16 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
             return p
 
         # 1. Шапка документа (вирівняна праворуч)
-        from docx.shared import Cm
         from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
         header_p = doc.add_paragraph()
 
         # Налаштовуємо форматування параграфа
         fmt = header_p.paragraph_format
         # 1. Робимо відступ зліва 9 см (як на лінійці в скріншоті)
-        fmt.left_indent = Cm(8)
+        fmt.left_indent = Cm(9.5)
         # 2. Додаємо точку табуляції на правому краї (наприклад, 16.5 см)
         # Це дозволить рознести "підполковнику" та "Армену МКРТЧЯН"
-        fmt.tab_stops.add_tab_stop(Cm(15), WD_TAB_ALIGNMENT.RIGHT)
+        fmt.tab_stops.add_tab_stop(Cm(17.5), WD_TAB_ALIGNMENT.RIGHT)
 
         # Важливо: прибираємо WD_ALIGN_PARAGRAPH.RIGHT, 
         # щоб текст всередині блоку був вирівняний по лівому краю
@@ -958,7 +966,7 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
         flights = data.get('flights', [])
         table = doc.add_table(rows=1, cols=4)
         table.style = 'Table Grid'
-
+        # Налаштування ширини буде виконано нижче, після додавання всіх рядків
         hdr_cells = table.rows[0].cells
         hdr_cells[0].text = 'Прізвище екіпажу'
         hdr_cells[1].text = 'К-сть'
@@ -989,6 +997,15 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
                         cell.paragraphs[0].text = sortie
                     else:
                         cell.add_paragraph(sortie)
+        # Фіксуємо ширину таблиці та колонок ПІСЛЯ додавання всіх рядків:
+        table.autofit = False 
+        table.width = Cm(17)
+        widths = [Cm(4.0), Cm(2.0), Cm(6.0), Cm(5.0)]
+        for i, width in enumerate(widths):
+            table.columns[i].width = width
+        for row in table.rows:
+            for i, width in enumerate(widths):
+                row.cells[i].width = width
 
         # 5. Маршрут та екіпаж
         add_labeled("Маршрут", f": {data.get('route', '___')}")
@@ -1013,7 +1030,7 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
                     f.write(photo_data)
                 pic_para = doc.add_paragraph()
                 pic_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                pic_para.add_run().add_picture(temp_photo_path, width=Cm(15))
+                pic_para.add_run().add_picture(temp_photo_path, width=Cm(12))
             except Exception as e:
                 print(f"Помилка завантаження фото: {e}")
 
@@ -1078,7 +1095,6 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
     except Exception as e:
         print(f"DOCX Generation Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.get("/api/download_docx/{token}/{filename}")
 async def download_docx(token: str, filename: str):
@@ -1247,7 +1263,6 @@ async def weather_analysis(req: WeatherAnalysisRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # Serving all static files from root for PWA compatibility
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")
