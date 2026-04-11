@@ -863,7 +863,12 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
         font = style.font
         font.name = 'Times New Roman'
         font.size = Pt(12)
-
+        
+        # Видаляємо інтервали між абзацами та встановлюємо одинарний інтервал
+        from docx.enum.text import WD_LINE_SPACING, WD_TAB_LEADER, WD_TAB_ALIGNMENT, WD_ALIGN_PARAGRAPH
+        style.paragraph_format.space_after = Pt(0)
+        style.paragraph_format.space_before = Pt(0)
+        style.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
         r = style.element.rPr.rFonts
         r.set(qn('w:ascii'), 'Times New Roman')
         r.set(qn('w:hAnsi'), 'Times New Roman')
@@ -872,6 +877,8 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
         def add_labeled(label: str, value: str = "", align=None, newline_before=False):
             """Додає абзац: [жирний підкреслений label][звичайний value]."""
             p = doc.add_paragraph()
+            p.paragraph_format.space_after = Pt(0)
+            p.paragraph_format.space_before = Pt(0)
             if align:
                 p.alignment = align
             if newline_before:
@@ -886,6 +893,8 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
         # --- Хелпер: лише звичайний абзац ---
         def add_plain(text: str, align=None):
             p = doc.add_paragraph(text)
+            p.paragraph_format.space_after = Pt(0)
+            p.paragraph_format.space_before = Pt(0)
             if align:
                 p.alignment = align
             return p
@@ -920,10 +929,14 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
         header_p.add_run(header_text)
 
         # 2. Назва документа (по центру, жирна)
+        doc.add_paragraph() # Порожній рядок перед заголовком
         title_p = doc.add_paragraph()
+        title_p.paragraph_format.space_after = Pt(0)
+        title_p.paragraph_format.space_before = Pt(0)
         title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        title_run = title_p.add_run("\nДОНЕСЕННЯ ПРО ПОЛІТ")
+        title_run = title_p.add_run("ДОНЕСЕННЯ ПРО ПОЛІТ")
         title_run.bold = True
+        doc.add_paragraph() # Порожній рядок після заголовка
 
         # 3. Базові дані — лейбли жирні+підкреслені
         add_labeled("Дата вильотів", f": {data.get('date', '__.__.____')}")
@@ -978,10 +991,10 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
                         cell.add_paragraph(sortie)
 
         # 5. Маршрут та екіпаж
-        add_labeled("\nМаршрут", f": {data.get('route', '___')}")
+        add_labeled("Маршрут", f": {data.get('route', '___')}")
         add_labeled("БпАК", f": {data.get('drones_list', '___')}")
         add_labeled("Склад екіпажу", ":")
-        add_plain(f"оператор: {data.get('commander', '___')};")
+        add_plain(f"Оператор: {data.get('commander', '___')};")
 
         # 6. Результати
         add_labeled("Результати", ":")
@@ -1005,19 +1018,37 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
                 print(f"Помилка завантаження фото: {e}")
 
         # 8. Зв'язок (використовуємо той самий sector_display, що й у рядку "Ділянка")
-        add_labeled("\nЗв'язок на кордоні підтримувався", ":")
+        add_labeled("Зв'язок на кордоні підтримувався", ":")
         comm_sector = f"з ПН, ОЧ {sector_display} " if sector_display != '___' else ''
         add_plain(f"{comm_sector}по р/ст. по радіомережі; відео-, фотодокументування здійснювалися штатною апаратурою БпАК.")
 
         # 9. Погода та стан техніки
-        add_labeled("\nПогода по маршруту", f": {data.get('weather', '___')}")
+        add_labeled("Погода по маршруту", f": {data.get('weather', '___')}")
         add_labeled("Готовність екіпажу та стан БпАК", ":")
         add_plain("БпАК справний, недоліків у роботі техніки не виявлено. Політ виконано в штатному режимі, відмов у системах керування та телеметрії не зафіксовано. Зауважень немає.")
 
         # 10. Підпис
-        add_labeled("\nДонесення склав", "")
+        add_labeled("Донесення склав", "")
         add_plain("Оператор:")
-        add_plain(data.get('commander_short', '___'))
+        
+        # Формуємо рядок підпису без крапок (тільки відступ)
+        sig_p = doc.add_paragraph()
+        sig_p.paragraph_format.space_after = Pt(0)
+        sig_p.paragraph_format.space_before = Pt(0)
+        # Додаємо табуляцію БЕЗ лідера
+        sig_p.paragraph_format.tab_stops.add_tab_stop(Cm(16.5), WD_TAB_ALIGNMENT.RIGHT)
+        
+        full_text = data.get('commander_short', '___')
+        if "  " in full_text:
+            parts = [p.strip() for p in full_text.split("  ") if p.strip()]
+            if len(parts) >= 2:
+                rank_part = parts[0]
+                name_part = parts[-1]
+                sig_p.add_run(f"{rank_part}\t{name_part}")
+            else:
+                sig_p.add_run(full_text.replace("  ", "\t"))
+        else:
+            sig_p.add_run(full_text.replace(" ", "\t", 1))
 
         # ── Збереження та відповідь ────────────────────────────────────────────
         from io import BytesIO
