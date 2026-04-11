@@ -185,7 +185,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="label-premium">Виберіть дату</label>
-                    <input type="date" id="searchDate" class="input-premium">
+                    <input type="date" id="searchDate" class="input-premium" onchange="generateReport()">
                 </div>
                 <div>
                     <label class="label-premium">Виберіть підрозділ</label>
@@ -215,27 +215,27 @@
 
                 <!-- Адресат -->
                 <div>
-                    <label class="label-premium">Адресат — Посада</label>
+                    <label class="label-premium">НВІПС/НВПС — Посада</label>
                     <input type="text" id="addresseePosition" oninput="triggerSave(); generateReport()"
-                        placeholder="Начальнику відділу організації повітряної розвідки..." class="input-premium">
+                        placeholder="Начальнику відділу прикордонної служби..." class="input-premium">
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="label-premium">Звання адресата</label>
+                        <label class="label-premium">Звання НВІПС/НВПС</label>
                         <input type="text" id="addresseeRank" oninput="triggerSave(); generateReport()"
                             placeholder="підполковнику" class="input-premium">
                     </div>
                     <div>
-                        <label class="label-premium">ПІБ адресата</label>
+                        <label class="label-premium">ПІБ НВІПС/НВПС</label>
                         <input type="text" id="addresseeName" oninput="triggerSave(); generateReport()"
-                            placeholder="Армену МКРТЧЯН" class="input-premium">
+                            placeholder="Степану Бандері" class="input-premium">
                     </div>
                 </div>
 
                 <!-- Дата / ділянка -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="label-premium">Дата вильотів (у звіті)</label>
+                        <label class="label-premium">Дата вильотів (у донесенні)</label>
                         <input type="text" id="reportDate" oninput="triggerSave(); generateReport()"
                             placeholder="10-11.09.2025" class="input-premium">
                     </div>
@@ -253,7 +253,7 @@
 
                 <!-- Район -->
                 <div>
-                    <label class="label-premium">Район виконання завдань (координати через кому)</label>
+                    <label class="label-premium">Район виконання завдань (тільки координати через кому)</label>
                     <input type="text" id="taskAreaCoords" oninput="triggerSave(); generateReport()"
                         placeholder="47.775833, 29.532253, 47.789235, 29.525558, ..." class="input-premium">
                 </div>
@@ -269,14 +269,14 @@
                 <div class="space-y-4">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="label-premium">Командир — Звання</label>
+                            <label class="label-premium">Оператор — Звання</label>
                             <input type="text" id="cmdRank" oninput="triggerSave(); generateReport()"
                                 placeholder="штаб-сержант" class="input-premium">
                         </div>
                         <div>
-                            <label class="label-premium">Командир — ПІБ</label>
+                            <label class="label-premium">Оператор — ПІБ</label>
                             <input type="text" id="cmdName" oninput="triggerSave(); generateReport()"
-                                placeholder="Олександр Гвоздіцький" class="input-premium">
+                                placeholder="Тарас Шевченко" class="input-premium">
                         </div>
                     </div>
 
@@ -562,7 +562,7 @@
                 },
                 compiled_by: {
                     label: 'Донесення склав',
-                    role: 'Командир зовнішнього екіпажу',
+                    role: 'Оператор',
                     rank: document.getElementById('cmdRank').value || '',
                     name: document.getElementById('cmdName').value || ''
                 }
@@ -611,7 +611,7 @@
 
             lines.push('Склад екіпажу:');
             const cc = r.crew_composition;
-            lines.push(`командир зовнішнього екіпажу: ${[cc.commander.rank, cc.commander.name].filter(Boolean).join(' ')}`);
+            lines.push(`оператор: ${[cc.commander.rank, cc.commander.name].filter(Boolean).join(' ')}`);
             if (cc.operators.length > 0) {
                 const opsStr = cc.operators.map(o => [o.rank, o.name].filter(Boolean).join(' ')).join(', ');
                 lines.push(`оператор: ${opsStr}`);
@@ -645,6 +645,20 @@
         }
 
         function generateReport() {
+            // Auto-fill route from flight data when the route field is empty
+            const date = document.getElementById('searchDate').value;
+            const unit = document.getElementById('searchUnit').value;
+            const currentOperator = localStorage.getItem('uav_op') || '';
+            const routeField = document.getElementById('reportRoute');
+            if (!routeField.value || routeField.value === 'Не вказано') {
+                const match = allFlights.find(f =>
+                    f.date === date &&
+                    f.unit?.trim() === unit?.trim() &&
+                    f.route && f.route !== 'Не вказано' &&
+                    (!currentOperator || f.operator?.trim().toLowerCase() === currentOperator.trim().toLowerCase())
+                );
+                if (match) routeField.value = match.route;
+            }
             const r = buildReportJson();
             document.getElementById('finalReport').value = renderReportText(r);
         }
