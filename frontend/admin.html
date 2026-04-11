@@ -718,11 +718,35 @@
             `;
         }
 
-        function exportPersonnelToExcel() {
+        async function exportPersonnelToExcel() {
             try {
-                if (allFlights.length === 0) return dbAPI.showNotification("Немає даних для експорту", "warning");
+                dbAPI.showNotification("Збираємо дані персоналу...", "info");
+
+                let allPersonnelData = [];
+                let offset = 0;
+                const batchSize = 1000;
+                let keepFetching = true;
+
+                while (keepFetching) {
+                    const res = await fetch(`/api/get_all_flights?limit=${batchSize}&offset=${offset}`);
+                    const chunk = await res.json();
+                    const dataChunk = chunk.data !== undefined ? chunk.data : chunk;
+
+                    if (!dataChunk || dataChunk.length === 0) {
+                        keepFetching = false;
+                    } else {
+                        allPersonnelData = allPersonnelData.concat(dataChunk);
+                        offset += batchSize;
+                        if (dataChunk.length < batchSize) keepFetching = false;
+                    }
+                }
+
+                if (allPersonnelData.length === 0) {
+                    return dbAPI.showNotification("Немає даних для експорту", "warning");
+                }
+
                 const unitMap = {};
-                allFlights.forEach(f => {
+                allPersonnelData.forEach(f => {
                     const u = f.unit || "Не вказано";
                     const op = f.operator || "Невідомий";
                     const dur = parseInt(f.duration) || 0;
@@ -739,17 +763,35 @@
                     ["Підрозділ", "Оператор", "К-ть польотів", "Загальний час (хв)"]
                 ];
 
-                Object.keys(unitMap).sort().forEach(u => {
-                    Object.keys(unitMap[u]).sort().forEach(op => {
-                        sheetData.push([u, op, unitMap[u][op].flights, unitMap[u][op].time]);
+                const unitOrder = [
+                    'впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"',
+                    'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"',
+                    'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"',
+                    'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"',
+                    'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"',
+                    'віпс "Кучурган"', 'віпс "Лиманське"', 'Група ВОПРтаПБпПС'
+                ];
+
+                const getUnitIndex = (name) => {
+                    const idx = unitOrder.findIndex(u => u.toLowerCase() === name.toLowerCase().trim());
+                    return idx === -1 ? 999 : idx;
+                };
+
+                Object.keys(unitMap)
+                    .sort((a, b) => getUnitIndex(a) - getUnitIndex(b))
+                    .forEach(u => {
+                        Object.keys(unitMap[u]).sort().forEach(op => {
+                            sheetData.push([u, op, unitMap[u][op].flights, unitMap[u][op].time]);
+                        });
                     });
-                });
 
                 const ws = XLSX.utils.aoa_to_sheet(sheetData);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "Personnel");
                 const safeDate = new Date().toISOString().split('T')[0];
                 XLSX.writeFile(wb, `Global_Personnel_Report_${safeDate}.xlsx`);
+                dbAPI.showNotification(`Експортовано дані по ${Object.keys(unitMap).length} підрозділах`, "success");
+
             } catch (e) {
                 dbAPI.showNotification("Помилка експорту: " + e.message, "error");
             }
