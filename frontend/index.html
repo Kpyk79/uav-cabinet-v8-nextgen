@@ -9,12 +9,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#16a34a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="/icon.png">
-    <link rel="icon" type="image/png" href="/icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" type="image/png" href="icon.png">
     <style>
         * {
             box-sizing: border-box;
@@ -355,6 +355,9 @@
                     <button onclick="nav('/dashboard')"
                         class="toolbar-btn bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20"
                         title="Журнал"><i class="fa-solid fa-journal-whills"></i></button>
+                    <button onclick="nav('/report')"
+                        class="toolbar-btn bg-indigo-500/10 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/20"
+                        title="Звіти"><i class="fa-solid fa-file-invoice"></i></button>
                     <button onclick="nav('/analytics')"
                         class="toolbar-btn bg-orange-500/10 text-orange-400 border-orange-500/20 hover:bg-orange-500/20"
                         title="Аналітика"><i class="fa-solid fa-chart-line"></i></button>
@@ -1167,7 +1170,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(reg => {
+                navigator.serviceWorker.register('sw.js').then(reg => {
                     console.log('SW Registered:', reg.scope);
                 }).catch(err => {
                     console.log('SW Registration Failed:', err);
