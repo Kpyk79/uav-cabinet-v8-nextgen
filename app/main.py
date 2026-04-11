@@ -901,7 +901,7 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
         fmt.left_indent = Cm(8)
         # 2. Додаємо точку табуляції на правому краї (наприклад, 16.5 см)
         # Це дозволить рознести "підполковнику" та "Армену МКРТЧЯН"
-        fmt.tab_stops.add_tab_stop(Cm(16.5), WD_TAB_ALIGNMENT.RIGHT)
+        fmt.tab_stops.add_tab_stop(Cm(15), WD_TAB_ALIGNMENT.RIGHT)
 
         # Важливо: прибираємо WD_ALIGN_PARAGRAPH.RIGHT, 
         # щоб текст всередині блоку був вирівняний по лівому краю
