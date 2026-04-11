@@ -279,19 +279,10 @@
                                 placeholder="Олександр Гвоздіцький" class="input-premium">
                         </div>
                     </div>
-                    <div>
-                        <label class="label-premium">Оператори (через кому: Звання ПІБ)</label>
-                        <input type="text" id="reportOps" oninput="triggerSave(); generateReport()"
-                            placeholder="сержант Сергій Полібза, Микола Нечитайло" class="input-premium">
-                    </div>
+
                 </div>
 
-                <!-- Зв'язок -->
-                <div>
-                    <label class="label-premium">Зв'язок на кордоні (підрозділи)</label>
-                    <input type="text" id="borderComm" oninput="triggerSave(); generateReport()"
-                        placeholder="з ПН, ОЧ віпс «Чорна» впс «Станіславка»" class="input-premium">
-                </div>
+
 
                 <!-- Метео -->
                 <div class="pt-4 border-t border-white/5">
@@ -452,10 +443,12 @@
             const rDate = document.getElementById('reportDate').value
                 || (date ? date.split('-').reverse().join('.') : '___');
 
+            const currentOperator = localStorage.getItem('uav_op') || '';
             const filtered = allFlights.filter(f =>
                 f.date === date &&
                 f.unit?.trim() === unit?.trim() &&
-                f.result !== 'Польоти не здійснювались'
+                f.result !== 'Польоти не здійснювались' &&
+                (!currentOperator || f.operator?.trim().toLowerCase() === currentOperator.trim().toLowerCase())
             );
 
             const statsMap = {};
@@ -482,14 +475,15 @@
             for (let i = 0; i + 1 < coordNums.length; i += 2)
                 coordPairs.push({ lat: coordNums[i], lon: coordNums[i + 1] });
 
-            const opsRaw = document.getElementById('reportOps').value.trim();
-            const operators = opsRaw ? opsRaw.split(',').map(s => {
-                const parts = s.trim().split(' ');
-                return { rank: parts[0] || '', name: parts.slice(1).join(' ') };
-            }) : [];
+            const operators = [];
 
-            const borderCommRaw = document.getElementById('borderComm').value.trim();
-            const borderUnits = borderCommRaw ? borderCommRaw.split(',').map(s => s.trim()) : [];
+            // Ділянка для рядка "Зв'язок" — береться з тих самих полів, що й "Ділянка"
+            const sectorVipsTrim = document.getElementById('sectorVips').value.trim();
+            const sectorVpsTrim = document.getElementById('sectorVps').value.trim();
+            const sectorParts = [];
+            if (sectorVipsTrim) sectorParts.push(`віпс ${sectorVipsTrim}`);
+            if (sectorVpsTrim) sectorParts.push(`впс ${sectorVpsTrim}`);
+            const sectorForComm = sectorParts.join(' ');
 
             const resType = document.getElementById('resultType').value;
             const resultDesc = resType === 'detained'
@@ -545,7 +539,7 @@
                 },
                 border_communication: {
                     label: "Зв'язок на кордоні підтримувався",
-                    with_units: borderUnits,
+                    sector: sectorForComm,
                     means: 'по р/ст. по радіомережі',
                     documentation: 'відео-, фотодокументування здійснювалися штатною апаратурою БпАК'
                 },
@@ -630,7 +624,8 @@
 
             const bc = r.border_communication;
             lines.push(`${bc.label}:`);
-            if (bc.with_units.length > 0) lines.push(`з ${bc.with_units.join(', ')} ${bc.means};`);
+            const commLine = bc.sector ? `з ПН, ОЧ ${bc.sector} ${bc.means};` : `${bc.means};`;
+            lines.push(commLine);
             if (bc.documentation) lines.push(`${bc.documentation}.`);
             lines.push('');
 
@@ -683,7 +678,8 @@
                 header,
                 title: r.title,
                 date: r.dates.value,
-                unit: r.sector.vips || unit,
+                unit,
+                vips: r.sector.vips || '',
                 sector_vps: r.sector.vps || '',
                 task_area_coords: r.task_area.coordinates.map(c => `${c.lat}, ${c.lon}`).join(', '),
                 flights: flightsData,
@@ -789,7 +785,7 @@
         const SAVE_FIELDS = [
             'addresseePosition', 'addresseeRank', 'addresseeName',
             'reportDate', 'sectorVips', 'sectorVps', 'taskAreaCoords',
-            'reportRoute', 'cmdRank', 'cmdName', 'reportOps', 'borderComm',
+            'reportRoute', 'cmdRank', 'cmdName',
             'weatherTemp', 'weatherVis', 'weatherWindDir', 'weatherWindSpeed'
         ];
 
