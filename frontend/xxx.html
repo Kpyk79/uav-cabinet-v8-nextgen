@@ -205,6 +205,26 @@
         #customRange.visible {
             display: flex;
         }
+
+        /* Staff Status Styles */
+        .staff-toggle {
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .staff-toggle:active {
+            transform: scale(0.95);
+        }
+        .badge-staff {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        .badge-nonstaff {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
     </style>
 </head>
 
@@ -478,11 +498,20 @@
             });
         }
 
-        function renderPersonnel(flights) {
+        async function renderPersonnel(flights) {
             const container = document.getElementById('personnelContainer');
             if (flights.length === 0) {
                 container.innerHTML = '<div class="text-center text-slate-700 py-10 uppercase font-black text-[9px] tracking-widest">ДАНІ ПРО ВИЛЬОТИ ВІДСУТНІ</div>';
                 return;
+            }
+
+            // Fetch personnel staff status
+            let staffData = [];
+            try {
+                const res = await fetch("/api/get_personnel");
+                staffData = await res.json();
+            } catch (e) {
+                console.error("Error fetching staff status:", e);
             }
 
             const unitMap = {};
@@ -501,19 +530,49 @@
             });
 
             container.innerHTML = '';
-            Object.entries(unitMap).forEach(([unitName, pilotsObj]) => {
-                const pilotsList = Object.entries(pilotsObj).sort((a, b) => b[1].flights - a[1].flights);
-                const pilotsHtml = pilotsList.map(([name, stats]) => `
+            const sortedUnits = Object.entries(unitMap).sort();
+            sortedUnits.forEach(([unitName, pilotsObj]) => {
+                // Merge with staffData to show people with 0 flights
+                const unitStaff = staffData.filter(p => p.unit === unitName);
+                unitStaff.forEach(p => {
+                    if (!pilotsObj[p.name]) pilotsObj[p.name] = { flights: 0, time: 0 };
+                });
+
+                const pilotsList = Object.entries(pilotsObj).sort((a, b) => {
+                    // Sort by flights, then by staff status
+                    if (b[1].flights !== a[1].flights) return b[1].flights - a[1].flights;
+                    const isAStaff = staffData.some(p => p.unit === unitName && p.name === a[0] && p.is_staff);
+                    const isBStaff = staffData.some(p => p.unit === unitName && p.name === b[0] && p.is_staff);
+                    return isBStaff - isAStaff;
+                });
+                const pilotsHtml = pilotsList.map(([name, stats]) => {
+                    const person = staffData.find(p => p.unit === unitName && p.name === name);
+                    const isStaff = person ? person.is_staff : false;
+                    const badgeClass = isStaff ? 'badge-staff' : 'badge-nonstaff';
+                    const badgeText = isStaff ? 'Штатний' : 'Позаштатний';
+
+                    // Safer way to pass strings with quotes/apostrophes
+                    const safeUnit = unitName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const safeName = name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+                    return `
                     <div class="info-card flex justify-between items-center text-[11px] mb-1.5">
                         <div class="flex items-center gap-3">
                             <i class="fa-solid fa-user-pilot-tie text-slate-600"></i>
-                            <span class="font-bold text-slate-200">${name}</span>
+                            <div class="flex flex-col">
+                                <span class="font-bold text-slate-200">${name}</span>
+                                <span onclick="toggleStaffStatus('${safeUnit}', '${safeName}', ${isStaff})" 
+                                      class="staff-toggle text-[7px] font-black uppercase px-1.5 py-0.5 rounded ${badgeClass} w-max mt-1 tracking-tighter transition-all hover:brightness-110">
+                                    ${badgeText}
+                                </span>
+                            </div>
                         </div>
                         <div class="flex gap-2">
                             <span class="text-slate-400 font-mono text-[9px] bg-slate-900 px-1.5 py-0.5 rounded border border-white/5 font-black">${stats.flights}</span>
                             <span class="text-blue-400 font-mono text-[9px] bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/10 font-black">${Math.floor(stats.time / 60)}г ${stats.time % 60}хв</span>
                         </div>
-                    </div>`).join('');
+                    </div>`;
+                }).join('');
 
                 const unitBlock = `
                     <div class="bg-white/[0.02] border border-white/[0.03] rounded-2xl p-5 hover:border-white/10 transition-all">
@@ -525,6 +584,31 @@
                     </div>`;
                 container.insertAdjacentHTML('beforeend', unitBlock);
             });
+        }
+
+        async function toggleStaffStatus(unit, name, currentStatus) {
+            try {
+                const response = await fetch("/api/update_personnel_status", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        unit: unit,
+                        name: name,
+                        is_staff: !currentStatus
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    // Re-render to show updated status
+                    renderPersonnel(allUnitFlights);
+                } else {
+                    alert(result.detail || "Помилка при оновленні статусу");
+                }
+            } catch (e) {
+                console.error("Error updating staff status:", e);
+                alert("Помилка зв'язку з сервером");
+            }
         }
 
         function renderStats() {

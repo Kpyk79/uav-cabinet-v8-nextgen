@@ -124,6 +124,12 @@
             box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.15);
         }
 
+        /* ── Debounce pending state ── */
+        .input-dark.pending {
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12) !important;
+        }
+
         .label-mini {
             font-size: 9px;
             text-transform: uppercase;
@@ -244,6 +250,29 @@
         ::-webkit-scrollbar-thumb {
             background: #1e293b;
             border-radius: 10px;
+        }
+
+        /* Staff Status Styles */
+        .staff-toggle {
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .staff-toggle:active {
+            transform: scale(0.95);
+        }
+
+        .badge-staff {
+            background: rgba(34, 197, 94, 0.15);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .badge-nonstaff {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
         }
     </style>
 </head>
@@ -374,6 +403,27 @@
         </div>
     </div>
 
+    <!-- Staff Stats Block -->
+    <div class="card p-7 mb-8 border-l-4 border-cyan-500/50 bg-cyan-500/[0.02] mx-4">
+        <div class="flex justify-between items-center cursor-pointer select-none group"
+            onclick="toggleSection('staffStatsContainer', 'staffStatsArrow')">
+            <h3 class="text-xs font-black uppercase text-cyan-400 flex items-center gap-3 tracking-[0.2em]">
+                <i class="fa-solid fa-chart-pie text-sm"></i> Штат операторів
+                <i id="staffStatsArrow"
+                    class="fa-solid fa-chevron-right text-slate-600 transition-transform duration-300 group-hover:text-cyan-400"></i>
+            </h3>
+            <div id="staffStatsSummary" class="flex items-center gap-3 pointer-events-none">
+                <!-- заповнюється JS -->
+            </div>
+        </div>
+        <div id="staffStatsContainer" class="hidden mt-6">
+            <div id="staffStatsContent"
+                class="text-center text-[10px] text-slate-500 uppercase font-black py-10 tracking-widest animate-pulse">
+                Зчитування даних...
+            </div>
+        </div>
+    </div>
+
     <!-- Problems Section -->
     <div class="card p-7 mb-8 border-l-4 border-red-500/50 bg-red-500/[0.02] mx-4">
         <div class="flex justify-between items-center cursor-pointer select-none group"
@@ -414,7 +464,7 @@
             <div>
                 <label class="label-mini">Початок</label>
                 <div class="dt-picker-wrap" onclick="this.querySelector('input').showPicker()">
-                    <input type="datetime-local" id="filterDateTimeFrom" oninput="filterData()">
+                    <input type="datetime-local" id="filterDateTimeFrom" oninput="scheduleFilter()">
                     <i class="fa-regular fa-calendar dt-cal-icon"></i>
                 </div>
             </div>
@@ -422,15 +472,19 @@
                 <div class="flex-1">
                     <label class="label-mini">Кінець</label>
                     <div class="dt-picker-wrap" onclick="this.querySelector('input').showPicker()">
-                        <input type="datetime-local" id="filterDateTimeTo" oninput="filterData()">
+                        <input type="datetime-local" id="filterDateTimeTo" oninput="scheduleFilter()">
                         <i class="fa-regular fa-calendar dt-cal-icon"></i>
                     </div>
                 </div>
             </div>
-            <div><label class="label-mini">Підрозділ</label><input type="text" id="filterUnit" oninput="filterData()"
-                    placeholder="..." class="input-dark"></div>
-            <div><label class="label-mini">Пілот</label><input type="text" id="filterOp" oninput="filterData()"
-                    placeholder="..." class="input-dark"></div>
+            <div>
+                <label class="label-mini">Підрозділ</label>
+                <input type="text" id="filterUnit" oninput="scheduleFilter(this)" placeholder="..." class="input-dark">
+            </div>
+            <div>
+                <label class="label-mini">Пілот</label>
+                <input type="text" id="filterOp" oninput="scheduleFilter(this)" placeholder="..." class="input-dark">
+            </div>
         </div>
     </div>
 
@@ -506,6 +560,43 @@
         let pageSize = 50;
         let filteredFlights = [];
 
+        // ── Debounce timer ──────────────────────────────────────────────────────
+        let filterTimer = null;
+
+        /**
+         * Нормалізація рядка для нечіткого пошуку підрозділів:
+         * - приводить до нижнього регістру
+         * - прибирає префікси впс / віпс (щоб "Степанівка" знайшла впс "Степанівка")
+         * - прибирає всі варіанти лапок
+         * - обрізає пробіли по краях
+         */
+        function normalizeSearch(str) {
+            return (str || '')
+                .toLowerCase()
+                .replace(/^(в[іи]?пс)\s*/i, '')   // прибираємо впс / віпс на початку
+                .replace(/["""«»''`]/g, '')         // прибираємо лапки
+                .trim();
+        }
+
+        /**
+         * Викликається з oninput на текстових полях фільтра.
+         * Підсвічує поле amber поки йде затримка,
+         * потім запускає фактичний запит через 350 мс після останнього символу.
+         */
+        function scheduleFilter(inputEl) {
+            // Підсвіт «очікування»
+            if (inputEl) inputEl.classList.add('pending');
+
+            clearTimeout(filterTimer);
+            filterTimer = setTimeout(() => {
+                // Знімаємо підсвіт з усіх текстових фільтрів
+                document.querySelectorAll('#filterUnit, #filterOp').forEach(el => {
+                    el.classList.remove('pending');
+                });
+                filterData();
+            }, 350);
+        }
+
         function fmtTime(t) { return t ? t.substring(0, 5) : '--:--'; }
 
         function nav(path) {
@@ -518,12 +609,19 @@
         async function loadAllFlights() {
             const dtFrom = document.getElementById('filterDateTimeFrom').value;
             const dtTo = document.getElementById('filterDateTimeTo').value;
-            const sUnit = document.getElementById('filterUnit').value;
-            const sOp = document.getElementById('filterOp').value;
+
+            // Нормалізуємо текстові поля перед відправкою на сервер
+            const sUnit = normalizeSearch(document.getElementById('filterUnit').value);
+            const sOp = normalizeSearch(document.getElementById('filterOp').value);
+
+            // Якщо активний будь-який фільтр — шукаємо по всій базі (без пагінації),
+            // щоб не пропустити записи на інших сторінках
+            const hasFilter = sUnit || sOp || dtFrom || dtTo;
 
             try {
-                // Побудова запиту з параметрами фільтрації та пагінації
-                let url = `/api/get_all_flights?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`;
+                let url = hasFilter
+                    ? `/api/get_all_flights?limit=999999&offset=0`
+                    : `/api/get_all_flights?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`;
                 if (sUnit) url += `&unit=${encodeURIComponent(sUnit)}`;
                 if (sOp) url += `&operator=${encodeURIComponent(sOp)}`;
                 if (dtFrom) url += `&from_dt=${encodeURIComponent(dtFrom)}`;
@@ -532,23 +630,16 @@
                 const res = await fetch(url);
                 const result = await res.json();
 
-                // Якщо сервер повернув об'єкт з data та total (новий API)
                 if (result.data !== undefined) {
                     filteredFlights = result.data;
                     flightsTotalCount = result.total;
                 } else {
-                    // Fallback для звичайного списку (якщо ліміт не спрацював як очікувалось)
                     filteredFlights = result;
                     flightsTotalCount = result.length;
                 }
 
                 renderTableSlice();
-
-                // Оновлюємо персонал лише якщо це перший запуск або пошук
-                // (Для швидкості можна робити це окремим запитом або рідше)
-                //if (allFlights.length === 0 || sUnit || sOp || dtFrom || dtTo) {
                 renderPersonnel(filteredFlights);
-                //}
             } catch (e) { console.error("Load flights error:", e); }
         }
 
@@ -829,11 +920,19 @@
             }
         }
 
-        function renderPersonnel(flights) {
+        async function renderPersonnel(flights) {
             const container = document.getElementById('personnelContainer');
             if (flights.length === 0) return;
 
-            // 1. Збираємо статистику по підрозділах і пілотах
+            // Fetch personnel staff status
+            let staffData = [];
+            try {
+                const res = await fetch("/api/get_personnel");
+                staffData = await res.json();
+            } catch (e) {
+                console.error("Error fetching staff status:", e);
+            }
+
             const unitMap = {};
             flights.forEach(f => {
                 const u = f.unit || "Не вказано";
@@ -851,7 +950,6 @@
 
             container.innerHTML = '';
 
-            // 2. ЗАДАНА ПОСЛІДОВНІСТЬ ПІДРОЗДІЛІВ
             const unitOrder = [
                 'впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"',
                 'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"',
@@ -861,46 +959,73 @@
                 'віпс "Кучурган"', 'віпс "Лиманське"', 'Група ВОПРтаПБпПС'
             ];
 
-            // Допоміжна функція: шукає індекс підрозділу в нашому списку (ігноруючи регістр літер)
             const getUnitIndex = (name) => {
                 const lowerName = name.toLowerCase().trim();
                 const index = unitOrder.findIndex(u => u.toLowerCase() === lowerName);
-                // Якщо підрозділ з бази не знайдено в нашому масиві, ставимо його в самий кінець (999)
                 return index === -1 ? 999 : index;
             };
 
-            // 3. Сортуємо підрозділи за заданим порядком
             const sortedUnits = Object.entries(unitMap).sort((a, b) => getUnitIndex(a[0]) - getUnitIndex(b[0]));
 
-            // 4. Відмальовуємо
-            sortedUnits.forEach(([unitName, pilotsObj]) => {
-                // Пілотів всередині підрозділу сортуємо за кількістю вильотів (від найбільшого)
-                const pilotsList = Object.entries(pilotsObj).sort((a, b) => b[1].flights - a[1].flights);
+            // Додаємо підрозділи зі staffData, яких немає серед польотів
+            const flightUnitNames = new Set(Object.keys(unitMap));
+            staffData.forEach(p => {
+                if (p.unit && !flightUnitNames.has(p.unit)) {
+                    unitMap[p.unit] = unitMap[p.unit] || {};
+                }
+            });
+            const allSortedUnits = Object.entries(unitMap).sort((a, b) => getUnitIndex(a[0]) - getUnitIndex(b[0]));
 
-                // Новий дизайн карток пілотів
-                const pilotsHtml = pilotsList.map(([name, stats]) => `
+            allSortedUnits.forEach(([unitName, pilotsObj]) => {
+                // Merge with staffData to show people with 0 flights
+                const unitStaff = staffData.filter(p => p.unit === unitName);
+                unitStaff.forEach(p => {
+                    if (!pilotsObj[p.name]) pilotsObj[p.name] = { flights: 0, time: 0 };
+                });
+
+                const pilotsList = Object.entries(pilotsObj).sort((a, b) => {
+                    // Sort by flights, then by staff status
+                    if (b[1].flights !== a[1].flights) return b[1].flights - a[1].flights;
+                    const isAStaff = staffData.some(p => p.unit === unitName && p.name === a[0] && p.is_staff);
+                    const isBStaff = staffData.some(p => p.unit === unitName && p.name === b[0] && p.is_staff);
+                    return isBStaff - isAStaff;
+                });
+
+                const pilotsHtml = pilotsList.map(([name, stats]) => {
+                    const person = staffData.find(p => p.unit === unitName && p.name === name);
+                    const isStaff = person ? person.is_staff : false;
+                    const badgeClass = isStaff ? 'badge-staff' : 'badge-nonstaff';
+                    const badgeText = isStaff ? 'Штатний' : 'Позаштатний';
+
+                    return `
             <div class="info-card flex flex-col gap-2 p-2.5 mb-2">
-                <div class="flex items-center gap-2 overflow-hidden w-full pl-1">
-                    <i class="fa-solid fa-user-pilot-tie text-slate-500 text-[11px] flex-shrink-0"></i>
-                    <span class="font-bold text-slate-200 truncate text-[12px]">${name}</span>
+                <div class="flex flex-col gap-1 w-full pl-1">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <i class="fa-solid fa-user-pilot-tie text-slate-500 text-[11px] flex-shrink-0"></i>
+                        <span class="font-bold text-slate-200 truncate text-[12px]">${name}</span>
+                    </div>
+                    <span class="staff-toggle self-start text-[7px] font-black uppercase px-1.5 py-0.5 rounded ${badgeClass} tracking-tighter transition-all hover:brightness-110"
+                          data-unit="${unitName.replace(/"/g, '&quot;')}"
+                          data-name="${name.replace(/"/g, '&quot;')}"
+                          data-is-staff="${isStaff}"
+                          onclick="toggleStaffStatus(this)">
+                        ${badgeText}
+                    </span>
                 </div>
-                
                 <div class="flex justify-between items-center bg-slate-900/80 rounded-lg py-1.5 px-4 border border-white/5">
                     <div class="flex items-baseline gap-1.5" title="Кількість вильотів">
                         <span class="text-slate-300 font-mono text-[11px] font-black">${stats.flights}</span>
                         <span class="text-slate-500 text-[8px] font-bold tracking-widest">вил</span>
                     </div>
-                    
                     <div class="h-3 w-[1px] bg-white/10"></div>
-                    
                     <div class="flex items-baseline gap-1.5" title="Загальний наліт">
                         <span class="text-blue-400 font-mono text-[11px] font-black">${Math.floor(stats.time / 60)}:${String(stats.time % 60).padStart(2, '0')}</span>
                         <span class="text-blue-600 text-[8px] font-bold tracking-widest">год</span>
                     </div>
                 </div>
-            </div>`).join('');
+            </div>`;
+                }).join('');
 
-                // Блок самого підрозділу
                 const unitBlock = `
             <div class="bg-white/[0.02] border border-white/[0.03] rounded-2xl p-4 hover:border-white/10 transition-all">
                 <div class="flex justify-between items-center mb-3 pb-2 border-b border-white/5">
@@ -912,6 +1037,50 @@
 
                 container.insertAdjacentHTML('beforeend', unitBlock);
             });
+        }
+
+        async function toggleStaffStatus(el) {
+            const unit = el.dataset.unit;
+            const name = el.dataset.name;
+            const currentStatus = el.dataset.isStaff === 'true';
+            const newStatus = !currentStatus;
+
+            // Оптимістично оновлюємо UI одразу
+            el.dataset.isStaff = String(newStatus);
+            el.textContent = newStatus ? 'Штатний' : 'Позаштатний';
+            el.className = el.className.replace(/badge-staff|badge-nonstaff/g, '').trim()
+                + (newStatus ? ' badge-staff' : ' badge-nonstaff');
+
+            try {
+                const response = await fetch("/api/update_personnel_status", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ unit, name, is_staff: newStatus })
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    // Відкатуємо UI назад при помилці
+                    el.dataset.isStaff = String(currentStatus);
+                    el.textContent = currentStatus ? 'Штатний' : 'Позаштатний';
+                    el.className = el.className.replace(/badge-staff|badge-nonstaff/g, '').trim()
+                        + (currentStatus ? ' badge-staff' : ' badge-nonstaff');
+                    dbAPI.showNotification(result.detail || "Помилка при оновленні статусу", "error");
+                } else {
+                    dbAPI.showNotification(
+                        `${name}: ${newStatus ? '✅ Штатний' : '🔴 Позаштатний'}`, "success"
+                    );
+                    loadStaffStats();
+                }
+            } catch (e) {
+                console.error("Error updating staff status:", e);
+                // Відкатуємо UI
+                el.dataset.isStaff = String(currentStatus);
+                el.textContent = currentStatus ? 'Штатний' : 'Позаштатний';
+                el.className = el.className.replace(/badge-staff|badge-nonstaff/g, '').trim()
+                    + (currentStatus ? ' badge-staff' : ' badge-nonstaff');
+                dbAPI.showNotification("Помилка зв'язку з сервером", "error");
+            }
         }
 
         async function loadAdminAnnouncement() {
@@ -957,7 +1126,6 @@
                 });
                 if (res.ok) {
                     const json = await res.json();
-                    // Оновлюємо локально в поточній сторінці
                     const flight = filteredFlights.find(f => f.id == id);
                     if (flight) {
                         flight.result = newResult;
@@ -974,15 +1142,20 @@
             }
         }
 
+        // Викликається безпосередньо (після debounce або при скиданні фільтрів)
         function filterData() {
             currentPage = 1;
             loadAllFlights();
         }
 
         function resetFilters() {
+            clearTimeout(filterTimer);
             document.getElementById('filterDateTimeFrom').value = '';
             document.getElementById('filterDateTimeTo').value = '';
-            document.querySelectorAll('.input-dark').forEach(i => i.value = '');
+            document.querySelectorAll('.input-dark').forEach(i => {
+                i.value = '';
+                i.classList.remove('pending');
+            });
             currentPage = 1;
             loadAllFlights();
         }
@@ -1014,7 +1187,6 @@
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, 'Фільтр');
 
-                // Build descriptive filename
                 const parts = ['Лог_Адмін'];
                 if (dtFrom) parts.push('від_' + dtFrom.replace('T', '_').substring(0, 16));
                 if (dtTo) parts.push('до_' + dtTo.replace('T', '_').substring(0, 16));
@@ -1054,7 +1226,6 @@
             const noData = document.getElementById('noDataMessage');
             const pagination = document.getElementById('paginationControls');
 
-            // Update pagination display
             const totalPages = Math.ceil(flightsTotalCount / pageSize) || 1;
 
             document.getElementById('totalRecords').innerText = flightsTotalCount;
@@ -1088,7 +1259,7 @@
                     <td class="font-black text-blue-400 font-mono">${f.duration}<span class="text-[9px] text-slate-600 lowercase ml-1">хв</span></td>
                     <td class="font-mono text-[11px] font-bold text-purple-400">${f.distance ? f.distance + '<span class="text-[9px] text-slate-600 ml-1">м</span>' : '<span class="text-slate-700">---</span>'}</td>
                     <td>
-                        <select onchange="updateFlightResult(${f.id}, this.value)" 
+                        <select onchange="updateFlightResult(${f.id}, this.value)"
                             class="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer hover:text-white transition-colors ${f.result === 'Затримання' ? 'text-red-500' : 'text-slate-500'}">
                             <option value="Без ознак порушення" ${f.result === 'Без ознак порушення' ? 'selected' : ''} class="bg-slate-900 text-slate-300">БЕЗ ОЗНАК</option>
                             <option value="Затримання" ${f.result === 'Затримання' ? 'selected' : ''} class="bg-slate-900 text-red-500">ЗАТРИМАННЯ</option>
@@ -1110,26 +1281,20 @@
 
                 let allExportData = [];
                 let offset = 0;
-                const batchSize = 1000; // Сервер віддає по 1000, тому просимо саме стільки
+                const batchSize = 1000;
                 let keepFetching = true;
 
-                // Цикл завантаження: тягнемо по 1000 записів, поки вони не закінчаться
                 while (keepFetching) {
                     const res = await fetch(`/api/get_all_flights?limit=${batchSize}&offset=${offset}`);
                     let chunk = await res.json();
-
                     let dataChunk = chunk.data !== undefined ? chunk.data : chunk;
 
                     if (!dataChunk || dataChunk.length === 0) {
-                        keepFetching = false; // Дані закінчилися
+                        keepFetching = false;
                     } else {
-                        allExportData = allExportData.concat(dataChunk); // Додаємо шматок до загального масиву
-                        offset += batchSize; // Зсуваємось на наступну тисячу
-
-                        // Якщо прийшло менше ніж 1000, значить це остання сторінка
-                        if (dataChunk.length < batchSize) {
-                            keepFetching = false;
-                        }
+                        allExportData = allExportData.concat(dataChunk);
+                        offset += batchSize;
+                        if (dataChunk.length < batchSize) keepFetching = false;
                     }
                 }
 
@@ -1137,7 +1302,6 @@
                     return dbAPI.showNotification("База порожня!", "warning");
                 }
 
-                // Формуємо Excel файл
                 const sheetData = [
                     ["ЖУРНАЛ ОБЛІКУ ПОЛЬОТІВ (ГЛОБАЛЬНИЙ ПОТІК)"], [],
                     ["№", "Дата", "Модель БпЛА", "Ділянка", "Зліт", "Посадка", "Наліт хв", "Підрозділ", "Оператор", "АКБ ID", "Цикли"]
@@ -1167,7 +1331,6 @@
             const container = document.getElementById('personnelContainer');
             const arrow = document.getElementById('personnelArrow');
 
-            // Перемикаємо видимість
             container.classList.toggle('hidden');
 
             if (container.classList.contains('hidden')) {
@@ -1175,36 +1338,28 @@
             } else {
                 arrow.classList.add('rotate-90');
 
-                // Показуємо анімацію завантаження
                 container.innerHTML = '<div class="text-center text-[10px] text-slate-500 uppercase font-black py-10 col-span-2 tracking-widest animate-pulse">Зчитування даних...</div>';
 
                 try {
                     let allPersonnelData = [];
                     let offset = 0;
-                    const batchSize = 1000; // Серверний ліміт
+                    const batchSize = 1000;
                     let keepFetching = true;
 
-                    // Цикл: тягнемо дані шматками по 1000, поки вони не закінчаться
                     while (keepFetching) {
                         const res = await fetch(`/api/get_all_flights?limit=${batchSize}&offset=${offset}`);
                         let chunk = await res.json();
-
                         let dataChunk = chunk.data !== undefined ? chunk.data : chunk;
 
                         if (!dataChunk || dataChunk.length === 0) {
-                            keepFetching = false; // Дані закінчилися
+                            keepFetching = false;
                         } else {
-                            allPersonnelData = allPersonnelData.concat(dataChunk); // Склеюємо масиви
-                            offset += batchSize; // Зсуваємось для наступного запиту
-
-                            // Якщо прийшло менше ніж 1000, це остання порція
-                            if (dataChunk.length < batchSize) {
-                                keepFetching = false;
-                            }
+                            allPersonnelData = allPersonnelData.concat(dataChunk);
+                            offset += batchSize;
+                            if (dataChunk.length < batchSize) keepFetching = false;
                         }
                     }
 
-                    // Відправляємо ПОВНИЙ масив даних у функцію малювання
                     renderPersonnel(allPersonnelData);
 
                 } catch (e) {
@@ -1214,10 +1369,109 @@
             }
         }
 
+        async function loadStaffStats() {
+            const unitOrder = [
+                'впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"',
+                'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"',
+                'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"',
+                'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"',
+                'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"',
+                'віпс "Кучурган"', 'віпс "Лиманське"', 'Група ВОПРтаПБпПС', 'ВЗФБпАКтаЗПБпС', 'НАВЧАННЯ'
+            ];
+            const getUnitIndex = name => {
+                const idx = unitOrder.findIndex(u => u.toLowerCase() === name.toLowerCase().trim());
+                return idx === -1 ? 999 : idx;
+            };
+
+            try {
+                const res = await fetch('/api/get_personnel');
+                const data = await res.json();
+
+                // Групуємо по підрозділах
+                const unitMap = {};
+                data.forEach(p => {
+                    const u = p.unit || 'Не вказано';
+                    if (!unitMap[u]) unitMap[u] = { staff: 0, nonstaff: 0 };
+                    if (p.is_staff) unitMap[u].staff++;
+                    else unitMap[u].nonstaff++;
+                });
+
+                const totalAll = data.length;
+                const totalStaff = data.filter(p => p.is_staff).length;
+                const totalNon = totalAll - totalStaff;
+
+                // Оновлюємо summary-рядок у заголовку
+                document.getElementById('staffStatsSummary').innerHTML = `
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">Всього:</span>
+                    <span class="bg-slate-700/60 text-slate-200 px-2 py-0.5 rounded text-[9px] font-black border border-white/5">${totalAll}</span>
+                    <span class="bg-green-500/10 text-green-400 px-2 py-0.5 rounded text-[9px] font-black border border-green-500/20">${totalStaff} шт.</span>
+                    <span class="bg-red-500/10 text-red-400 px-2 py-0.5 rounded text-[9px] font-black border border-red-500/20">${totalNon} поз.</span>
+                `;
+
+                const sortedUnits = Object.entries(unitMap).sort((a, b) => getUnitIndex(a[0]) - getUnitIndex(b[0]));
+
+                const rows = sortedUnits.map(([unit, counts]) => {
+                    const total = counts.staff + counts.nonstaff;
+                    const staffPct = total > 0 ? Math.round((counts.staff / total) * 100) : 0;
+                    return `
+                    <div class="flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0 group hover:bg-white/[0.02] rounded-lg px-2 transition-all">
+                        <div class="flex-1 min-w-0">
+                            <span class="text-[11px] font-bold text-slate-300 truncate block group-hover:text-white transition-colors" title="${unit}">${unit}</span>
+                            <div class="mt-1.5 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-green-500 to-cyan-500 rounded-full transition-all duration-500" style="width:${staffPct}%"></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="text-[9px] font-black text-slate-500 w-14 text-right">
+                                ${total} <span class="text-slate-600">оп.</span>
+                            </span>
+                            <span class="bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded text-[9px] font-black w-14 text-center">${counts.staff} шт.</span>
+                            <span class="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[9px] font-black w-16 text-center">${counts.nonstaff} поз.</span>
+                        </div>
+                    </div>`;
+                }).join('');
+
+                document.getElementById('staffStatsContent').innerHTML = `
+                    <!-- Загальна статистика -->
+                    <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="bg-slate-900/60 border border-white/5 rounded-2xl p-4 text-center">
+                            <div class="text-2xl font-black text-slate-200 mb-1">${totalAll}</div>
+                            <div class="text-[9px] font-black uppercase text-slate-500 tracking-widest">Всього операторів</div>
+                        </div>
+                        <div class="bg-green-500/[0.06] border border-green-500/20 rounded-2xl p-4 text-center">
+                            <div class="text-2xl font-black text-green-400 mb-1">${totalStaff}</div>
+                            <div class="text-[9px] font-black uppercase text-green-600 tracking-widest">Штатних</div>
+                        </div>
+                        <div class="bg-red-500/[0.06] border border-red-500/20 rounded-2xl p-4 text-center">
+                            <div class="text-2xl font-black text-red-400 mb-1">${totalNon}</div>
+                            <div class="text-[9px] font-black uppercase text-red-600 tracking-widest">Позаштатних</div>
+                        </div>
+                    </div>
+                    <!-- По підрозділах -->
+                    <div class="bg-slate-900/40 border border-white/5 rounded-2xl p-4">
+                        <div class="flex items-center justify-between mb-3 pb-2 border-b border-white/5">
+                            <span class="text-[9px] font-black uppercase text-slate-500 tracking-widest">Підрозділ</span>
+                            <div class="flex gap-2">
+                                <span class="text-[9px] font-black uppercase text-slate-600 tracking-widest w-14 text-right">Всього</span>
+                                <span class="text-[9px] font-black uppercase text-green-700 tracking-widest w-14 text-center">Штат.</span>
+                                <span class="text-[9px] font-black uppercase text-red-700 tracking-widest w-16 text-center">Позаш.</span>
+                            </div>
+                        </div>
+                        ${rows}
+                    </div>
+                `;
+            } catch (e) {
+                console.error('Staff stats error:', e);
+                document.getElementById('staffStatsContent').innerHTML =
+                    '<div class="text-red-500/70 text-[10px] uppercase font-black py-6 text-center tracking-widest">Помилка завантаження даних</div>';
+            }
+        }
+
         window.onload = async () => {
             loadFleet();
             await loadAllFlights();
             await loadAdminAnnouncement();
+            await loadStaffStats();
         };
     </script>
     <script>
