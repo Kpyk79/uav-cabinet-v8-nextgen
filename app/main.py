@@ -254,6 +254,11 @@ class FlightResultUpdate(BaseModel):
     id: int
     result: str
 
+class StaffStatusUpdate(BaseModel):
+    unit: str
+    name: str
+    is_staff: bool
+
 # --- HELPERS ---
 
 def calculate_duration(t1, t2):
@@ -453,6 +458,106 @@ async def check_auth(data: AuthCheck):
         print(f"Auth error: {e}")
         # Якщо таблиці не існує - можливо, треба повідомити користувача або створити її
         raise HTTPException(status_code=500, detail="Помилка авторизації (можливо, відсутня таблиця operator_passwords)")
+
+@app.get("/api/get_personnel")
+async def get_personnel(unit: Optional[str] = None):
+    """Отримує список персоналу з їх статусом штатності."""
+    try:
+        query = supabase.table("operator_passwords").select("unit, name, is_staff")
+        if unit:
+            query = query.eq("unit", unit)
+        
+        res = query.execute()
+        return res.data
+    except Exception as e:
+        print(f"Error fetching personnel: {e}")
+        # Якщо колонки is_staff ще немає, повертаємо дані без неї
+        try:
+            query = supabase.table("operator_passwords").select("unit, name")
+            if unit:
+                query = query.eq("unit", unit)
+            res = query.execute()
+            for item in res.data:
+                item["is_staff"] = False
+            return res.data
+        except:
+            raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/update_personnel_status")
+async def update_personnel_status(data: StaffStatusUpdate):
+    """Оновлює статус штатності оператора з урахуванням лімітів та видаляє дублікати."""
+    clean_name = data.name.strip()
+    clean_unit = data.unit.strip()
+    
+    print(f"DEBUG: START update_personnel_status: Unit='{clean_unit}', Name='{clean_name}', to_staff={data.is_staff}")
+    try:
+        # 1. Знаходимо ВСІ записи для цього оператора ПЕРЕД змінами
+        res_existing = supabase.table("operator_passwords") \
+            .select("*") \
+            .eq("unit", clean_unit) \
+            .eq("name", clean_name) \
+            .execute()
+        
+        existing_records = res_existing.data or []
+        print(f"DEBUG: Found {len(existing_records)} existing records for this operator.")
+        
+        is_already_staff = any(r.get("is_staff") is True for r in existing_records)
+        
+        # 2. Перевірка ліміту
+        unit_lower = clean_unit.lower()
+        limit = 3
+        if "віпс" in unit_lower:
+            limit = 2
+        
+        if data.is_staff:
+            res_all_staff = supabase.table("operator_passwords") \
+                .select("name, is_staff") \
+                .eq("unit", clean_unit) \
+                .eq("is_staff", True) \
+                .execute()
+            
+            # Рахуємо унікальних штатних людей (крім поточного)
+            other_staff_names = set(r.get("name") for r in res_all_staff.data if r.get("name") != clean_name)
+            current_unique_staff_count = len(other_staff_names)
+            
+            if not is_already_staff and current_unique_staff_count >= limit:
+                unit_type = "ВІПС" if limit == 2 else "ВПС"
+                print(f"DEBUG: LIMIT REACHED. Staff already: {list(other_staff_names)}")
+                raise HTTPException(status_code=400, detail=f"Ліміт штатних операторів для {unit_type} вичерпано ({limit} чол.)")
+
+        # 3. ВИКОНУЄМО ОНОВЛЕННЯ
+        if not existing_records:
+            print("DEBUG: Inserting new record (no existing found)")
+            ins_res = supabase.table("operator_passwords").insert({
+                "unit": clean_unit,
+                "name": clean_name,
+                "is_staff": data.is_staff,
+                "password": "---"
+            }).execute()
+            print(f"DEBUG: Inserted: {ins_res.data}")
+        else:
+            # Оновлюємо ВСІ знайдені записи (на випадок дублів)
+            upd_res = supabase.table("operator_passwords") \
+                .update({"is_staff": data.is_staff}) \
+                .eq("unit", clean_unit) \
+                .eq("name", clean_name) \
+                .execute()
+            print(f"DEBUG: Updated matches: {len(upd_res.data)} records.")
+            
+            # Якщо дублів більше одного — видалимо зайві, щоб навести лад
+            if len(existing_records) > 1:
+                first_id = existing_records[0]["id"]
+                other_ids = [r["id"] for r in existing_records[1:]]
+                print(f"DEBUG: Cleaning up {len(other_ids)} duplicates...")
+                for oid in other_ids:
+                    supabase.table("operator_passwords").delete().eq("id", oid).execute()
+
+        return {"status": "ok", "is_staff": data.is_staff}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"CRITICAL ERROR in update_personnel_status: {e}")
+        raise HTTPException(status_code=500, detail=f"Помилка оновлення статусу: {str(e)}")
 
 @app.delete("/api/delete_drone/{id}")
 async def delete_drone(id: int):
@@ -1189,7 +1294,7 @@ async def weather_analysis(req: WeatherAnalysisRequest):
             "DJI Matrice 300": "Макс. вітростійкість: 15 м/с. Захист: IP45. Мін. темп.: -20°C.",
             "Autel EVO Max 4T": "Макс. вітростійкість: 15 м/с. Захист: IP43. Мін. темп.: -20°C.",
         }
-        uav_spec_info = uav_specs.get(req.uav_model, f"Модель: {req.uav_model} (тТХ не відомі)")
+        uav_spec_info = uav_specs.get(req.uav_model, f"Модель: {req.uav_model} (ТТХ не відомі)")
 
         system_prompt = (
             "Ти — експерт з авіаційної метеорології для БпЛА. "
