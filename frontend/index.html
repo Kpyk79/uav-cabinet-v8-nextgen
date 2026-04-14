@@ -209,6 +209,10 @@
             background: linear-gradient(90deg, transparent, #ef4444, transparent);
         }
 
+        .time-pill.duration::after {
+            background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+        }
+
         /* ── Animations ── */
         @keyframes popIn {
             0% {
@@ -403,14 +407,22 @@
                         oninput="saveState(this.id)">
                 </div>
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-3 gap-3">
                     <div class="time-pill takeoff">
                         <label class="label-style text-green-400 flex items-center justify-center gap-1.5">
                             <i class="fa-solid fa-plane-departure text-[9px]"></i> Зліт
                         </label>
                         <input type="tel" id="t1" placeholder="09:30"
                             class="p-1.5 text-xl font-mono text-green-400 text-center !bg-transparent !border-none"
-                            oninput="saveState(this.id)">
+                            oninput="saveState(this.id); calculateLanding()">
+                    </div>
+                    <div class="time-pill duration">
+                        <label class="label-style text-blue-400 flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-clock text-[9px]"></i> ТРИВ.
+                        </label>
+                        <input type="tel" id="duration" placeholder="45"
+                            class="p-1.5 text-xl font-mono text-blue-400 text-center !bg-transparent !border-none"
+                            oninput="saveState(this.id); calculateLanding()">
                     </div>
                     <div class="time-pill landing">
                         <label class="label-style text-red-400 flex items-center justify-center gap-1.5">
@@ -656,7 +668,7 @@
         }
 
         function restoreFields() {
-            const ids = ['date', 's1', 's2', 'drone', 'route', 't1', 't2', 'dist', 'akb', 'cyc', 'weather', 'mode', 'result'];
+            const ids = ['date', 's1', 's2', 'drone', 'route', 't1', 'duration', 't2', 'dist', 'akb', 'cyc', 'weather', 'mode', 'result'];
             ids.forEach(id => {
                 const val = localStorage.getItem('saved_' + id);
                 const el = document.getElementById(id);
@@ -690,13 +702,39 @@
             return val;
         }
 
+        function calculateLanding() {
+            const t1 = document.getElementById('t1').value;
+            const dur = document.getElementById('duration').value;
+            if (!t1 || !dur) return;
+
+            let clean = t1.replace(/\D/g, '');
+            if (clean.length === 3) clean = '0' + clean;
+            if (clean.length === 4) {
+                let h = parseInt(clean.slice(0, 2)), m = parseInt(clean.slice(2, 4));
+                if (h < 24 && m < 60) {
+                    let totalMinutes = h * 60 + m + parseInt(dur);
+                    let h2 = Math.floor((totalMinutes / 60) % 24);
+                    let m2 = totalMinutes % 60;
+                    const res = String(h2).padStart(2, '0') + ":" + String(m2).padStart(2, '0');
+                    document.getElementById('t2').value = res;
+                    saveState('t2');
+                }
+            }
+        }
+
         const timeIds = ['t1', 't2', 's1', 's2'];
         timeIds.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('blur', function () {
                 this.value = formatTimeInput(this.value);
                 saveState(id);
+                if (id === 't1') calculateLanding();
             });
+        });
+
+        document.getElementById('duration').addEventListener('blur', function() {
+            saveState('duration');
+            calculateLanding();
         });
 
         window.onload = async function () {
@@ -818,6 +856,7 @@
             document.getElementById('drone').value = flight.drone;
             document.getElementById('route').value = flight.route;
             document.getElementById('t1').value = flight.takeoff;
+            document.getElementById('duration').value = flight.duration || "";
             document.getElementById('t2').value = flight.landing;
             document.getElementById('dist').value = flight.distance;
             document.getElementById('akb').value = flight.battery_id;
@@ -851,6 +890,7 @@
 
         function clearForm() {
             document.getElementById('t1').value = "";
+            document.getElementById('duration').value = "";
             document.getElementById('t2').value = "";
             document.getElementById('dist').value = "";
             document.getElementById('akb').value = "";
@@ -916,6 +956,7 @@
                 draft.push(flightData);
                 clearForm();
                 localStorage.removeItem('saved_t1');
+                localStorage.removeItem('saved_duration');
                 localStorage.removeItem('saved_t2');
                 localStorage.removeItem('saved_dist');
                 localStorage.removeItem('saved_comment');
