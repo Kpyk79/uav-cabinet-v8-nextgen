@@ -62,6 +62,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD") # Default for safety, override in Render/Env
 
 URL = os.environ.get("SUPABASE_URL")
 KEY = os.environ.get("SUPABASE_KEY")
@@ -258,6 +259,9 @@ class StaffStatusUpdate(BaseModel):
     unit: str
     name: str
     is_staff: bool
+
+class AdminAuth(BaseModel):
+    password: str
 
 # --- HELPERS ---
 
@@ -458,6 +462,14 @@ async def check_auth(data: AuthCheck):
         print(f"Auth error: {e}")
         # Якщо таблиці не існує - можливо, треба повідомити користувача або створити її
         raise HTTPException(status_code=500, detail="Помилка авторизації (можливо, відсутня таблиця operator_passwords)")
+
+@app.post("/api/admin/verify")
+async def verify_admin(data: AdminAuth):
+    """Перевіряє адміністративний пароль."""
+    if data.password == ADMIN_PASSWORD:
+        return {"status": "ok", "token": "admin_access_granted_v1"}
+    else:
+        raise HTTPException(status_code=401, detail="Невірний пароль адміністратора")
 
 @app.get("/api/get_personnel")
 async def get_personnel(unit: Optional[str] = None):
