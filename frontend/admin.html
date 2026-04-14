@@ -412,9 +412,7 @@
                 <i id="staffStatsArrow"
                     class="fa-solid fa-chevron-right text-slate-600 transition-transform duration-300 group-hover:text-cyan-400"></i>
             </h3>
-            <div id="staffStatsSummary" class="flex items-center gap-3 pointer-events-none">
-                <!-- заповнюється JS -->
-            </div>
+
         </div>
         <div id="staffStatsContainer" class="hidden mt-6">
             <div id="staffStatsContent"
@@ -1400,13 +1398,7 @@
                 const totalStaff = data.filter(p => p.is_staff).length;
                 const totalNon = totalAll - totalStaff;
 
-                // Оновлюємо summary-рядок у заголовку
-                document.getElementById('staffStatsSummary').innerHTML = `
-                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">Всього:</span>
-                    <span class="bg-slate-700/60 text-slate-200 px-2 py-0.5 rounded text-[9px] font-black border border-white/5">${totalAll}</span>
-                    <span class="bg-green-500/10 text-green-400 px-2 py-0.5 rounded text-[9px] font-black border border-green-500/20">${totalStaff} шт.</span>
-                    <span class="bg-red-500/10 text-red-400 px-2 py-0.5 rounded text-[9px] font-black border border-red-500/20">${totalNon} поз.</span>
-                `;
+
 
                 const sortedUnits = Object.entries(unitMap).sort((a, b) => getUnitIndex(a[0]) - getUnitIndex(b[0]));
 
@@ -1414,14 +1406,14 @@
                     const total = counts.staff + counts.nonstaff;
                     const staffPct = total > 0 ? Math.round((counts.staff / total) * 100) : 0;
                     return `
-                    <div class="flex items-center gap-3 py-2.5 border-b border-white/[0.04] last:border-0 group hover:bg-white/[0.02] rounded-lg px-2 transition-all">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3 py-3 border-b border-white/[0.04] last:border-0 group hover:bg-white/[0.02] rounded-lg px-2 transition-all">
                         <div class="flex-1 min-w-0">
                             <span class="text-[11px] font-bold text-slate-300 truncate block group-hover:text-white transition-colors" title="${unit}">${unit}</span>
                             <div class="mt-1.5 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
                                 <div class="h-full bg-gradient-to-r from-green-500 to-cyan-500 rounded-full transition-all duration-500" style="width:${staffPct}%"></div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2 flex-shrink-0">
+                        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:flex-shrink-0">
                             <span class="text-[9px] font-black text-slate-500 w-14 text-right">
                                 ${total} <span class="text-slate-600">оп.</span>
                             </span>
@@ -1433,7 +1425,7 @@
 
                 document.getElementById('staffStatsContent').innerHTML = `
                     <!-- Загальна статистика -->
-                    <div class="grid grid-cols-3 gap-4 mb-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
                         <div class="bg-slate-900/60 border border-white/5 rounded-2xl p-4 text-center">
                             <div class="text-2xl font-black text-slate-200 mb-1">${totalAll}</div>
                             <div class="text-[9px] font-black uppercase text-slate-500 tracking-widest">Всього операторів</div>
@@ -1448,13 +1440,13 @@
                         </div>
                     </div>
                     <!-- По підрозділах -->
-                    <div class="bg-slate-900/40 border border-white/5 rounded-2xl p-4">
-                        <div class="flex items-center justify-between mb-3 pb-2 border-b border-white/5">
+                    <div class="bg-slate-900/40 border border-white/5 rounded-2xl p-4 overflow-x-auto">
+                        <div class="flex items-center justify-between mb-3 pb-2 border-b border-white/5 min-w-[300px]">
                             <span class="text-[9px] font-black uppercase text-slate-500 tracking-widest">Підрозділ</span>
                             <div class="flex gap-2">
-                                <span class="text-[9px] font-black uppercase text-slate-600 tracking-widest w-14 text-right">Всього</span>
-                                <span class="text-[9px] font-black uppercase text-green-700 tracking-widest w-14 text-center">Штат.</span>
-                                <span class="text-[9px] font-black uppercase text-red-700 tracking-widest w-16 text-center">Позаш.</span>
+                                <span class="text-[9px] font-black uppercase text-slate-600 tracking-widest w-12 sm:w-14 text-right">Всього</span>
+                                <span class="text-[9px] font-black uppercase text-green-700 tracking-widest w-12 sm:w-14 text-center">Штат.</span>
+                                <span class="text-[9px] font-black uppercase text-red-700 tracking-widest w-14 sm:w-16 text-center">Позаш.</span>
                             </div>
                         </div>
                         ${rows}
