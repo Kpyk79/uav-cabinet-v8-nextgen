@@ -288,10 +288,99 @@
             border-radius: 0.5rem;
             padding: 6px 12px;
         }
+
+        /* ── Air Alert Banner ── */
+        #airAlertBanner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 200;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            transition: all 0.5s ease;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #airAlertBanner.alert-active {
+            background: linear-gradient(90deg, #7f1d1d, #991b1b, #7f1d1d);
+            border-bottom: 2px solid #ef4444;
+            color: #fecaca;
+            animation: alertPulse 2s ease-in-out infinite;
+        }
+
+        #airAlertBanner.alert-clear {
+            background: linear-gradient(90deg, #052e16, #14532d, #052e16);
+            border-bottom: 2px solid #22c55e;
+            color: #bbf7d0;
+        }
+
+        @keyframes alertPulse {
+
+            0%,
+            100% {
+                box-shadow: 0 2px 20px rgba(239, 68, 68, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 2px 30px rgba(239, 68, 68, 0.6);
+            }
+        }
+
+        #airAlertBanner .alert-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        #airAlertBanner .alert-icon.pulse {
+            animation: iconPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes iconPulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.6;
+                transform: scale(0.9);
+            }
+        }
+
+        #airAlertBanner .alert-text {
+            flex: 1;
+            line-height: 1.4;
+        }
+
+        #airAlertBanner .alert-time {
+            font-size: 10px;
+            opacity: 0.6;
+            flex-shrink: 0;
+            font-weight: 500;
+        }
+
+        body.has-alert {
+            padding-top: 56px;
+        }
     </style>
 </head>
 
 <body class="flex items-center justify-center">
+
+    <!-- ── Air Alert Banner ── -->
+    <div id="airAlertBanner" class="alert-clear" style="display:none;">
+        <span class="alert-icon" id="alertIcon"><i class="fa-solid fa-shield-check"></i></span>
+        <span class="alert-text" id="alertText">Тривоги відсутні</span>
+        <span class="alert-time" id="alertTime"></span>
+    </div>
 
     <div id="announcementCard"
         class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
@@ -732,7 +821,7 @@
             });
         });
 
-        document.getElementById('duration').addEventListener('blur', function() {
+        document.getElementById('duration').addEventListener('blur', function () {
             saveState('duration');
             calculateLanding();
         });
@@ -1207,6 +1296,65 @@
         }
 
         function logout() { if (confirm("Вийти?")) { localStorage.clear(); location.reload(); } }
+
+        // ── Air Alert System ──
+        const ALERT_REGIONS = {
+            "Одеська область": "Одеській",
+            "Миколаївська область": "Миколаївській",
+            "Херсонська область": "Херсонській",
+            "Кіровоградська область": "Кіровоградській",
+            "Вінницька область": "Вінницькій"
+        };
+
+        async function checkAirAlerts() {
+            const banner = document.getElementById('airAlertBanner');
+            const icon = document.getElementById('alertIcon');
+            const text = document.getElementById('alertText');
+            const time = document.getElementById('alertTime');
+
+            try {
+                const res = await fetch(API + '/air_alerts', {
+                    cache: 'no-store'
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+
+                const data = await res.json();
+                const states = data.states || {};
+
+                const activeRegions = [];
+                for (const [regionName, displayName] of Object.entries(ALERT_REGIONS)) {
+                    const regionData = states[regionName];
+                    if (regionData && regionData.alertnow === true) {
+                        activeRegions.push(displayName);
+                    }
+                }
+
+                banner.style.display = 'flex';
+                document.body.classList.add('has-alert');
+
+                const now = new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+                time.textContent = 'Оновлено ' + now;
+
+                if (activeRegions.length > 0) {
+                    banner.className = 'alert-active';
+                    icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation pulse"></i>';
+
+                    const regionList = activeRegions.join(', ');
+                    text.innerHTML = `⚡ УВАГА! Повітряна тривога в ${regionList} обл.! &nbsp;|&nbsp; Можливе застосування GNSS-спуфінгу — використовуйте ручний режим пілотування <strong>"ATTI"</strong>`;
+                } else {
+                    banner.className = 'alert-clear';
+                    icon.innerHTML = '<i class="fa-solid fa-shield-check"></i>';
+                    text.textContent = 'Тривоги відсутні';
+                }
+            } catch (e) {
+                console.warn('Air alert check failed:', e);
+                // Silently fail — don't disrupt the app
+            }
+        }
+
+        // Run on load and every 60 seconds
+        checkAirAlerts();
+        setInterval(checkAirAlerts, 60000);
     </script>
     <script>
         if ('serviceWorker' in navigator) {
