@@ -766,6 +766,26 @@ async def favicon():
         return FileResponse(icon_path)
     return Response(status_code=204)
 
+@app.get("/api/air_alerts")
+async def get_air_alerts():
+    """Проксі для API повітряних тривог ubilling.net.ua — обходить CORS для фронтенду."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            res = await client.get(
+                "https://ubilling.net.ua/aerialalerts/",
+                headers={"User-Agent": "UAV-Command-System/1.0"}
+            )
+            res.raise_for_status()
+            return res.json()
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Air alerts API timeout")
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail="Air alerts API error")
+    except Exception as e:
+        print(f"Air alerts proxy error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # --- PAGE ROUTES ---
 @app.get("/")
 async def read_index(): return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
@@ -1394,4 +1414,3 @@ app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
-
