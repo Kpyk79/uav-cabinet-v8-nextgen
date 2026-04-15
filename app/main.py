@@ -689,6 +689,7 @@ async def get_all_flights(
     unit: Optional[str] = None, 
     units: Optional[str] = Query(None),
     operator: Optional[str] = None,
+    search: Optional[str] = None,
     from_dt: Optional[str] = None,
     to_dt: Optional[str] = None,
     limit: Optional[int] = Query(None), 
@@ -704,6 +705,9 @@ async def get_all_flights(
         
     if operator:
         query = query.ilike("operator", f"%{operator}%")
+        
+    if search:
+        query = query.or_(f"operator.ilike.%{search}%,unit.ilike.%{search}%,drone.ilike.%{search}%,result.ilike.%{search}%,route.ilike.%{search}%")
     
     if from_dt:
         # Expected format: "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM"
@@ -732,6 +736,9 @@ async def get_all_flights(
         
         if operator:
             batch_query = batch_query.ilike("operator", f"%{operator}%")
+            
+        if search:
+            batch_query = batch_query.or_(f"operator.ilike.%{search}%,unit.ilike.%{search}%,drone.ilike.%{search}%,result.ilike.%{search}%,route.ilike.%{search}%")
         
         if from_dt:
             batch_query = batch_query.gte("date", from_dt.split('T')[0])
