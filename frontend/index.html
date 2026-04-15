@@ -1330,7 +1330,6 @@
                 }
 
                 banner.style.display = 'flex';
-                document.body.classList.add('has-alert');
 
                 const now = new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
                 time.textContent = 'Оновлено ' + now;
@@ -1346,6 +1345,15 @@
                     icon.innerHTML = '<i class="fa-solid fa-shield-check"></i>';
                     text.textContent = 'Тривоги відсутні';
                 }
+
+                // Вираховуємо відступ після того, як текст оновився і браузер перемалював банер
+                requestAnimationFrame(() => {
+                    if (banner.offsetHeight > 0) {
+                        // 12px - це додатковий простір (базовий padding)
+                        document.body.style.paddingTop = (banner.offsetHeight + 12) + 'px';
+                    }
+                });
+
             } catch (e) {
                 console.warn('Air alert check failed:', e);
                 // Silently fail — don't disrupt the app
