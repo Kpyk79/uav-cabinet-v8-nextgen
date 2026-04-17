@@ -482,7 +482,7 @@
             // Leaderboard
             const rankingBody = document.getElementById('rankingBody');
             const dataMap = currentTab === 'pilots' ? pilots : units;
-            const sortedData = Object.entries(dataMap).sort((a, b) => b[1].time - a[1].time);
+            const sortedData = Object.entries(dataMap).sort((a, b) => b[1].flights - a[1].flights);
             rankingBody.innerHTML = sortedData.map(([name, data], idx) => `
                 <tr class="hover:bg-white/5 transition-colors">
                     <td class="py-4 pl-4 font-bold">
