@@ -663,6 +663,40 @@
             document.getElementById('finalReport').value = renderReportText(r);
         }
 
+        async function compressImageToLimit(src, maxBytes) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let quality = 0.85;
+                    let scale = 1.0;
+                    const MAX_DIM = 1600;
+                    let w = img.naturalWidth, h = img.naturalHeight;
+                    if (w > MAX_DIM || h > MAX_DIM) {
+                        const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
+                        w = Math.round(w * ratio);
+                        h = Math.round(h * ratio);
+                    }
+                    const attempt = (w, h, q) => {
+                        canvas.width = w;
+                        canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        const data = canvas.toDataURL('image/jpeg', q);
+                        // base64 size in bytes ≈ length * 0.75
+                        if (data.length * 0.75 <= maxBytes || q < 0.2) {
+                            resolve(data);
+                        } else if (q > 0.3) {
+                            attempt(w, h, q - 0.15);
+                        } else {
+                            attempt(Math.round(w * 0.75), Math.round(h * 0.75), 0.7);
+                        }
+                    };
+                    attempt(w, h, quality);
+                };
+                img.src = src;
+            });
+        }
+
         async function downloadWord() {
             const btn = document.getElementById('btnDownload');
             const date = document.getElementById('searchDate').value || new Date().toISOString().slice(0, 10);
@@ -686,7 +720,9 @@
 
             let photoBase64 = null;
             const previewImgs = document.querySelectorAll('#imagePreviewContainer img');
-            if (previewImgs.length > 0) photoBase64 = previewImgs[0].src;
+            if (previewImgs.length > 0) {
+                photoBase64 = await compressImageToLimit(previewImgs[0].src, 900 * 1024);
+            }
 
             const reportData = {
                 header,
