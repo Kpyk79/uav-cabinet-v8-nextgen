@@ -1380,17 +1380,18 @@
                 const res = await fetch('/api/get_personnel');
                 const data = await res.json();
 
-                // Групуємо по підрозділах
+                // Групуємо по підрозділах (без НАВЧАННЯ)
+                const filtered = data.filter(p => (p.unit || '').trim().toUpperCase() !== 'НАВЧАННЯ');
                 const unitMap = {};
-                data.forEach(p => {
+                filtered.forEach(p => {
                     const u = p.unit || 'Не вказано';
                     if (!unitMap[u]) unitMap[u] = { staff: 0, nonstaff: 0 };
                     if (p.is_staff) unitMap[u].staff++;
                     else unitMap[u].nonstaff++;
                 });
 
-                const totalAll = data.length;
-                const totalStaff = data.filter(p => p.is_staff).length;
+                const totalAll = filtered.length;
+                const totalStaff = filtered.filter(p => p.is_staff).length;
                 const totalNon = totalAll - totalStaff;
 
 
