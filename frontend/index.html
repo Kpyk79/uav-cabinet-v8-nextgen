@@ -646,6 +646,7 @@
         const API = window.location.origin + "/api";
         let draft = [];
         let editingId = null;
+        let isPublishing = false;
 
         // Offline Status Sync
         function updateOnlineStatus() {
@@ -1165,7 +1166,9 @@
         }
 
         async function publishAll() {
-            if (draft.length === 0) return;
+            if (draft.length === 0 || isPublishing) return;
+            isPublishing = true;
+
             const btn = document.getElementById('publishBtn');
             const ph = document.getElementById('photos');
 
@@ -1187,6 +1190,7 @@
             if (!navigator.onLine) {
                 await dbAPI.addToSyncQueue('flight', payload);
                 dbAPI.showNotification("Офлайн режим: дані збережено в чергу синхронізації. Вони будуть відправлені автоматично при появі інтернету.", "info");
+                isPublishing = false;
                 await cleanupAfterPublish();
                 return;
             }
@@ -1199,13 +1203,25 @@
                 if (success) {
                     dbAPI.showNotification("Успішно опубліковано!", "success");
                     await cleanupAfterPublish();
+                } else {
+                    dbAPI.showNotification("Помилка відправки в Telegram. Дані збережено в БД.", "error");
                 }
             } catch (e) {
                 console.error(e);
-                await dbAPI.addToSyncQueue('flight', payload);
-                dbAPI.showNotification("Серверна помилка. Дані збережено в чергу.", "info");
+                if (e.alreadySaved) {
+                    // flights already partially in DB — queue only unsent ones
+                    const unsentPayload = { ...payload, draft: e.unsentDraft };
+                    if (unsentPayload.draft.length > 0) {
+                        await dbAPI.addToSyncQueue('flight', unsentPayload);
+                    }
+                    dbAPI.showNotification("Часткова помилка. Збережено в чергу.", "info");
+                } else {
+                    await dbAPI.addToSyncQueue('flight', payload);
+                    dbAPI.showNotification("Серверна помилка. Дані збережено в чергу.", "info");
+                }
                 await cleanupAfterPublish();
             } finally {
+                isPublishing = false;
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Опублікувати донесення';
             }
@@ -1243,6 +1259,8 @@
             });
 
             // 1. Add flights to DB
+            const sentDraft = [];
+            const unsentDraft = [...draft];
             for (const f of draft) {
                 let dbDate;
                 if (f.date && f.date.includes('.')) {
@@ -1261,11 +1279,19 @@
                 };
                 delete toDb.id;
 
-                await fetch(API + "/add_flight", {
+                const res = await fetch(API + "/add_flight", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(toDb)
                 });
+                if (!res.ok) {
+                    const err = new Error(`add_flight failed: ${res.status}`);
+                    err.alreadySaved = true;
+                    err.unsentDraft = unsentDraft.slice(sentDraft.length);
+                    throw err;
+                }
+                sentDraft.push(f);
+                unsentDraft.shift();
             }
 
             // 2. Send to Telegram
@@ -1339,7 +1365,7 @@
                     icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation pulse"></i>';
 
                     const regionList = activeRegions.join(', ');
-                    text.innerHTML = `⚡ УВАГА! Повітряна тривога в ${regionList} обл.! &nbsp;|&nbsp; Можливе застосування GNSS-спуфінгу — рекомендовано використовувати ручний режим пілотування <strong>"ATTI"</strong>`;
+                    text.innerHTML = `⚡ УВАГА! Повітряна тривога в ${regionList} обл.! &nbsp;|&nbsp; Можливе застосування GNSS-спуфінгу — використовуйте ручний режим пілотування <strong>"ATTI"</strong>`;
                 } else {
                     banner.className = 'alert-clear';
                     icon.innerHTML = '<i class="fa-solid fa-shield-check"></i>';
