@@ -82,18 +82,23 @@
       position: fixed;
       bottom: 0; left: 0; right: 0;
       z-index: 100000;
-      background: rgba(10, 16, 30, 0.97);
+      background: rgba(10, 16, 30, 0.98);
       border-top: 1px solid rgba(34, 197, 94, 0.2);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      padding: 12px 16px;
+      padding: 10px 16px 14px;
       display: none;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
       gap: 10px;
       font-family: 'Inter', sans-serif;
     }
     #uav-tutorial-nav.visible { display: flex; }
+
+    /* Рядок 1: прогрес + пропустити */
+    #uav-tutorial-nav .tut-nav-top {
+      display: flex; align-items: center;
+      justify-content: space-between;
+    }
 
     #uav-tutorial-nav .tut-progress {
       display: flex; gap: 5px; align-items: center; flex-shrink: 0;
@@ -111,45 +116,42 @@
       background: rgba(34,197,94,0.4);
     }
 
-    #uav-tutorial-nav .tut-btns {
-      display: flex; gap: 8px; align-items: center;
-    }
-
     #uav-tutorial-nav .tut-btn-skip {
       font-size: 11px; font-weight: 700; color: #475569;
       background: none; border: none; cursor: pointer;
-      padding: 8px 10px; border-radius: 8px;
-      transition: color 0.2s, background 0.2s;
+      padding: 4px 8px; border-radius: 8px;
+      transition: color 0.2s;
       text-transform: uppercase; letter-spacing: 0.05em;
-      white-space: nowrap;
     }
-    #uav-tutorial-nav .tut-btn-skip:hover { color: #94a3b8; background: rgba(255,255,255,0.05); }
+    #uav-tutorial-nav .tut-btn-skip:hover { color: #94a3b8; }
+
+    /* Рядок 2: назад + далі (на всю ширину) */
+    #uav-tutorial-nav .tut-nav-btns {
+      display: flex; gap: 10px;
+    }
 
     #uav-tutorial-nav .tut-btn-prev {
-      font-size: 13px; font-weight: 700; color: #94a3b8;
+      font-size: 14px; font-weight: 700; color: #94a3b8;
       background: rgba(255,255,255,0.06);
       border: 1px solid rgba(255,255,255,0.1);
-      cursor: pointer; padding: 10px 18px; border-radius: 12px;
+      cursor: pointer; padding: 13px 0; border-radius: 14px;
       transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.04em;
-      white-space: nowrap;
+      flex: 1; text-align: center;
     }
     #uav-tutorial-nav .tut-btn-prev:hover { color: #e2e8f0; background: rgba(255,255,255,0.12); }
     #uav-tutorial-nav .tut-btn-prev:active { transform: scale(0.97); }
 
     #uav-tutorial-nav .tut-btn-next {
-      font-size: 13px; font-weight: 800; color: #fff;
+      font-size: 14px; font-weight: 800; color: #fff;
       background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
       border: none; cursor: pointer;
-      padding: 10px 22px; border-radius: 12px;
+      padding: 13px 0; border-radius: 14px;
       transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.04em;
       box-shadow: 0 3px 14px rgba(22,163,74,0.35);
-      white-space: nowrap;
+      flex: 2; text-align: center;
     }
-    #uav-tutorial-nav .tut-btn-next:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 5px 20px rgba(22,163,74,0.45);
-    }
-    #uav-tutorial-nav .tut-btn-next:active { transform: translateY(0) scale(0.97); }
+    #uav-tutorial-nav .tut-btn-next:hover { box-shadow: 0 5px 20px rgba(22,163,74,0.45); }
+    #uav-tutorial-nav .tut-btn-next:active { transform: scale(0.97); }
 
     #uav-tutorial-nav .tut-btn-next.finish {
       background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
@@ -578,11 +580,13 @@
       <div class="tut-desc">${step.desc}</div>
     `;
 
-    // Nav bar — прогрес + кнопки (завжди внизу)
+    // Nav bar — два рядки: прогрес/пропустити + назад/далі
     nav.innerHTML = `
-      <div class="tut-progress">${buildDots()}</div>
-      <div class="tut-btns">
-        <button class="tut-btn-skip" onclick="UAVTutorial.stop()">Пропустити</button>
+      <div class="tut-nav-top">
+        <div class="tut-progress">${buildDots()}</div>
+        <button class="tut-btn-skip" onclick="UAVTutorial.stop()">Пропустити ✕</button>
+      </div>
+      <div class="tut-nav-btns">
         ${hasPrev ? '<button class="tut-btn-prev" onclick="UAVTutorial.prev()">← Назад</button>' : ''}
         <button class="tut-btn-next ${isLast ? 'finish' : ''}" onclick="UAVTutorial.advance()">
           ${isLast ? '✓ Завершити' : 'Далі →'}
@@ -591,6 +595,9 @@
     `;
 
     setTimeout(() => {
+      // Відступ знизу = висота nav-бару щоб він не перекривав контент
+      const navH = nav.offsetHeight || 90;
+      document.body.style.paddingBottom = navH + 'px';
       positionTooltip(el, step.position || 'bottom');
       if (el) positionSpotlight(el);
     }, 250);
@@ -622,6 +629,7 @@
     if (spotlight) spotlight.style.display = 'none';
     if (tooltip)   tooltip.style.display   = 'none';
     if (nav)       nav.classList.remove('visible');
+    document.body.style.paddingBottom = '';
     localStorage.setItem('uav_tutorial_done', '1');
     if (typeof onFinishCb === 'function') onFinishCb();
   }
