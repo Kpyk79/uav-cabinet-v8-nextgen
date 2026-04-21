@@ -37,9 +37,10 @@
       background: rgba(15, 23, 42, 0.97);
       border: 1px solid rgba(34, 197, 94, 0.35);
       border-radius: 18px;
-      padding: 22px 24px 18px;
+      padding: 20px 22px 20px;
       max-width: 340px;
       min-width: 260px;
+      width: calc(100vw - 32px);
       box-shadow:
         0 8px 40px rgba(0,0,0,0.6),
         0 0 0 1px rgba(255,255,255,0.04),
@@ -71,73 +72,91 @@
 
     #uav-tutorial-tooltip .tut-desc {
       font-size: 13px; color: #94a3b8; line-height: 1.6;
-      margin-bottom: 18px;
+      margin-bottom: 0;
     }
 
     #uav-tutorial-tooltip .tut-desc strong { color: #e2e8f0; font-weight: 700; }
 
-    #uav-tutorial-tooltip .tut-footer {
-      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    /* ── Fixed bottom nav bar ── */
+    #uav-tutorial-nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 100000;
+      background: rgba(10, 16, 30, 0.97);
+      border-top: 1px solid rgba(34, 197, 94, 0.2);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 12px 16px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-family: 'Inter', sans-serif;
+    }
+    #uav-tutorial-nav.visible { display: flex; }
+
+    #uav-tutorial-nav .tut-progress {
+      display: flex; gap: 5px; align-items: center; flex-shrink: 0;
     }
 
-    #uav-tutorial-tooltip .tut-progress {
-      display: flex; gap: 5px; align-items: center;
-    }
-
-    #uav-tutorial-tooltip .tut-dot {
+    #uav-tutorial-nav .tut-dot {
       width: 6px; height: 6px; border-radius: 50%;
       background: rgba(100,116,139,0.4);
       transition: all 0.25s ease;
     }
-    #uav-tutorial-tooltip .tut-dot.active {
+    #uav-tutorial-nav .tut-dot.active {
       background: #22c55e; width: 18px; border-radius: 3px;
     }
-    #uav-tutorial-tooltip .tut-dot.done {
+    #uav-tutorial-nav .tut-dot.done {
       background: rgba(34,197,94,0.4);
     }
 
-    #uav-tutorial-tooltip .tut-btns {
+    #uav-tutorial-nav .tut-btns {
       display: flex; gap: 8px; align-items: center;
     }
 
-    #uav-tutorial-tooltip .tut-btn-skip {
+    #uav-tutorial-nav .tut-btn-skip {
       font-size: 11px; font-weight: 700; color: #475569;
       background: none; border: none; cursor: pointer;
-      padding: 6px 8px; border-radius: 8px;
+      padding: 8px 10px; border-radius: 8px;
       transition: color 0.2s, background 0.2s;
       text-transform: uppercase; letter-spacing: 0.05em;
+      white-space: nowrap;
     }
-    #uav-tutorial-tooltip .tut-btn-skip:hover { color: #94a3b8; background: rgba(255,255,255,0.05); }
+    #uav-tutorial-nav .tut-btn-skip:hover { color: #94a3b8; background: rgba(255,255,255,0.05); }
 
-    #uav-tutorial-tooltip .tut-btn-prev {
-      font-size: 12px; font-weight: 700; color: #64748b;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      cursor: pointer; padding: 8px 14px; border-radius: 10px;
+    #uav-tutorial-nav .tut-btn-prev {
+      font-size: 13px; font-weight: 700; color: #94a3b8;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      cursor: pointer; padding: 10px 18px; border-radius: 12px;
       transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.04em;
+      white-space: nowrap;
     }
-    #uav-tutorial-tooltip .tut-btn-prev:hover { color: #e2e8f0; background: rgba(255,255,255,0.1); }
+    #uav-tutorial-nav .tut-btn-prev:hover { color: #e2e8f0; background: rgba(255,255,255,0.12); }
+    #uav-tutorial-nav .tut-btn-prev:active { transform: scale(0.97); }
 
-    #uav-tutorial-tooltip .tut-btn-next {
-      font-size: 12px; font-weight: 800; color: #fff;
+    #uav-tutorial-nav .tut-btn-next {
+      font-size: 13px; font-weight: 800; color: #fff;
       background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
       border: none; cursor: pointer;
-      padding: 8px 18px; border-radius: 10px;
+      padding: 10px 22px; border-radius: 12px;
       transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.04em;
-      box-shadow: 0 3px 12px rgba(22,163,74,0.3);
+      box-shadow: 0 3px 14px rgba(22,163,74,0.35);
+      white-space: nowrap;
     }
-    #uav-tutorial-tooltip .tut-btn-next:hover {
+    #uav-tutorial-nav .tut-btn-next:hover {
       transform: translateY(-1px);
-      box-shadow: 0 5px 18px rgba(22,163,74,0.4);
+      box-shadow: 0 5px 20px rgba(22,163,74,0.45);
     }
-    #uav-tutorial-tooltip .tut-btn-next:active { transform: translateY(0) scale(0.97); }
+    #uav-tutorial-nav .tut-btn-next:active { transform: translateY(0) scale(0.97); }
 
-    #uav-tutorial-tooltip .tut-btn-next.finish {
+    #uav-tutorial-nav .tut-btn-next.finish {
       background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-      box-shadow: 0 3px 12px rgba(37,99,235,0.3);
+      box-shadow: 0 3px 14px rgba(37,99,235,0.35);
     }
-    #uav-tutorial-tooltip .tut-btn-next.finish:hover {
-      box-shadow: 0 5px 18px rgba(37,99,235,0.4);
+    #uav-tutorial-nav .tut-btn-next.finish:hover {
+      box-shadow: 0 5px 20px rgba(37,99,235,0.45);
     }
 
     /* Help button */
@@ -423,7 +442,7 @@
   }
 
   function createDOM() {
-    if (document.getElementById('uav-tutorial-overlay')) return;
+    if (document.getElementById('uav-tutorial-backdrop')) return;
 
     const backdrop = document.createElement('div');
     backdrop.id = 'uav-tutorial-backdrop';
@@ -440,9 +459,13 @@
     tooltip.id = 'uav-tutorial-tooltip';
     tooltip.style.display = 'none';
 
+    const nav = document.createElement('div');
+    nav.id = 'uav-tutorial-nav';
+
     document.body.appendChild(backdrop);
     document.body.appendChild(spotlight);
     document.body.appendChild(tooltip);
+    document.body.appendChild(nav);
   }
 
   function getEl(selector) {
@@ -524,17 +547,20 @@
   }
 
   function renderStep() {
-    const step = steps[current];
-    const el   = getEl(step.target);
+    const step   = steps[current];
+    const el     = getEl(step.target);
     const isLast = current === steps.length - 1;
+    const hasPrev = current > 0;
 
     const backdrop  = document.getElementById('uav-tutorial-backdrop');
     const spotlight = document.getElementById('uav-tutorial-spotlight');
     const tooltip   = document.getElementById('uav-tutorial-tooltip');
+    const nav       = document.getElementById('uav-tutorial-nav');
 
     backdrop.style.display  = 'block';
     spotlight.style.display = el ? 'block' : 'none';
     tooltip.style.display   = 'block';
+    nav.classList.add('visible');
 
     // Scroll element into view
     if (el) {
@@ -544,23 +570,23 @@
       spotlight.style.display = 'none';
     }
 
-    const hasPrev = current > 0;
+    // Tooltip — тільки інформація, без кнопок
     tooltip.innerHTML = `
-      <div class="tut-step-badge">
-        🎓 Крок ${current + 1} / ${steps.length}
-      </div>
+      <div class="tut-step-badge">🎓 Крок ${current + 1} / ${steps.length}</div>
       <span class="tut-icon">${step.icon || '💡'}</span>
       <div class="tut-title">${step.title}</div>
       <div class="tut-desc">${step.desc}</div>
-      <div class="tut-footer">
-        <div class="tut-progress">${buildDots()}</div>
-        <div class="tut-btns">
-          <button class="tut-btn-skip" onclick="UAVTutorial.stop()">Пропустити</button>
-          ${hasPrev ? '<button class="tut-btn-prev" onclick="UAVTutorial.prev()">← Назад</button>' : ''}
-          <button class="tut-btn-next ${isLast ? 'finish' : ''}" onclick="UAVTutorial.advance()">
-            ${isLast ? '<i class="fa-solid fa-check mr-1"></i>Завершити' : 'Далі →'}
-          </button>
-        </div>
+    `;
+
+    // Nav bar — прогрес + кнопки (завжди внизу)
+    nav.innerHTML = `
+      <div class="tut-progress">${buildDots()}</div>
+      <div class="tut-btns">
+        <button class="tut-btn-skip" onclick="UAVTutorial.stop()">Пропустити</button>
+        ${hasPrev ? '<button class="tut-btn-prev" onclick="UAVTutorial.prev()">← Назад</button>' : ''}
+        <button class="tut-btn-next ${isLast ? 'finish' : ''}" onclick="UAVTutorial.advance()">
+          ${isLast ? '✓ Завершити' : 'Далі →'}
+        </button>
       </div>
     `;
 
@@ -591,9 +617,11 @@
     const backdrop  = document.getElementById('uav-tutorial-backdrop');
     const spotlight = document.getElementById('uav-tutorial-spotlight');
     const tooltip   = document.getElementById('uav-tutorial-tooltip');
+    const nav       = document.getElementById('uav-tutorial-nav');
     if (backdrop)  backdrop.style.display  = 'none';
     if (spotlight) spotlight.style.display = 'none';
     if (tooltip)   tooltip.style.display   = 'none';
+    if (nav)       nav.classList.remove('visible');
     localStorage.setItem('uav_tutorial_done', '1');
     if (typeof onFinishCb === 'function') onFinishCb();
   }
