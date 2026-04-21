@@ -641,6 +641,7 @@
         </div>
     </div>
 
+    <script src="/libs/tutorial.js"></script>
     <script src="/libs/db.js"></script>
     <script>
         const API = window.location.origin + "/api";
@@ -882,6 +883,12 @@
                 applyDrones(allDrones);
                 dbAPI.saveDrones(unit, allDrones); // Cache them
             } catch (e) { console.log("Offline, using cached drones"); }
+
+            // Start tutorial on first login
+            if (typeof UAVTutorial !== 'undefined') {
+                UAVTutorial.addHelpButton('index');
+                setTimeout(() => UAVTutorial.startPage('index'), 600);
+            }
         }
 
         function applyDrones(allDrones) {

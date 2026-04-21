@@ -372,6 +372,15 @@
             });
         }
     </script>
+    <script src="/libs/tutorial.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof UAVTutorial !== 'undefined') {
+                UAVTutorial.addHelpButton('dashboard');
+                UAVTutorial.startPage('dashboard');
+            }
+        });
+    </script>
 </body>
 
 </html>
