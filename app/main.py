@@ -1308,22 +1308,15 @@ async def weather_analysis(req: WeatherAnalysisRequest):
         hourly_data["cloud_cover"] = hourly.Variables(20).ValuesAsNumpy()
 
         hourly_dataframe = pd.DataFrame(data = hourly_data)
-        
-        # Adjust UTC to Local Time to match req.time
-        utc_offset_seconds = response.UtcOffsetSeconds()
-        hourly_dataframe['local_time'] = hourly_dataframe['date'] + pd.Timedelta(seconds=utc_offset_seconds)
-        
+
+        # Open-Meteo with timezone=auto aligns row[0] to local midnight.
+        # Direct index lookup is more reliable than UTC→local hour conversion.
         req_hour = int(req.time.split(":")[0])
-        target_row = hourly_dataframe[hourly_dataframe['local_time'].dt.hour == req_hour]
-        
-        if not target_row.empty:
-            weather_data = target_row.iloc[0].to_dict()
-            weather_data['date'] = str(weather_data['date'])
-            weather_data['local_time'] = str(weather_data['local_time'])
-        else:
-            weather_data = hourly_dataframe.iloc[0].to_dict() # Fallback to first hour
-            weather_data['date'] = str(weather_data['date'])
-            weather_data['local_time'] = str(weather_data['local_time'])
+        idx = max(0, min(req_hour, len(hourly_dataframe) - 1))
+        row = hourly_dataframe.iloc[idx]
+        weather_data = row.to_dict()
+        weather_data['date'] = str(weather_data['date'])
+        weather_data['requested_local_time'] = f"{req.date} {req.time}"
 
         # UAV specs for AI context
         uav_specs = {
@@ -1354,8 +1347,8 @@ async def weather_analysis(req: WeatherAnalysisRequest):
 {json.dumps(weather_data, indent=2, ensure_ascii=False)}
 
 ЗАВДАННЯ:
-1. `wind_speed_10m` + `wind_gusts_10m` + `wind_direction_10m` — вітер біля землі (додай оцінку ІДЕАЛЬНО/НОРМА/НЕСПРИЯТЛИВО відносно ТТХ БпЛА).
-2. `wind_gusts_10m` — окремий пункт wind_gusts (оціни безпеку зіставляючи з макс.вітростійкістью БпЛА).
+1. `wind_speed_120m` + `wind_direction_120m` — вітер на 120м (поле wind_surface, додай оцінку ІДЕАЛЬНО/НОРМА/НЕСПРИЯТЛИВО відносно ТТХ БпЛА).
+2. Пориви на 120м: екстраполюй `wind_gusts_10m` за логарифмічним профілем вітру до 120м (поле wind_gusts, оціни безпеку для цього БпЛА).
 3. `wind_speed_80m/120m/180m` і `wind_direction_80m/120m/180m` — вітер по висоті.
 4. `temperature_80m/120m/180m` — ризик обледеніння з урах.мін.темп.експлуатації БпЛА.
 5. `cloud_cover` — хмарність у відсотках.
@@ -1364,8 +1357,8 @@ async def weather_analysis(req: WeatherAnalysisRequest):
 
 ПОВЕРНИ ВІДПОВІДЬ СУВОРО В JSON. НЕ ЗМІНЮЙ КЛЮЧІ:
 {{
-  "wind_surface": "швидкість, напрямок, оцінка (ІДЕАЛЬНО/НОРМА/НЕСПРИЯТЛИВО)",
-  "wind_gusts": "пориви м/с, оцінка безпеки для цього БпЛА",
+  "wind_surface": "швидкість на 120м, напрямок, оцінка (ІДЕАЛЬНО/НОРМА/НЕСПРИЯТЛИВО)",
+  "wind_gusts": "пориви на 120м м/с (екстрапольовані), оцінка безпеки для цього БпЛА",
   "wind_altitude": {{
     "80m": "швидкість і напрямок",
     "120m": "швидкість і напрямок",
