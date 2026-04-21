@@ -564,14 +564,6 @@
     tooltip.style.display   = 'block';
     nav.classList.add('visible');
 
-    // Scroll element into view
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-      setTimeout(() => positionSpotlight(el), 200);
-    } else {
-      spotlight.style.display = 'none';
-    }
-
     // Tooltip — тільки інформація, без кнопок
     tooltip.innerHTML = `
       <div class="tut-step-badge">🎓 Крок ${current + 1} / ${steps.length}</div>
@@ -594,13 +586,22 @@
       </div>
     `;
 
-    setTimeout(() => {
-      // Відступ знизу = висота nav-бару щоб він не перекривав контент
+    function applyPositions() {
       const navH = nav.offsetHeight || 90;
       document.body.style.paddingBottom = navH + 'px';
       positionTooltip(el, step.position || 'bottom');
       if (el) positionSpotlight(el);
-    }, 250);
+    }
+
+    if (el) {
+      // instant — елемент одразу на місці, координати точні
+      el.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'nearest' });
+      // requestAnimationFrame чекає наступний кадр малювання — layout вже перераховано
+      requestAnimationFrame(() => requestAnimationFrame(applyPositions));
+    } else {
+      spotlight.style.display = 'none';
+      requestAnimationFrame(applyPositions);
+    }
   }
 
   function advance() {
@@ -673,10 +674,12 @@
   // Reposition on resize
   window.addEventListener('resize', () => {
     if (!running) return;
-    const step = steps[current];
-    const el   = getEl(step.target);
-    positionTooltip(el, step.position || 'bottom');
-    positionSpotlight(el);
+    requestAnimationFrame(() => {
+      const step = steps[current];
+      const el   = getEl(step.target);
+      positionTooltip(el, step.position || 'bottom');
+      if (el) positionSpotlight(el);
+    });
   });
 
   // ─── Public API ───────────────────────────────────────────────────────────
