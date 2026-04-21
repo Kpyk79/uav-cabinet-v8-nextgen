@@ -113,7 +113,7 @@
                 <div class="space-y-1.5">
                     <label class="text-xs font-bold text-slate-400 uppercase ml-1">Широта, Довгота</label>
                     <div class="relative">
-                        <input type="text" id="coordsInput" placeholder="48.46, 35.04"
+                        <input type="text" id="coordsInput" placeholder="47.764367, 29.533432"
                             class="w-full px-4 py-3 rounded-xl text-sm">
                         <button onclick="getUserLocation()"
                             class="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 hover:text-blue-300">
@@ -191,8 +191,8 @@
                             <i class="fa-solid fa-shield-check text-green-500 text-xl"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-black uppercase text-green-500 tracking-tight"
-                                id="confidenceHeader">ДОВІРА ДО ПРОГНОЗУ: ДУЖЕ ВИСОКА</h3>
+                            <h3 class="text-lg font-black uppercase text-green-500 tracking-tight flex items-center"
+                                id="confidenceHeader"><i class="fa-solid fa-shield-check mr-2"></i>ДОВІРА ДО ПРОГНОЗУ: ДУЖЕ ВИСОКА</h3>
                             <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest"
                                 id="confidenceSub">Аналіз моделей (ICON+GFS+GEM)</p>
                         </div>
@@ -283,16 +283,17 @@
             const list = document.getElementById('analysisList');
             list.innerHTML = '';
 
+            const wa = data.wind_altitude || {};
             const mappings = [
-                { label: 'Вітер', value: data.wind_surface, icon: 'fa-wind' },
-                { label: 'Пориви вітру', value: data.wind_gusts, icon: 'fa-tornado' },
-                { label: 'Вітер по висоті (80/120/180м)', value: `${data.wind_altitude['80m']} / ${data.wind_altitude['120m']} / ${data.wind_altitude['180m']}`, icon: 'fa-arrows-up-down' },
-                { label: 'Хмарність', value: data.cloudiness, icon: 'fa-cloud' },
-                { label: 'Видимість', value: data.visibility, icon: 'fa-eye' },
-                { label: 'Опади', value: data.precipitation, icon: 'fa-cloud-showers-heavy' },
-                { label: 'Щільнісна висота', value: data.density_altitude, icon: 'fa-mountain' },
-                { label: 'Ризик обледеніння', value: data.icing_risk, icon: 'fa-snowflake' },
-                { label: 'Зсув вітру', value: data.wind_shear, icon: 'fa-bolt-lightning' }
+                { label: 'Вітер (120м)', value: data.wind_surface || '—', icon: 'fa-wind' },
+                { label: 'Пориви вітру (120м)', value: data.wind_gusts || '—', icon: 'fa-tornado' },
+                { label: 'Вітер по висоті (80/120/180м)', value: (wa['80m'] && wa['120m'] && wa['180m']) ? `${wa['80m']} / ${wa['120m']} / ${wa['180m']}` : '—', icon: 'fa-arrows-up-down' },
+                { label: 'Хмарність', value: data.cloudiness || '—', icon: 'fa-cloud' },
+                { label: 'Видимість', value: data.visibility || '—', icon: 'fa-eye' },
+                { label: 'Опади', value: data.precipitation || '—', icon: 'fa-cloud-showers-heavy' },
+                { label: 'Щільнісна висота', value: data.density_altitude || '—', icon: 'fa-mountain' },
+                { label: 'Ризик обледеніння', value: data.icing_risk || '—', icon: 'fa-snowflake' },
+                { label: 'Зсув вітру', value: data.wind_shear || '—', icon: 'fa-bolt-lightning' }
             ];
 
             mappings.forEach(item => {
@@ -320,9 +321,9 @@
 
             const score = data.confidence.score;
             const header = document.getElementById('confidenceHeader');
-            if (score > 80) { header.innerText = 'ДОВІРА ДО ПРОГНОЗУ: ДУЖЕ ВИСОКА'; header.className = 'text-lg font-black uppercase text-green-500 tracking-tight'; }
-            else if (score > 50) { header.innerText = 'ДОВІРА ДО ПРОГНОЗУ: СЕРЕДНЯ'; header.className = 'text-lg font-black uppercase text-yellow-500 tracking-tight'; }
-            else { header.innerText = 'ДОВІРА ДО ПРОГНОЗУ: НИЗЬКА'; header.className = 'text-lg font-black uppercase text-red-500 tracking-tight'; }
+            if (score > 80) { header.innerHTML = '<i class="fa-solid fa-shield-check mr-2"></i>ДОВІРА ДО ПРОГНОЗУ: ДУЖЕ ВИСОКА'; header.className = 'text-lg font-black uppercase text-green-500 tracking-tight flex items-center'; }
+            else if (score > 50) { header.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i>ДОВІРА ДО ПРОГНОЗУ: СЕРЕДНЯ'; header.className = 'text-lg font-black uppercase text-yellow-500 tracking-tight flex items-center'; }
+            else { header.innerHTML = '<i class="fa-solid fa-circle-xmark mr-2"></i>ДОВІРА ДО ПРОГНОЗУ: НИЗЬКА'; header.className = 'text-lg font-black uppercase text-red-500 tracking-tight flex items-center'; }
 
             const bars = document.getElementById('confidenceBars');
             bars.innerHTML = '';
