@@ -28,7 +28,9 @@
       box-shadow:
         0 0 0 4px rgba(34, 197, 94, 0.6),
         0 0 0 9999px rgba(6, 11, 24, 0.85);
-      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: top 0.15s ease, left 0.15s ease,
+                  width 0.15s ease, height 0.15s ease,
+                  opacity 0.15s ease;
       pointer-events: none;
     }
 
@@ -594,10 +596,29 @@
     }
 
     if (el) {
-      // instant — елемент одразу на місці, координати точні
-      el.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'nearest' });
-      // requestAnimationFrame чекає наступний кадр малювання — layout вже перераховано
-      requestAnimationFrame(() => requestAnimationFrame(applyPositions));
+      // Ховаємо spotlight під час переходу — не мигає на старому місці
+      spotlight.style.opacity = '0';
+
+      // instant — елемент одразу на місці без анімації прокрутки
+      try {
+        el.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'nearest' });
+      } catch (_) {
+        el.scrollIntoView(true); // fallback для старих браузерів
+      }
+
+      // Чекаємо поки браузер перерахує layout після прокрутки
+      // Подвійний rAF — перший фіксує scroll, другий — нові координати
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          applyPositions();
+          spotlight.style.opacity = '1';
+          // Повторно перераховуємо через 200ms як страховка для повільних мобільних
+          setTimeout(() => {
+            if (!running) return;
+            applyPositions();
+          }, 200);
+        });
+      });
     } else {
       spotlight.style.display = 'none';
       requestAnimationFrame(applyPositions);
@@ -671,8 +692,8 @@
     if (e.key === 'Escape')     stop();
   });
 
-  // Reposition on resize
-  window.addEventListener('resize', () => {
+  // Перерахунок позиції при будь-якій зміні розміру вікна
+  function onViewportChange() {
     if (!running) return;
     requestAnimationFrame(() => {
       const step = steps[current];
@@ -680,7 +701,16 @@
       positionTooltip(el, step.position || 'bottom');
       if (el) positionSpotlight(el);
     });
-  });
+  }
+
+  window.addEventListener('resize', onViewportChange);
+
+  // visualViewport — точний API для мобільних браузерів:
+  // спрацьовує при появі клавіатури, зміні адресного рядка, zoom тощо
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', onViewportChange);
+    window.visualViewport.addEventListener('scroll', onViewportChange);
+  }
 
   // ─── Public API ───────────────────────────────────────────────────────────
   global.UAVTutorial = { start, startPage, addHelpButton, advance, prev, stop, PAGE_STEPS };
