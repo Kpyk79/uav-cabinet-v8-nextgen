@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактор | UAV Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/manifest_admin.json">
+    <meta name="theme-color" content="#16a34a">
+    <script src="/libs/admin_auth.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: #060b18;
+            background-image:
+                radial-gradient(ellipse at 20% 0%, rgba(139,92,246,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 100%, rgba(34,197,94,0.06) 0%, transparent 60%);
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            color: #f1f5f9;
+            padding: 12px;
+        }
+        .glass {
+            background: rgba(15,23,42,0.65);
+            backdrop-filter: blur(20px) saturate(1.3);
+            -webkit-backdrop-filter: blur(20px) saturate(1.3);
+            border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
+            border-radius: 1.5rem;
+        }
+        .card {
+            background: rgba(15,23,42,0.45);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 1.25rem;
+            transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+        .input-dark {
+            background: rgba(15,23,42,0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #f8fafc;
+            border-radius: 0.75rem;
+            padding: 0.6rem 0.8rem;
+            width: 100%;
+            outline: none;
+            transition: all 0.2s;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+        }
+        .input-dark:focus { border-color: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,0.15); }
+        select.input-dark option { background: #0f172a; }
+        .label-mini {
+            font-size: 9px; text-transform: uppercase; font-weight: 800;
+            color: #64748b; margin-bottom: 6px; display: block; letter-spacing: 0.1em;
+        }
+        .tab-btn {
+            padding: 0.6rem 1.4rem; border-radius: 0.75rem; font-size: 11px;
+            font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em;
+            cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
+            white-space: nowrap;
+        }
+        .tab-btn.active {
+            background: rgba(34,197,94,0.15); color: #22c55e;
+            border-color: rgba(34,197,94,0.3);
+        }
+        .tab-btn:not(.active) {
+            background: rgba(255,255,255,0.03); color: #64748b;
+            border-color: rgba(255,255,255,0.05);
+        }
+        .tab-btn:not(.active):hover { color: #cbd5e1; background: rgba(255,255,255,0.06); }
+        .btn-green {
+            background: #22c55e; color: #060b18; border: none; border-radius: 0.75rem;
+            padding: 0.55rem 1.2rem; font-weight: 900; font-size: 11px;
+            text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer;
+            transition: all 0.2s; white-space: nowrap;
+        }
+        .btn-green:hover { background: #16a34a; transform: translateY(-1px); }
+        .btn-green:active { transform: scale(0.97); }
+        .btn-red {
+            background: rgba(239,68,68,0.12); color: #ef4444;
+            border: 1px solid rgba(239,68,68,0.25); border-radius: 0.65rem;
+            padding: 0.4rem 0.8rem; font-size: 11px; font-weight: 800;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-red:hover { background: #ef4444; color: #fff; }
+        .btn-blue {
+            background: rgba(59,130,246,0.12); color: #60a5fa;
+            border: 1px solid rgba(59,130,246,0.25); border-radius: 0.65rem;
+            padding: 0.4rem 0.8rem; font-size: 11px; font-weight: 800;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-blue:hover { background: #3b82f6; color: #fff; }
+        .btn-yellow {
+            background: rgba(234,179,8,0.12); color: #eab308;
+            border: 1px solid rgba(234,179,8,0.25); border-radius: 0.65rem;
+            padding: 0.4rem 0.8rem; font-size: 11px; font-weight: 800;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-yellow:hover { background: #eab308; color: #000; }
+        .tech-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .tech-table th {
+            background: rgba(15,23,42,0.6); color: #64748b; font-size: 9px;
+            text-transform: uppercase; font-weight: 900; padding: 0.9rem 0.8rem;
+            text-align: left; border-bottom: 1px solid rgba(255,255,255,0.08);
+            letter-spacing: 0.05em;
+        }
+        .tech-table td {
+            padding: 0.75rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.03);
+            font-size: 12px; color: #cbd5e1;
+        }
+        .tech-table tr:hover td { background: rgba(255,255,255,0.02); color: #fff; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed; inset: 0; z-index: 5000;
+            background: rgba(6,11,24,0.85); backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+            padding: 16px; opacity: 0; transition: opacity 0.2s;
+        }
+        .modal-overlay.show { opacity: 1; }
+        .modal-box {
+            background: rgba(15,23,42,0.95); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 1.5rem; padding: 2rem; width: 100%;
+            max-width: 560px; max-height: 90vh; overflow-y: auto;
+            transform: translateY(20px); transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+        .modal-overlay.show .modal-box { transform: translateY(0); }
+        .modal-title {
+            font-size: 14px; font-weight: 900; text-transform: uppercase;
+            letter-spacing: 0.1em; margin-bottom: 1.5rem;
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed; bottom: 5rem; left: 50%; transform: translateX(-50%) translateY(20px);
+            z-index: 9999; padding: 0.75rem 1.5rem; border-radius: 1rem;
+            font-size: 12px; font-weight: 700; letter-spacing: 0.05em;
+            opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap;
+        }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #toast.success { background: rgba(34,197,94,0.2); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+        #toast.error { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+
+        .status-badge {
+            font-size: 9px; font-weight: 900; text-transform: uppercase;
+            padding: 0.25rem 0.55rem; border-radius: 0.5rem; letter-spacing: 0.06em;
+        }
+        .status-Active { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.2); }
+        .status-Repair { background: rgba(234,179,8,0.15); color: #eab308; border: 1px solid rgba(234,179,8,0.2); }
+        .status-Lost   { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
+        .status-Season { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
+
+        .row-actions { display: flex; gap: 6px; align-items: center; }
+        .section { display: none; }
+        .section.active { display: block; }
+        .loading-row { text-align: center; padding: 2rem; color: #475569; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.2em; }
+    </style>
+</head>
+<body class="max-w-7xl mx-auto pb-24">
+
+<!-- Header -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 pt-8 px-4">
+    <div>
+        <h1 class="text-3xl sm:text-4xl font-black italic text-green-500 uppercase tracking-tighter leading-none">Редактор</h1>
+        <p class="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mt-3 flex items-center gap-2">
+            <span class="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span> Керування базою даних
+        </p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+        <button onclick="nav('/admin')"
+            class="flex items-center gap-2 glass hover:bg-slate-800 transition-all active:scale-95 px-5 py-3 rounded-2xl text-slate-400 hover:text-white font-black uppercase text-[11px] tracking-widest">
+            <i class="fa-solid fa-shield-halved"></i> Admin
+        </button>
+        <button onclick="nav('/')"
+            class="w-12 h-12 flex items-center justify-center glass hover:bg-slate-800 transition-all active:scale-95 rounded-2xl">
+            <i class="fa-solid fa-house text-slate-400 hover:text-white transition-colors"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="flex flex-wrap gap-2 px-4 mb-6">
+    <button class="tab-btn active" onclick="switchTab('units', this)"><i class="fa-solid fa-sitemap mr-2"></i>Підрозділи</button>
+    <button class="tab-btn" onclick="switchTab('personnel', this)"><i class="fa-solid fa-users mr-2"></i>Особовий склад</button>
+    <button class="tab-btn" onclick="switchTab('fleet', this)"><i class="fa-solid fa-plane-up mr-2"></i>Парк БпЛА</button>
+    <button class="tab-btn" onclick="switchTab('flights', this)"><i class="fa-solid fa-route mr-2"></i>Польоти</button>
+</div>
+
+<!-- ═══════════ TAB: ПІДРОЗДІЛИ ═══════════ -->
+<div id="tab-units" class="section active px-4">
+    <div class="card p-6 mb-6">
+        <h3 class="text-xs font-black uppercase text-green-400 tracking-[0.2em] mb-5 flex items-center gap-2">
+            <i class="fa-solid fa-plus-circle"></i> Додати підрозділ
+        </h3>
+        <div class="flex gap-3 flex-wrap">
+            <div class="flex-1 min-w-[200px]">
+                <label class="label-mini">Назва нового підрозділу</label>
+                <input type="text" id="newUnitName" class="input-dark" placeholder='напр. впс "Нова"' onkeydown="if(event.key==='Enter') addUnit()">
+            </div>
+            <div class="flex items-end">
+                <button class="btn-green" onclick="addUnit()"><i class="fa-solid fa-plus mr-2"></i>Додати</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass overflow-hidden">
+        <div class="p-5 border-b border-white/5 flex justify-between items-center">
+            <h3 class="text-xs font-black uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
+                <i class="fa-solid fa-list"></i> Список підрозділів
+                <span id="unitsCount" class="text-green-500 ml-2">0</span>
+            </h3>
+            <button onclick="loadUnits()" class="w-8 h-8 flex items-center justify-center bg-slate-800 text-slate-400 rounded-lg hover:text-white transition-all">
+                <i class="fa-solid fa-sync text-xs"></i>
+            </button>
+        </div>
+        <div id="unitsList" class="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div class="loading-row col-span-3">Завантаження...</div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ TAB: ОСОБОВИЙ СКЛАД ═══════════ -->
+<div id="tab-personnel" class="section px-4">
+    <div class="card p-5 mb-5 flex flex-wrap gap-4 items-end">
+        <div class="flex-1 min-w-[180px]">
+            <label class="label-mini">Фільтр за підрозділом</label>
+            <select id="personnelUnitFilter" class="input-dark" onchange="loadPersonnel()">
+                <option value="">Усі підрозділи</option>
+            </select>
+        </div>
+        <button onclick="loadPersonnel()" class="btn-green"><i class="fa-solid fa-sync mr-2"></i>Оновити</button>
+    </div>
+
+    <div class="glass overflow-hidden">
+        <div class="p-5 border-b border-white/5 flex justify-between items-center">
+            <h3 class="text-xs font-black uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
+                <i class="fa-solid fa-users"></i> Особовий склад
+                <span id="personnelCount" class="text-yellow-400 ml-2">0</span>
+            </h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="tech-table">
+                <thead>
+                    <tr>
+                        <th class="pl-5">Прізвище</th>
+                        <th>Підрозділ</th>
+                        <th>Штат</th>
+                        <th class="text-right pr-5">Дії</th>
+                    </tr>
+                </thead>
+                <tbody id="personnelTableBody">
+                    <tr><td colspan="4" class="loading-row">Завантаження...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ TAB: ПАРК БпЛА ═══════════ -->
+<div id="tab-fleet" class="section px-4">
+    <div class="card p-5 mb-5 flex flex-wrap gap-4 items-end">
+        <div class="flex-1 min-w-[180px]">
+            <label class="label-mini">Фільтр за підрозділом</label>
+            <select id="fleetUnitFilter" class="input-dark" onchange="loadFleet()">
+                <option value="">Усі підрозділи</option>
+            </select>
+        </div>
+        <button onclick="openAddDroneModal()" class="btn-green"><i class="fa-solid fa-plus mr-2"></i>Додати БпЛА</button>
+        <button onclick="loadFleet()" class="w-10 h-10 flex items-center justify-center bg-slate-800 text-slate-400 rounded-xl hover:text-white transition-all">
+            <i class="fa-solid fa-sync text-xs"></i>
+        </button>
+    </div>
+
+    <div class="glass overflow-hidden">
+        <div class="p-5 border-b border-white/5 flex justify-between items-center">
+            <h3 class="text-xs font-black uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
+                <i class="fa-solid fa-plane-up"></i> Парк БпЛА
+                <span id="fleetCount" class="text-blue-400 ml-2">0</span>
+            </h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="tech-table min-w-[700px]">
+                <thead>
+                    <tr>
+                        <th class="pl-5">Модель</th>
+                        <th>Серійний №</th>
+                        <th>Підрозділ</th>
+                        <th>Статус</th>
+                        <th>АКБ</th>
+                        <th class="text-right pr-5">Дії</th>
+                    </tr>
+                </thead>
+                <tbody id="fleetTableBody">
+                    <tr><td colspan="6" class="loading-row">Завантаження...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ TAB: ПОЛЬОТИ ═══════════ -->
+<div id="tab-flights" class="section px-4">
+    <div class="card p-5 mb-5 flex flex-wrap gap-4 items-end">
+        <div class="flex-1 min-w-[140px]">
+            <label class="label-mini">Від дати</label>
+            <input type="date" id="flightsFrom" class="input-dark">
+        </div>
+        <div class="flex-1 min-w-[140px]">
+            <label class="label-mini">До дати</label>
+            <input type="date" id="flightsTo" class="input-dark">
+        </div>
+        <div class="flex-1 min-w-[180px]">
+            <label class="label-mini">Пошук (прізвище / підрозділ / модель)</label>
+            <input type="text" id="flightsSearch" class="input-dark" placeholder="Пошук...">
+        </div>
+        <button onclick="loadFlightsEditor()" class="btn-green"><i class="fa-solid fa-magnifying-glass mr-2"></i>Пошук</button>
+    </div>
+
+    <div class="glass overflow-hidden">
+        <div class="p-5 border-b border-white/5 flex flex-wrap justify-between items-center gap-4">
+            <h3 class="text-xs font-black uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2">
+                <i class="fa-solid fa-route"></i> Журнал польотів
+                <span id="flightsCount" class="text-purple-400 ml-2">0</span>
+            </h3>
+            <div class="flex items-center gap-3 text-[10px] font-black uppercase text-slate-500 tracking-widest">
+                <button onclick="changeFlightsPage(-1)" id="flightsPrev" class="w-8 h-8 flex items-center justify-center bg-slate-800 text-slate-400 rounded-lg hover:text-white transition-all">
+                    <i class="fa-solid fa-chevron-left text-xs"></i>
+                </button>
+                Стор. <span id="flightsPage" class="text-white px-1">1</span> з <span id="flightsTotal" class="text-white px-1">1</span>
+                <button onclick="changeFlightsPage(1)" id="flightsNext" class="w-8 h-8 flex items-center justify-center bg-slate-800 text-slate-400 rounded-lg hover:text-white transition-all">
+                    <i class="fa-solid fa-chevron-right text-xs"></i>
+                </button>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="tech-table min-w-[1000px]">
+                <thead>
+                    <tr>
+                        <th class="pl-5">Дата</th>
+                        <th>Підрозділ</th>
+                        <th>Прізвище</th>
+                        <th>Модель</th>
+                        <th>Маршрут</th>
+                        <th>Зліт / Пос.</th>
+                        <th>Хв</th>
+                        <th>Результат</th>
+                        <th class="text-right pr-5">Дії</th>
+                    </tr>
+                </thead>
+                <tbody id="flightsTableBody">
+                    <tr><td colspan="9" class="loading-row">Завантаження...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ MODAL: EDIT UNIT ═══════════ -->
+<div id="modalUnit" class="modal-overlay" onclick="if(event.target===this) closeModal('modalUnit')">
+    <div class="modal-box">
+        <h2 class="modal-title text-green-400"><i class="fa-solid fa-sitemap mr-2"></i>Перейменувати підрозділ</h2>
+        <input type="hidden" id="editUnitOldName">
+        <div class="mb-4">
+            <label class="label-mini">Нова назва</label>
+            <input type="text" id="editUnitNewName" class="input-dark" onkeydown="if(event.key==='Enter') saveUnitRename()">
+        </div>
+        <div class="flex gap-3 justify-end mt-6">
+            <button onclick="closeModal('modalUnit')" class="btn-red">Скасувати</button>
+            <button onclick="saveUnitRename()" class="btn-green">Зберегти</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ MODAL: EDIT PERSONNEL ═══════════ -->
+<div id="modalPersonnel" class="modal-overlay" onclick="if(event.target===this) closeModal('modalPersonnel')">
+    <div class="modal-box">
+        <h2 class="modal-title text-yellow-400"><i class="fa-solid fa-user-pen mr-2"></i>Редагувати оператора</h2>
+        <input type="hidden" id="editPersonUnit">
+        <input type="hidden" id="editPersonOldName">
+        <div class="mb-4">
+            <label class="label-mini">Прізвище (нове)</label>
+            <input type="text" id="editPersonNewName" class="input-dark" onkeydown="if(event.key==='Enter') savePersonnelEdit()">
+        </div>
+        <div class="mb-4">
+            <label class="label-mini">Підрозділ</label>
+            <input type="text" id="editPersonUnitDisplay" class="input-dark" disabled style="opacity:.5">
+        </div>
+        <div class="flex gap-3 justify-end mt-6">
+            <button onclick="closeModal('modalPersonnel')" class="btn-red">Скасувати</button>
+            <button onclick="savePersonnelEdit()" class="btn-green">Зберегти</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ MODAL: EDIT/ADD DRONE ═══════════ -->
+<div id="modalDrone" class="modal-overlay" onclick="if(event.target===this) closeModal('modalDrone')">
+    <div class="modal-box">
+        <h2 class="modal-title text-blue-400" id="modalDroneTitle"><i class="fa-solid fa-plane-up mr-2"></i>БпЛА</h2>
+        <input type="hidden" id="editDroneId">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="label-mini">Модель</label>
+                <input type="text" id="editDroneModel" class="input-dark" placeholder="DJI Mavic 3T">
+            </div>
+            <div>
+                <label class="label-mini">Серійний №</label>
+                <input type="text" id="editDroneSerial" class="input-dark" placeholder="SN-00001">
+            </div>
+            <div>
+                <label class="label-mini">Підрозділ</label>
+                <select id="editDroneUnit" class="input-dark"></select>
+            </div>
+            <div>
+                <label class="label-mini">Статус</label>
+                <select id="editDroneStatus" class="input-dark">
+                    <option value="Active">Active — Справний</option>
+                    <option value="Repair">Repair — Ремонт</option>
+                    <option value="Lost">Lost — Втрачено</option>
+                    <option value="Season">Season — Сезонне ТО</option>
+                </select>
+            </div>
+            <div>
+                <label class="label-mini">Кількість АКБ</label>
+                <input type="number" id="editDroneBattery" class="input-dark" min="0" placeholder="2">
+            </div>
+        </div>
+        <div class="flex gap-3 justify-end mt-6">
+            <button onclick="closeModal('modalDrone')" class="btn-red">Скасувати</button>
+            <button onclick="saveDroneEdit()" class="btn-green">Зберегти</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ MODAL: EDIT FLIGHT ═══════════ -->
+<div id="modalFlight" class="modal-overlay" onclick="if(event.target===this) closeModal('modalFlight')">
+    <div class="modal-box" style="max-width:680px">
+        <h2 class="modal-title text-purple-400"><i class="fa-solid fa-route mr-2"></i>Редагувати політ <span id="editFlightIdLabel" class="text-slate-500 font-normal text-xs"></span></h2>
+        <input type="hidden" id="editFlightId">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-2">
+            <div>
+                <label class="label-mini">Дата</label>
+                <input type="date" id="ef_date" class="input-dark">
+            </div>
+            <div>
+                <label class="label-mini">Час зміни</label>
+                <input type="text" id="ef_shift" class="input-dark" placeholder="07:00-19:00">
+            </div>
+            <div>
+                <label class="label-mini">Підрозділ</label>
+                <select id="ef_unit" class="input-dark"></select>
+            </div>
+            <div>
+                <label class="label-mini">Оператор (прізвище)</label>
+                <input type="text" id="ef_operator" class="input-dark">
+            </div>
+            <div>
+                <label class="label-mini">Модель БпЛА</label>
+                <input type="text" id="ef_drone" class="input-dark">
+            </div>
+            <div>
+                <label class="label-mini">Маршрут / Завдання</label>
+                <input type="text" id="ef_route" class="input-dark">
+            </div>
+            <div>
+                <label class="label-mini">Час зльоту</label>
+                <input type="time" id="ef_takeoff" class="input-dark">
+            </div>
+            <div>
+                <label class="label-mini">Час посадки</label>
+                <input type="time" id="ef_landing" class="input-dark">
+            </div>
+            <div>
+                <label class="label-mini">Дистанція (м)</label>
+                <input type="number" id="ef_distance" class="input-dark" min="0">
+            </div>
+            <div>
+                <label class="label-mini">Цикли АКБ</label>
+                <input type="number" id="ef_battery_cycles" class="input-dark" min="0" step="0.1">
+            </div>
+            <div>
+                <label class="label-mini">Результат</label>
+                <select id="ef_result" class="input-dark">
+                    <option>Без ознак порушення</option>
+                    <option>Затримання</option>
+                    <option>Польоти не здійснювались</option>
+                </select>
+            </div>
+            <div>
+                <label class="label-mini">Погода</label>
+                <select id="ef_weather" class="input-dark">
+                    <option>Нормальні</option>
+                    <option>Складні умови</option>
+                    <option>Несприятливі умови</option>
+                </select>
+            </div>
+            <div>
+                <label class="label-mini">ID АКБ</label>
+                <input type="text" id="ef_battery_id" class="input-dark">
+            </div>
+        </div>
+        <div class="flex gap-3 justify-end mt-6">
+            <button onclick="closeModal('modalFlight')" class="btn-red">Скасувати</button>
+            <button onclick="saveFlightEdit()" class="btn-green"><i class="fa-solid fa-floppy-disk mr-2"></i>Зберегти</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ CONFIRM MODAL ═══════════ -->
+<div id="modalConfirm" class="modal-overlay" onclick="if(event.target===this) closeModal('modalConfirm')">
+    <div class="modal-box" style="max-width:400px;text-align:center">
+        <div class="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
+            <i class="fa-solid fa-triangle-exclamation text-red-400 text-xl"></i>
+        </div>
+        <h2 class="modal-title text-red-400 justify-center">Підтвердження</h2>
+        <p id="confirmText" class="text-slate-400 text-sm mb-6">Ви впевнені?</p>
+        <div class="flex gap-3 justify-center">
+            <button onclick="closeModal('modalConfirm')" class="btn-blue">Скасувати</button>
+            <button id="confirmOkBtn" class="btn-red"><i class="fa-solid fa-trash mr-2"></i>Видалити</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let allUnits = [];
+let flightsPage = 1;
+const flightsPageSize = 50;
+let flightsTotalPages = 1;
+
+// ── Nav ──────────────────────────────────────────────────────────────────────
+function nav(p) { window.location.href = p; }
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `show ${type}`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.className = '', 2800);
+}
+
+// ── Modal ────────────────────────────────────────────────────────────────────
+function openModal(id) {
+    const m = document.getElementById(id);
+    m.style.display = 'flex';
+    requestAnimationFrame(() => m.classList.add('show'));
+}
+function closeModal(id) {
+    const m = document.getElementById(id);
+    m.classList.remove('show');
+    setTimeout(() => m.style.display = 'none', 200);
+}
+document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+
+// ── Confirm helper ───────────────────────────────────────────────────────────
+function confirm(text, onOk) {
+    document.getElementById('confirmText').textContent = text;
+    const btn = document.getElementById('confirmOkBtn');
+    btn.onclick = () => { closeModal('modalConfirm'); onOk(); };
+    openModal('modalConfirm');
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+    if (name === 'units') loadUnits();
+    if (name === 'personnel') { populateUnitFilters(); loadPersonnel(); }
+    if (name === 'fleet') { populateUnitFilters(); loadFleet(); }
+    if (name === 'flights') { populateUnitFilters(); loadFlightsEditor(); }
+}
+
+// ── Units ─────────────────────────────────────────────────────────────────────
+async function loadUnits() {
+    const res = await fetch('/api/admin/units');
+    const data = await res.json();
+    allUnits = data.units || [];
+    renderUnits();
+    populateUnitFilters();
+}
+
+function renderUnits() {
+    document.getElementById('unitsCount').textContent = allUnits.length;
+    const container = document.getElementById('unitsList');
+    if (!allUnits.length) {
+        container.innerHTML = '<div class="loading-row col-span-3">Немає підрозділів</div>';
+        return;
+    }
+    // Use data-index to avoid quote-escaping issues in onclick attributes
+    container.innerHTML = allUnits.map((u, i) => `
+        <div class="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-xl px-4 py-3 gap-3 hover:border-white/10 transition-all">
+            <span class="text-sm font-semibold text-slate-200 truncate flex-1">${escHtml(u)}</span>
+            <div class="row-actions">
+                <button class="btn-blue" data-idx="${i}" data-action="rename" title="Перейменувати"><i class="fa-solid fa-pen text-xs"></i></button>
+                <button class="btn-red" data-idx="${i}" data-action="delete" title="Видалити"><i class="fa-solid fa-trash text-xs"></i></button>
+            </div>
+        </div>
+    `).join('');
+
+    // Delegate clicks via data attributes — avoids all quote-escaping issues
+    container.querySelectorAll('button[data-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const u = allUnits[parseInt(btn.dataset.idx)];
+            if (btn.dataset.action === 'rename') openUnitRename(u);
+            else if (btn.dataset.action === 'delete') deleteUnit(u);
+        });
+    });
+}
+
+async function addUnit() {
+    const name = document.getElementById('newUnitName').value.trim();
+    if (!name) { toast('Введіть назву підрозділу', 'error'); return; }
+    const res = await fetch('/api/admin/units', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({name})
+    });
+    if (res.ok) {
+        const d = await res.json();
+        allUnits = d.units;
+        renderUnits();
+        populateUnitFilters();
+        document.getElementById('newUnitName').value = '';
+        toast(`Підрозділ "${name}" додано`);
+    } else {
+        const e = await res.json();
+        toast(e.detail || 'Помилка', 'error');
+    }
+}
+
+function openUnitRename(name) {
+    document.getElementById('editUnitOldName').value = name;
+    document.getElementById('editUnitNewName').value = name;
+    openModal('modalUnit');
+    setTimeout(() => document.getElementById('editUnitNewName').focus(), 200);
+}
+
+async function saveUnitRename() {
+    const old_name = document.getElementById('editUnitOldName').value;
+    const new_name = document.getElementById('editUnitNewName').value.trim();
+    if (!new_name) { toast('Введіть назву', 'error'); return; }
+    const res = await fetch('/api/admin/units', {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({old_name, new_name})
+    });
+    if (res.ok) {
+        const d = await res.json();
+        allUnits = d.units;
+        renderUnits();
+        populateUnitFilters();
+        closeModal('modalUnit');
+        toast('Підрозділ перейменовано');
+    } else {
+        const e = await res.json();
+        toast(e.detail || 'Помилка', 'error');
+    }
+}
+
+function deleteUnit(name) {
+    confirm(`Видалити підрозділ "${name}"? Дані (польоти, склад, дрони) залишаться в БД.`, async () => {
+        const res = await fetch('/api/admin/units/' + encodeURIComponent(name), {method:'DELETE'});
+        if (res.ok) {
+            const d = await res.json();
+            allUnits = d.units;
+            renderUnits();
+            populateUnitFilters();
+            toast(`Підрозділ "${name}" видалено`);
+        } else {
+            toast('Помилка видалення', 'error');
+        }
+    });
+}
+
+// ── Personnel ─────────────────────────────────────────────────────────────────
+async function loadPersonnel() {
+    const unit = document.getElementById('personnelUnitFilter').value;
+    const url = unit ? `/api/get_personnel?unit=${encodeURIComponent(unit)}` : '/api/get_personnel';
+    const res = await fetch(url);
+    const data = await res.json();
+    document.getElementById('personnelCount').textContent = data.length;
+    const tbody = document.getElementById('personnelTableBody');
+    if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="loading-row">Немає даних</td></tr>';
+        return;
+    }
+    tbody.innerHTML = data.map(p => `
+        <tr>
+            <td class="pl-5 font-semibold">${escHtml(p.name)}</td>
+            <td><span class="text-slate-400 text-xs">${escHtml(p.unit)}</span></td>
+            <td>
+                <span class="status-badge ${p.is_staff ? 'status-Active' : 'status-Repair'}">
+                    ${p.is_staff ? 'Штат' : 'Позаштат'}
+                </span>
+            </td>
+            <td class="text-right pr-5">
+                <div class="row-actions justify-end">
+                    <button class="btn-blue" onclick='openPersonnelEdit(${JSON.stringify(p.unit)}, ${JSON.stringify(p.name)})'><i class="fa-solid fa-pen text-xs"></i></button>
+                    <button class="btn-red" onclick='deletePersonnel(${JSON.stringify(p.unit)}, ${JSON.stringify(p.name)})'><i class="fa-solid fa-trash text-xs"></i></button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openPersonnelEdit(unit, name) {
+    document.getElementById('editPersonUnit').value = unit;
+    document.getElementById('editPersonOldName').value = name;
+    document.getElementById('editPersonNewName').value = name;
+    document.getElementById('editPersonUnitDisplay').value = unit;
+    openModal('modalPersonnel');
+    setTimeout(() => document.getElementById('editPersonNewName').focus(), 200);
+}
+
+async function savePersonnelEdit() {
+    const unit = document.getElementById('editPersonUnit').value;
+    const old_name = document.getElementById('editPersonOldName').value;
+    const new_name = document.getElementById('editPersonNewName').value.trim();
+    if (!new_name) { toast('Введіть прізвище', 'error'); return; }
+    const res = await fetch('/api/admin/personnel', {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({unit, old_name, new_name})
+    });
+    if (res.ok) {
+        closeModal('modalPersonnel');
+        toast('Оператора оновлено');
+        loadPersonnel();
+    } else {
+        const e = await res.json();
+        toast(e.detail || 'Помилка', 'error');
+    }
+}
+
+function deletePersonnel(unit, name) {
+    confirm(`Видалити оператора "${name}" (${unit})?`, async () => {
+        const res = await fetch(`/api/admin/personnel?unit=${encodeURIComponent(unit)}&name=${encodeURIComponent(name)}`, {method:'DELETE'});
+        if (res.ok) { toast('Оператора видалено'); loadPersonnel(); }
+        else { toast('Помилка видалення', 'error'); }
+    });
+}
+
+// ── Fleet ─────────────────────────────────────────────────────────────────────
+async function loadFleet() {
+    const unit = document.getElementById('fleetUnitFilter').value;
+    const url = unit ? `/api/get_unit_drones?unit=${encodeURIComponent(unit)}` : '/api/get_units_drones?units=' + encodeURIComponent(allUnits.join(','));
+    const res = await fetch(url);
+    const data = await res.json();
+    document.getElementById('fleetCount').textContent = data.length;
+    const tbody = document.getElementById('fleetTableBody');
+    if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="loading-row">Немає БпЛА</td></tr>';
+        return;
+    }
+    tbody.innerHTML = data.map(d => `
+        <tr>
+            <td class="pl-5 font-semibold">${escHtml(d.model || '—')}</td>
+            <td class="text-slate-400">${escHtml(d.serial_number || '—')}</td>
+            <td class="text-slate-400 text-xs">${escHtml(d.unit || '—')}</td>
+            <td><span class="status-badge status-${d.status || 'Active'}">${d.status || '—'}</span></td>
+            <td class="text-slate-300">${d.battery_count ?? '—'}</td>
+            <td class="text-right pr-5">
+                <div class="row-actions justify-end">
+                    <button class="btn-blue" onclick='openDroneEdit(${JSON.stringify(d)})'><i class="fa-solid fa-pen text-xs"></i></button>
+                    <button class="btn-red" onclick='deleteDrone(${d.id}, ${JSON.stringify(d.model)})'><i class="fa-solid fa-trash text-xs"></i></button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function openDroneEdit(d) {
+    document.getElementById('editDroneId').value = d.id;
+    document.getElementById('editDroneModel').value = d.model || '';
+    document.getElementById('editDroneSerial').value = d.serial_number || '';
+    document.getElementById('editDroneStatus').value = d.status || 'Active';
+    document.getElementById('editDroneBattery').value = d.battery_count ?? '';
+    const sel = document.getElementById('editDroneUnit');
+    sel.innerHTML = allUnits.map(u => `<option value="${escHtml(u)}" ${u === d.unit ? 'selected' : ''}>${escHtml(u)}</option>`).join('');
+    document.getElementById('modalDroneTitle').innerHTML = '<i class="fa-solid fa-plane-up mr-2"></i>Редагувати БпЛА';
+    openModal('modalDrone');
+}
+
+function openAddDroneModal() {
+    document.getElementById('editDroneId').value = '';
+    document.getElementById('editDroneModel').value = '';
+    document.getElementById('editDroneSerial').value = '';
+    document.getElementById('editDroneStatus').value = 'Active';
+    document.getElementById('editDroneBattery').value = '';
+    const sel = document.getElementById('editDroneUnit');
+    sel.innerHTML = allUnits.map(u => `<option value="${escHtml(u)}">${escHtml(u)}</option>`).join('');
+    document.getElementById('modalDroneTitle').innerHTML = '<i class="fa-solid fa-plus mr-2"></i>Додати БпЛА';
+    openModal('modalDrone');
+}
+
+async function saveDroneEdit() {
+    const id = document.getElementById('editDroneId').value;
+    const payload = {
+        model: document.getElementById('editDroneModel').value.trim(),
+        serial_number: document.getElementById('editDroneSerial').value.trim(),
+        unit: document.getElementById('editDroneUnit').value,
+        status: document.getElementById('editDroneStatus').value,
+        battery_count: parseInt(document.getElementById('editDroneBattery').value) || 0,
+    };
+    if (!payload.model) { toast('Введіть модель БпЛА', 'error'); return; }
+    let res;
+    if (id) {
+        res = await fetch(`/api/update_drone/${id}`, {
+            method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+        });
+    } else {
+        res = await fetch('/api/add_new_drone', {
+            method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+        });
+    }
+    if (res.ok) {
+        closeModal('modalDrone');
+        toast(id ? 'БпЛА оновлено' : 'БпЛА додано');
+        loadFleet();
+    } else {
+        const e = await res.json();
+        toast(e.detail || 'Помилка', 'error');
+    }
+}
+
+function deleteDrone(id, model) {
+    confirm(`Видалити БпЛА "${model}"?`, async () => {
+        const res = await fetch(`/api/delete_drone/${id}`, {method:'DELETE'});
+        if (res.ok) { toast('БпЛА видалено'); loadFleet(); }
+        else { toast('Помилка', 'error'); }
+    });
+}
+
+// ── Flights ───────────────────────────────────────────────────────────────────
+async function loadFlightsEditor() {
+    const from = document.getElementById('flightsFrom').value;
+    const to = document.getElementById('flightsTo').value;
+    const search = document.getElementById('flightsSearch').value.trim();
+    let url = `/api/get_all_flights?limit=${flightsPageSize}&offset=${(flightsPage-1)*flightsPageSize}`;
+    if (from) url += `&from_dt=${from}`;
+    if (to) url += `&to_dt=${to}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+
+    const res = await fetch(url);
+    const result = await res.json();
+    const data = result.data !== undefined ? result.data : result;
+    const total = result.total !== undefined ? result.total : data.length;
+    flightsTotalPages = Math.max(1, Math.ceil(total / flightsPageSize));
+
+    document.getElementById('flightsCount').textContent = total;
+    document.getElementById('flightsPage').textContent = flightsPage;
+    document.getElementById('flightsTotal').textContent = flightsTotalPages;
+    document.getElementById('flightsPrev').disabled = flightsPage <= 1;
+    document.getElementById('flightsNext').disabled = flightsPage >= flightsTotalPages;
+
+    const tbody = document.getElementById('flightsTableBody');
+    if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="9" class="loading-row">Немає записів</td></tr>';
+        return;
+    }
+    tbody.innerHTML = data.map(f => `
+        <tr>
+            <td class="pl-5 text-xs">${f.date || '—'}</td>
+            <td class="text-xs text-slate-400 max-w-[120px] truncate">${escHtml(f.unit || '—')}</td>
+            <td class="font-semibold">${escHtml(f.operator || '—')}</td>
+            <td class="text-xs">${escHtml(f.drone || '—')}</td>
+            <td class="text-xs text-slate-400 max-w-[140px] truncate">${escHtml(f.route || '—')}</td>
+            <td class="text-xs text-slate-400">${f.takeoff||'—'} / ${f.landing||'—'}</td>
+            <td class="text-xs">${f.duration||0}</td>
+            <td><span class="status-badge ${f.result==='Затримання'?'status-Repair':f.result==='Польоти не здійснювались'?'status-Lost':'status-Active'}"
+                style="font-size:8px;max-width:100px;overflow:hidden;text-overflow:ellipsis;display:inline-block">${escHtml(f.result||'—')}</span></td>
+            <td class="text-right pr-5">
+                <div class="row-actions justify-end">
+                    <button class="btn-blue" onclick='openFlightEdit(${JSON.stringify(f)})'><i class="fa-solid fa-pen text-xs"></i></button>
+                    <button class="btn-red" onclick='deleteFlight(${f.id})'><i class="fa-solid fa-trash text-xs"></i></button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function changeFlightsPage(dir) {
+    const newPage = flightsPage + dir;
+    if (newPage < 1 || newPage > flightsTotalPages) return;
+    flightsPage = newPage;
+    loadFlightsEditor();
+}
+
+function openFlightEdit(f) {
+    document.getElementById('editFlightId').value = f.id;
+    document.getElementById('editFlightIdLabel').textContent = `#${f.id}`;
+    document.getElementById('ef_date').value = f.date || '';
+    document.getElementById('ef_shift').value = f.shift_time || '';
+    document.getElementById('ef_operator').value = f.operator || '';
+    document.getElementById('ef_drone').value = f.drone || '';
+    document.getElementById('ef_route').value = f.route || '';
+    document.getElementById('ef_takeoff').value = f.takeoff || '';
+    document.getElementById('ef_landing').value = f.landing || '';
+    document.getElementById('ef_distance').value = f.distance || '';
+    document.getElementById('ef_battery_cycles').value = f.battery_cycles || '';
+    document.getElementById('ef_result').value = f.result || 'Без ознак порушення';
+    document.getElementById('ef_weather').value = f.weather || 'Нормальні';
+    document.getElementById('ef_battery_id').value = f.battery_id || '';
+    // Populate unit select
+    const sel = document.getElementById('ef_unit');
+    sel.innerHTML = allUnits.map(u => `<option value="${escHtml(u)}" ${u === f.unit ? 'selected' : ''}>${escHtml(u)}</option>`).join('');
+    openModal('modalFlight');
+}
+
+async function saveFlightEdit() {
+    const id = document.getElementById('editFlightId').value;
+    const payload = {
+        date: document.getElementById('ef_date').value,
+        shift_time: document.getElementById('ef_shift').value,
+        unit: document.getElementById('ef_unit').value,
+        operator: document.getElementById('ef_operator').value.trim(),
+        drone: document.getElementById('ef_drone').value.trim(),
+        route: document.getElementById('ef_route').value.trim(),
+        takeoff: document.getElementById('ef_takeoff').value,
+        landing: document.getElementById('ef_landing').value,
+        distance: parseFloat(document.getElementById('ef_distance').value) || 0,
+        battery_cycles: parseFloat(document.getElementById('ef_battery_cycles').value) || 0,
+        result: document.getElementById('ef_result').value,
+        weather: document.getElementById('ef_weather').value,
+        battery_id: document.getElementById('ef_battery_id').value.trim(),
+    };
+    const res = await fetch(`/api/update_flight/${id}`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+        closeModal('modalFlight');
+        toast('Політ оновлено');
+        loadFlightsEditor();
+    } else {
+        const e = await res.json();
+        toast(e.detail || 'Помилка збереження', 'error');
+    }
+}
+
+function deleteFlight(id) {
+    confirm(`Видалити запис польоту #${id}?`, async () => {
+        const res = await fetch(`/api/delete_flight/${id}`, {method:'DELETE'});
+        if (res.ok) { toast('Запис видалено'); loadFlightsEditor(); }
+        else { toast('Помилка', 'error'); }
+    });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function populateUnitFilters() {
+    const selectors = ['personnelUnitFilter', 'fleetUnitFilter'];
+    selectors.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">Усі підрозділи</option>' +
+            allUnits.map(u => `<option value="${escHtml(u)}" ${u===cur?'selected':''}>${escHtml(u)}</option>`).join('');
+    });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadUnits();
+</script>
+</body>
+</html>
