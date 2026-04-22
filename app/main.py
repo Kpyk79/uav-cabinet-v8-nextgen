@@ -100,13 +100,36 @@ else:
     ai_client = None
 
 UNITS = [
-    'впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"', 
-    'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"', 
-    'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"', 
-    'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"', 
-    'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"', 
+    'впс "Кодима"', 'віпс "Загнітків"', 'віпс "Шершенці"', 'впс "Станіславка"',
+    'віпс "Тимкове"', 'віпс "Чорна"', 'впс "Окни"', 'віпс "Ткаченкове"',
+    'віпс "Гулянка"', 'віпс "Новосеменівка"', 'впс "Великокомарівка"',
+    'віпс "Павлівка"', 'впс "Велика Михайлівка"', 'віпс "Слов\'яносербка"',
+    'віпс "Гребеники"', 'впс "Степанівка"', 'віпс "Лучинське"',
     'віпс "Кучурган"', 'віпс "Лиманське"', "Група ВОПРтаПБпПС", "ВЗФБпАКтаЗПБпС", "НАВЧАННЯ"
 ]
+
+UNITS_FILE = os.path.join(BASE_DIR, "units.json")
+
+def load_units_from_file():
+    global UNITS
+    if os.path.exists(UNITS_FILE):
+        try:
+            with open(UNITS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                loaded = data.get("units", [])
+                if loaded:
+                    UNITS = loaded
+        except Exception as e:
+            print(f"Помилка завантаження units.json: {e}")
+
+def save_units_to_file():
+    try:
+        with open(UNITS_FILE, 'w', encoding='utf-8') as f:
+            json.dump({"units": UNITS}, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Помилка збереження units.json: {e}")
+
+load_units_from_file()
 
 async def cleanup_database_names():
     """Знаходить і виправляє ненормалізовані імена операторів у всій базі даних."""
@@ -262,6 +285,35 @@ class StaffStatusUpdate(BaseModel):
 
 class AdminAuth(BaseModel):
     password: str
+
+class DroneUpdate(BaseModel):
+    unit: Optional[str] = None
+    model: Optional[str] = None
+    serial_number: Optional[str] = None
+    status: Optional[str] = None
+    battery_count: Optional[int] = None
+
+class PersonnelRename(BaseModel):
+    unit: str
+    old_name: str
+    new_name: str
+
+class FlightUpdate(BaseModel):
+    date: Optional[str] = None
+    shift_time: Optional[str] = None
+    operator: Optional[str] = None
+    unit: Optional[str] = None
+    drone: Optional[str] = None
+    takeoff: Optional[str] = None
+    landing: Optional[str] = None
+    duration: Optional[float] = None
+    distance: Optional[float] = None
+    battery_cycles: Optional[float] = None
+    result: Optional[str] = None
+    weather: Optional[str] = None
+    conditions: Optional[str] = None
+    route: Optional[str] = None
+    battery_id: Optional[str] = None
 
 # --- HELPERS ---
 
@@ -759,6 +811,107 @@ async def delete_flight(id: int):
     supabase.table("flights").delete().eq("id", id).execute()
     return {"status": "deleted"}
 
+# --- EDITOR API ---
+
+@app.get("/api/admin/units")
+async def get_units_list():
+    return {"units": UNITS}
+
+@app.post("/api/admin/units")
+async def add_unit(data: dict):
+    name = (data.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Назва підрозділу обов'язкова")
+    if name not in UNITS:
+        UNITS.append(name)
+        save_units_to_file()
+    return {"units": UNITS}
+
+@app.put("/api/admin/units")
+async def rename_unit(data: dict):
+    old_name = (data.get("old_name") or "").strip()
+    new_name = (data.get("new_name") or "").strip()
+    if not old_name or not new_name:
+        raise HTTPException(status_code=400, detail="Потрібні old_name та new_name")
+    if old_name not in UNITS:
+        raise HTTPException(status_code=404, detail="Підрозділ не знайдено")
+    if new_name in UNITS and new_name != old_name:
+        raise HTTPException(status_code=400, detail="Підрозділ з такою назвою вже існує")
+    idx = UNITS.index(old_name)
+    UNITS[idx] = new_name
+    save_units_to_file()
+    try:
+        supabase.table("flights").update({"unit": new_name}).eq("unit", old_name).execute()
+        supabase.table("drones").update({"unit": new_name}).eq("unit", old_name).execute()
+        supabase.table("operator_passwords").update({"unit": new_name}).eq("unit", old_name).execute()
+    except Exception as e:
+        print(f"Помилка оновлення підрозділу в таблицях: {e}")
+    return {"units": UNITS}
+
+@app.delete("/api/admin/units/{name:path}")
+async def delete_unit(name: str):
+    from urllib.parse import unquote
+    decoded = unquote(name).strip()
+    if decoded in UNITS:
+        UNITS.remove(decoded)
+        save_units_to_file()
+    return {"units": UNITS}
+
+@app.put("/api/update_drone/{drone_id}")
+async def update_drone(drone_id: int, data: DroneUpdate):
+    try:
+        payload = {k: v for k, v in data.dict().items() if v is not None}
+        if not payload:
+            raise HTTPException(status_code=400, detail="Нічого оновлювати")
+        supabase.table("drones").update(payload).eq("id", drone_id).execute()
+        return {"status": "ok"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/admin/personnel")
+async def delete_personnel(unit: str = Query(...), name: str = Query(...)):
+    try:
+        supabase.table("operator_passwords").delete().eq("unit", unit).eq("name", name).execute()
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/admin/personnel")
+async def rename_personnel(data: PersonnelRename):
+    try:
+        new_name = normalize_operator_name(data.new_name)
+        supabase.table("operator_passwords").update({"name": new_name}).eq("unit", data.unit).eq("name", data.old_name).execute()
+        supabase.table("flights").update({"operator": new_name}).eq("unit", data.unit).eq("operator", data.old_name).execute()
+        return {"status": "ok", "new_name": new_name}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/update_flight/{flight_id}")
+async def update_flight(flight_id: int, data: FlightUpdate):
+    try:
+        payload = {k: v for k, v in data.dict().items() if v is not None}
+        if not payload:
+            raise HTTPException(status_code=400, detail="Нічого оновлювати")
+        if "operator" in payload:
+            payload["operator"] = normalize_operator_name(payload["operator"])
+        if "takeoff" in payload or "landing" in payload:
+            res = supabase.table("flights").select("takeoff,landing,result").eq("id", flight_id).execute()
+            if res.data:
+                cur = res.data[0]
+                takeoff = payload.get("takeoff", cur.get("takeoff"))
+                landing = payload.get("landing", cur.get("landing"))
+                result = payload.get("result", cur.get("result"))
+                if result != "Польоти не здійснювались":
+                    payload["duration"] = float(calculate_duration(takeoff, landing))
+        supabase.table("flights").update(payload).eq("id", flight_id).execute()
+        return {"status": "ok"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     icon_path = os.path.join(FRONTEND_DIR, "icon.png")
@@ -815,6 +968,8 @@ async def read_fleet(): return FileResponse(os.path.join(FRONTEND_DIR, "fleet_ma
 async def read_admin_analytics(): return FileResponse(os.path.join(FRONTEND_DIR, "admin_analytics.html"))
 @app.get("/support")
 async def read_support(): return FileResponse(os.path.join(FRONTEND_DIR, "support.html"))
+@app.get("/editor")
+async def read_editor(): return FileResponse(os.path.join(FRONTEND_DIR, "editor.html"))
 @app.get("/xxx")
 async def read_xxx(): return FileResponse(os.path.join(FRONTEND_DIR, "xxx.html"))
 
