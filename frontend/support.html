@@ -74,14 +74,110 @@
         }
 
         @keyframes shimmer {
-            0% {
-                background-position: 200% 0;
-            }
-
-            100% {
-                background-position: -200% 0;
-            }
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
+
+        /* ── Live Weather Panel ── */
+        /* Cards: 2 cols mobile → 4 cols (2 rows) everywhere else */
+        #wxCards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        @media (min-width: 480px) { #wxCards { grid-template-columns: repeat(4, 1fr); } }
+
+        .wx-card {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 0.875rem;
+            padding: 12px 14px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+        .wx-card .wx-label {
+            font-size: 10px; font-weight: 900; text-transform: uppercase;
+            letter-spacing: 0.07em; color: #475569;
+            display: flex; align-items: center; gap: 5px;
+            line-height: 1.3; white-space: normal;
+        }
+        .wx-card .wx-label i { flex-shrink: 0; }
+        .wx-card .wx-val {
+            font-size: clamp(22px, 4vw, 30px);
+            font-weight: 900; line-height: 1.05;
+            color: #f1f5f9; letter-spacing: -0.03em;
+        }
+        .wx-card .wx-unit { font-size: 12px; font-weight: 700; color: #64748b; }
+        .wx-card .wx-trend {
+            font-size: 10px; font-weight: 700; color: #475569;
+            line-height: 1.4; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap;
+        }
+
+        /* Altitude slider */
+        .alt-row {
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+        .alt-num-wrap {
+            display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+        }
+        .alt-slider-wrap { flex: 1; min-width: 120px; }
+        #altNumInput {
+            width: 58px; text-align: center; font-size: 13px; font-weight: 900;
+            background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.12);
+            color: #fff; outline: none; border-radius: 8px; padding: 4px 6px;
+        }
+        #altNumInput:focus { border-color: #22c55e; }
+        #altSlider {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 26px; border-radius: 13px;
+            outline: none; cursor: pointer;
+            background: linear-gradient(90deg, #22c55e 0%, #22c55e var(--fill,10%), rgba(255,255,255,0.08) var(--fill,10%));
+            transition: background 0.12s;
+        }
+        #altSlider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 26px; height: 26px; border-radius: 50%;
+            background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            cursor: grab; border: 3px solid #22c55e;
+            transition: border-color 0.15s;
+        }
+        #altSlider.warn::-webkit-slider-thumb  { border-color: #f59e0b; }
+        #altSlider.danger::-webkit-slider-thumb { border-color: #ef4444; }
+        #altSlider.warn   { background: linear-gradient(90deg,#22c55e 0%,#f59e0b var(--fill,10%),rgba(255,255,255,0.08) var(--fill,10%)); }
+        #altSlider.danger { background: linear-gradient(90deg,#22c55e 0%,#ef4444 var(--fill,10%),rgba(255,255,255,0.08) var(--fill,10%)); }
+        #altSlider::-webkit-slider-thumb:active { cursor: grabbing; box-shadow: 0 0 0 6px rgba(34,197,94,0.2); }
+
+        #uavBadges { display: flex; gap: 6px; flex-wrap: wrap; }
+        @media (max-width: 639px) {
+            .alt-row { gap: 8px; }
+            .alt-slider-wrap { order: 3; flex-basis: 100%; }
+            #uavBadges { order: 2; margin-left: auto; }
+        }
+        .uav-badge {
+            font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em;
+            padding: 3px 9px; border-radius: 6px; border: 1px solid; white-space: nowrap;
+        }
+        .uav-ok   { background: rgba(34,197,94,0.15);  color: #22c55e; border-color: rgba(34,197,94,0.3); }
+        .uav-warn { background: rgba(245,158,11,0.15); color: #f59e0b; border-color: rgba(245,158,11,0.3); }
+        .uav-bad  { background: rgba(239,68,68,0.15);  color: #ef4444; border-color: rgba(239,68,68,0.3); }
+
+        .wx-info-row {
+            display: flex; flex-wrap: wrap; gap: 8px 20px;
+            font-size: 12px; font-weight: 700; color: #94a3b8;
+            padding: 0 2px; line-height: 1.5;
+        }
+        .wx-info-row span { display: flex; align-items: center; gap: 5px; }
+        .wx-info-sub {
+            display: flex; flex-wrap: wrap; gap: 6px 18px;
+            font-size: 11px; font-weight: 600; color: #475569;
+            padding: 0 2px; margin-top: 4px;
+        }
+        .wx-info-sub span { display: flex; align-items: center; gap: 4px; }
+        #wxPanel { display: none; }
     </style>
 </head>
 
@@ -103,6 +199,112 @@
             <div
                 class="bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-xs font-bold border border-blue-500/20">
                 AI ACTIVE
+            </div>
+        </div>
+
+        <!-- ══ Live Weather Panel ══ -->
+        <div id="wxPanel" class="mb-6">
+
+            <!-- location bar -->
+            <div class="flex items-center justify-between mb-3 px-1 flex-wrap gap-2">
+                <span class="text-[11px] font-bold text-slate-400 flex items-center gap-2">
+                    <i class="fa-solid fa-location-dot text-blue-400"></i>
+                    <span id="wxCoords">—</span>
+                </span>
+                <div class="flex items-center gap-3">
+                    <span id="wxAge" class="text-[10px] text-slate-600 font-bold uppercase tracking-widest"></span>
+                    <button onclick="refreshWeather()"
+                        class="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors flex items-center gap-1">
+                        <i class="fa-solid fa-rotate text-xs"></i> Оновити
+                    </button>
+                </div>
+            </div>
+
+            <!-- 8 metric cards — responsive grid -->
+            <div id="wxCards">
+                <div class="wx-card">
+                    <div class="wx-label"><i class="fa-solid fa-temperature-half"></i>Температура</div>
+                    <div><span class="wx-val" id="wc-temp">—</span><span class="wx-unit"> °C</span></div>
+                    <div class="wx-trend" id="wc-temp-t">→ стабільно</div>
+                </div>
+                <div class="wx-card">
+                    <div class="wx-label"><i class="fa-solid fa-wind"></i>Вітер (10м)</div>
+                    <div><span class="wx-val" id="wc-wind">—</span><span class="wx-unit"> м/с</span></div>
+                    <div class="wx-trend" id="wc-wind-t">→ стабільно</div>
+                </div>
+                <div class="wx-card">
+                    <div class="wx-label"><i class="fa-regular fa-eye"></i>Видимість</div>
+                    <div><span class="wx-val" id="wc-vis">—</span><span class="wx-unit"> км</span></div>
+                    <div class="wx-trend" id="wc-vis-t">→ стабільно</div>
+                </div>
+                <div class="wx-card">
+                    <div class="wx-label"><i class="fa-solid fa-droplet"></i>Вологість</div>
+                    <div><span class="wx-val" id="wc-hum">—</span><span class="wx-unit"> %</span></div>
+                    <div class="wx-trend" id="wc-hum-t">→ стабільно</div>
+                </div>
+                <div class="wx-card">
+                    <div class="wx-label"><i class="fa-solid fa-cloud-rain"></i>Опади</div>
+                    <div><span class="wx-val" id="wc-prec">—</span><span class="wx-unit"> мм</span></div>
+                    <div class="wx-trend" id="wc-prec-t">→ стабільно</div>
+                </div>
+                <div class="wx-card">
+                    <div class="wx-label"><i class="fa-solid fa-smog"></i>Туман</div>
+                    <div><span class="wx-val" id="wc-fog">—</span><span class="wx-unit"> %</span></div>
+                    <div class="wx-trend" id="wc-fog-t">→ стабільно</div>
+                </div>
+                <div class="wx-card">
+                    <div class="wx-label"><i class="fa-solid fa-snowflake"></i>Обмерзання</div>
+                    <div><span class="wx-val" id="wc-ice">—</span><span class="wx-unit"> /3</span></div>
+                    <div class="wx-trend" id="wc-ice-t">→ стабільно</div>
+                </div>
+                <div class="wx-card">
+                    <div class="wx-label"><i class="fa-solid fa-cloud"></i>Стеля хмар</div>
+                    <div><span class="wx-val" id="wc-ceil">—</span><span class="wx-unit"> м</span></div>
+                    <div class="wx-trend" id="wc-ceil-t">→ стабільно</div>
+                </div>
+            </div>
+
+            <!-- altitude wind block -->
+            <div class="glass rounded-2xl p-4">
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-arrows-up-down text-green-400"></i> Вітер на висоті
+                </div>
+
+                <!-- slider row — responsive -->
+                <div class="alt-row mb-3">
+                    <div class="alt-num-wrap">
+                        <span class="text-[11px] font-black text-slate-400 uppercase">Висота:</span>
+                        <input type="number" id="altNumInput" value="100" min="10" max="500" step="10"
+                            oninput="syncSliderFromNum()">
+                        <span class="text-[11px] font-black text-slate-500">м</span>
+                    </div>
+                    <div class="alt-slider-wrap">
+                        <input type="range" id="altSlider" min="10" max="500" step="10" value="100"
+                            oninput="onSliderChange()">
+                    </div>
+                    <div id="uavBadges">
+                        <span class="uav-badge uav-ok" id="badge-fpv">FPV</span>
+                        <span class="uav-badge uav-ok" id="badge-scout">Розвідка</span>
+                        <span class="uav-badge uav-ok" id="badge-wing">Крило</span>
+                    </div>
+                </div>
+
+                <!-- wind info lines -->
+                <div class="wx-info-row">
+                    <span><i class="fa-solid fa-arrow-down text-green-400"></i>
+                        <b id="ws-speed" class="text-white">—</b> /
+                        <span id="ws-gusts">—</span> м/с
+                    </span>
+                    <span><i class="fa-solid fa-compass text-slate-500"></i><span id="ws-dir">—</span></span>
+                    <span><i class="fa-solid fa-thermometer-half text-blue-400"></i><span id="ws-temp">—</span>°C</span>
+                    <span><i class="fa-regular fa-eye text-slate-500"></i>Видимість <span id="ws-vis">—</span> км</span>
+                </div>
+                <div class="wx-info-sub mt-2">
+                    <span><i class="fa-solid fa-cloud text-slate-600"></i>Стеля хмар:
+                        <b id="ws-ceil" class="text-slate-300">—</b></span>
+                    <span><i class="fa-solid fa-snowflake text-blue-600"></i>Замерзання:
+                        <b id="ws-freeze" class="text-blue-300">—</b></span>
+                </div>
             </div>
         </div>
 
@@ -220,6 +422,165 @@
     </div>
 
     <script>
+        // ── Live Weather ─────────────────────────────────────────────────────
+        let wxData = null;
+        let wxLat = null, wxLon = null;
+
+        // Wind power-law interpolation between known altitude points
+        function windAtAlt(h) {
+            if (!wxData) return { speed: null, gusts: null, dir: null };
+            const w = wxData.wind;
+            const alpha = 1 / 7;
+            let speed, dir;
+
+            if (h <= 10) {
+                speed = w['10m'].speed;
+                dir = w['10m'].dir;
+            } else if (h <= 80) {
+                // power law from 10m
+                speed = w['10m'].speed * Math.pow(h / 10, alpha);
+                const t = (h - 10) / 70;
+                dir = lerpAngle(w['10m'].dir, w['80m'].dir, t);
+            } else if (h <= 120) {
+                const t = (h - 80) / 40;
+                speed = w['80m'].speed + (w['120m'].speed - w['80m'].speed) * t;
+                dir = lerpAngle(w['80m'].dir, w['120m'].dir, t);
+            } else {
+                // extrapolate from 120m using power law
+                speed = w['120m'].speed * Math.pow(h / 120, alpha);
+                dir = w['120m'].dir;
+            }
+
+            // Gust estimate: gusts grow ~20% above surface value ratio
+            const gustRatio = w['10m'].speed > 0 ? w['10m'].gusts / w['10m'].speed : 1.3;
+            const gusts = Math.round(speed * Math.min(gustRatio, 1.6) * 10) / 10;
+            return { speed: Math.round(speed * 10) / 10, gusts, dir: Math.round(dir) };
+        }
+
+        function lerpAngle(a, b, t) {
+            let d = b - a;
+            if (d > 180) d -= 360;
+            if (d < -180) d += 360;
+            return (a + d * t + 360) % 360;
+        }
+
+        function dirText(deg) {
+            const dirs = ['Пн','ПнСх','Сх','ПдСх','Пд','ПдЗх','Зх','ПнЗх'];
+            return dirs[Math.round(deg / 45) % 8];
+        }
+
+        function badgeClass(speed, limOk, limWarn) {
+            if (speed <= limOk) return 'uav-ok';
+            if (speed <= limWarn) return 'uav-warn';
+            return 'uav-bad';
+        }
+
+        function updateSliderUI() {
+            const h = parseInt(document.getElementById('altSlider').value);
+            document.getElementById('altNumInput').value = h;
+
+            const { speed, gusts, dir } = windAtAlt(h);
+            const pct = ((h - 10) / (500 - 10) * 100).toFixed(1);
+            const slider = document.getElementById('altSlider');
+            slider.style.setProperty('--fill', pct + '%');
+
+            // Color by wind severity
+            slider.classList.remove('warn','danger');
+            if (speed !== null) {
+                if (speed > 12) slider.classList.add('danger');
+                else if (speed > 8) slider.classList.add('warn');
+            }
+
+            // Summary line
+            document.getElementById('ws-speed').textContent  = speed !== null ? speed : '—';
+            document.getElementById('ws-gusts').textContent  = gusts !== null ? gusts : '—';
+            document.getElementById('ws-dir').textContent    = dir !== null ? dirText(dir) + ' ' + dir + '°' : '—';
+            document.getElementById('ws-vis').textContent    = wxData ? wxData.visibility_km : '—';
+            document.getElementById('ws-temp').textContent   = wxData ? wxData.temperature : '—';
+            document.getElementById('ws-ceil').textContent   = wxData?.cloud_ceiling_m ? wxData.cloud_ceiling_m + ' м' : 'ясно';
+            document.getElementById('ws-freeze').textContent = wxData?.freezing_level_m ? wxData.freezing_level_m + ' м' : '—';
+
+            // UAV badges
+            if (speed !== null) {
+                document.getElementById('badge-fpv').className   = 'uav-badge ' + badgeClass(speed, 10, 14);
+                document.getElementById('badge-scout').className = 'uav-badge ' + badgeClass(speed, 8,  12);
+                document.getElementById('badge-wing').className  = 'uav-badge ' + badgeClass(speed, 12, 18);
+            }
+        }
+
+        function onSliderChange() {
+            document.getElementById('altNumInput').value = document.getElementById('altSlider').value;
+            updateSliderUI();
+        }
+
+        function syncSliderFromNum() {
+            let v = parseInt(document.getElementById('altNumInput').value) || 10;
+            v = Math.max(10, Math.min(500, v));
+            document.getElementById('altSlider').value = v;
+            updateSliderUI();
+        }
+
+        function renderWxCards(d) {
+            const set = (id, val, unit) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = val !== null && val !== undefined ? val : '—';
+            };
+            set('wc-temp', d.temperature);
+            set('wc-wind', d.wind['10m'].speed);
+            set('wc-vis',  d.visibility_km);
+            set('wc-hum',  d.humidity);
+            set('wc-prec', d.precipitation);
+            set('wc-fog',  d.fog_pct);
+            set('wc-ice',  d.icing);
+            set('wc-ceil', d.cloud_ceiling_m !== null ? d.cloud_ceiling_m : '—');
+
+            // Wind trend sub-label
+            const w10 = d.wind['10m'];
+            document.getElementById('wc-wind-t').textContent =
+                `→ ${w10.dir_text} ${w10.dir}° · Макс: ${w10.gusts} м/с`;
+            ['wc-temp-t','wc-vis-t','wc-hum-t','wc-prec-t','wc-fog-t','wc-ice-t','wc-ceil-t']
+                .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '→ стабільно'; });
+        }
+
+        async function fetchWeather(lat, lon) {
+            try {
+                const res = await fetch(`/api/weather_live?lat=${lat}&lon=${lon}`);
+                if (!res.ok) return;
+                wxData = await res.json();
+                wxLat = lat; wxLon = lon;
+
+                document.getElementById('wxCoords').textContent = `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+                document.getElementById('wxAge').textContent = 'Оновлено: ' + new Date().toLocaleTimeString('uk-UA', {hour:'2-digit',minute:'2-digit'});
+                document.getElementById('wxPanel').style.display = 'block';
+
+                renderWxCards(wxData);
+                updateSliderUI();
+
+                // Prefill coords in analysis form
+                document.getElementById('coordsInput').value = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+            } catch(e) { console.warn('Weather fetch error', e); }
+        }
+
+        async function refreshWeather() {
+            if (wxLat && wxLon) {
+                await fetchWeather(wxLat, wxLon);
+            } else {
+                autoLocate();
+            }
+        }
+
+        function autoLocate() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    p => fetchWeather(p.coords.latitude, p.coords.longitude),
+                    () => {}
+                );
+            }
+        }
+
+        // Auto-fetch on page load
+        autoLocate();
+
         // Init dates
         const now = new Date();
         document.getElementById('dateInput').value = now.toISOString().split('T')[0];
@@ -229,7 +590,7 @@
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
-                        document.getElementById('coordsInput').value = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+                        fetchWeather(pos.coords.latitude, pos.coords.longitude);
                     },
                     () => alert("Не вдалося отримати локацію.")
                 );
