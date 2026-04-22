@@ -912,6 +912,100 @@ async def update_flight(flight_id: int, data: FlightUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def _deg_to_dir(deg) -> str:
+    if deg is None: return "—"
+    dirs = ["Пн", "ПнСх", "Сх", "ПдСх", "Пд", "ПдЗх", "Зх", "ПнЗх"]
+    return dirs[round(float(deg) / 45) % 8]
+
+@app.get("/api/weather_live")
+async def get_weather_live(lat: float, lon: float):
+    """Повертає поточні погодні умови та вітер на висотах для блоку метео."""
+    try:
+        url = (
+            f"https://api.open-meteo.com/v1/forecast"
+            f"?latitude={lat}&longitude={lon}"
+            f"&current=temperature_2m,relative_humidity_2m,dew_point_2m,"
+            f"precipitation,cloud_cover,visibility,"
+            f"wind_speed_10m,wind_direction_10m,wind_gusts_10m"
+            f"&hourly=wind_speed_80m,wind_speed_120m,wind_direction_80m,"
+            f"wind_direction_120m,temperature_80m,freezinglevel_height,"
+            f"cloud_cover_low,visibility"
+            f"&wind_speed_unit=ms&forecast_days=1&timezone=auto"
+        )
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            data = r.json()
+
+        cur = data.get("current", {})
+        hourly = data.get("hourly", {})
+
+        # Find index for current hour
+        times = hourly.get("time", [])
+        now_str = datetime.now().strftime("%Y-%m-%dT%H:00")
+        idx = 0
+        for i, t in enumerate(times):
+            if t >= now_str:
+                idx = i
+                break
+
+        def h(key, default=None):
+            vals = hourly.get(key, [])
+            if idx < len(vals) and vals[idx] is not None:
+                v = vals[idx]
+                return round(float(v), 1) if v == v else default  # NaN guard
+            return default
+
+        temp = cur.get("temperature_2m", 15)
+        humidity = cur.get("relative_humidity_2m", 50)
+        dew = cur.get("dew_point_2m")
+        precip = cur.get("precipitation", 0) or 0
+        cloud = cur.get("cloud_cover", 0) or 0
+        vis_m = cur.get("visibility", 10000) or 10000
+        w10 = cur.get("wind_speed_10m", 0) or 0
+        d10 = cur.get("wind_direction_10m", 0) or 0
+        g10 = cur.get("wind_gusts_10m", 0) or 0
+
+        # Cloud ceiling estimate: (T - Td) * 125 metres
+        if dew is not None and cloud > 5:
+            ceiling = max(0, round((temp - dew) * 125 / 10) * 10)
+        else:
+            ceiling = None  # clear sky
+
+        # Fog: RH > 93% or visibility < 1 km
+        fog_pct = max(0, min(100, round((humidity - 90) * 10))) if humidity > 90 else 0
+
+        # Icing index 0-3
+        icing = 0.0
+        if -8 <= temp <= 2 and cloud > 20:
+            icing = round(min(3.0, (2 - temp) / 4 + precip), 1)
+
+        w80 = h("wind_speed_80m", w10)
+        w120 = h("wind_speed_120m", w80)
+        d80 = h("wind_direction_80m", d10)
+        d120 = h("wind_direction_120m", d80)
+        freezing = h("freezinglevel_height")
+
+        return {
+            "temperature": round(float(temp), 1),
+            "humidity": round(float(humidity)),
+            "precipitation": round(float(precip), 1),
+            "cloud_cover": round(float(cloud)),
+            "visibility_km": round(float(vis_m) / 1000, 1),
+            "fog_pct": fog_pct,
+            "icing": icing,
+            "cloud_ceiling_m": ceiling,
+            "freezing_level_m": round(float(freezing)) if freezing else None,
+            "wind": {
+                "10m":  {"speed": round(float(w10), 1),  "dir": round(float(d10)),  "gusts": round(float(g10), 1), "dir_text": _deg_to_dir(d10)},
+                "80m":  {"speed": round(float(w80), 1),  "dir": round(float(d80)),  "dir_text": _deg_to_dir(d80)},
+                "120m": {"speed": round(float(w120), 1), "dir": round(float(d120)), "dir_text": _deg_to_dir(d120)},
+            },
+        }
+    except Exception as e:
+        print(f"weather_live error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     icon_path = os.path.join(FRONTEND_DIR, "icon.png")
