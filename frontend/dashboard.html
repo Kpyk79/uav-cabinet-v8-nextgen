@@ -204,6 +204,17 @@
             }
         }
 
+        function timeToMinutes(t) {
+            if (!t) return 0;
+            const [h, m] = t.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        // Flights are always stored with the task (shift start) date, so no date adjustment needed.
+        function getShiftStartDate(flight) {
+            return flight.date;
+        }
+
         function renderLogs(flights) {
             const container = document.getElementById('logsContainer');
             if (flights.length === 0) {
@@ -216,13 +227,23 @@
             }
 
             const grouped = flights.reduce((acc, flight) => {
-                const key = `${flight.date}_${flight.shift_time}`;
-                if (!acc[key]) acc[key] = [];
-                acc[key].push(flight);
+                const groupDate = getShiftStartDate(flight);
+                const key = `${groupDate}||${flight.shift_time}`;
+                if (!acc[key]) acc[key] = { groupDate, flights: [] };
+                acc[key].flights.push(flight);
                 return acc;
             }, {});
 
-            container.innerHTML = Object.values(grouped).map(missionFlights => {
+            Object.values(grouped).forEach(group => {
+                const startMin = timeToMinutes((group.flights[0].shift_time || '').split('-')[0]);
+                group.flights.sort((a, b) => {
+                    const posA = (timeToMinutes(a.takeoff) - startMin + 1440) % 1440;
+                    const posB = (timeToMinutes(b.takeoff) - startMin + 1440) % 1440;
+                    return posA - posB;
+                });
+            });
+
+            container.innerHTML = Object.values(grouped).map(({ groupDate, flights: missionFlights }) => {
                 const first = missionFlights[0];
                 const uniqueRoutes = [...new Set(missionFlights.map(f => f.route).filter(r => r && r !== "Не вказано"))];
                 const routeDisplay = uniqueRoutes.length > 0 ? uniqueRoutes.join(', ') : "Маршрут не вказано";
@@ -235,7 +256,7 @@
                                 <div>
                                     <span class="tech-label">Дата завдання</span>
                                     <div class="text-lg font-black text-white flex items-center gap-2">
-                                        ${first.date?.split('-').reverse().join('.')}
+                                        ${groupDate?.split('-').reverse().join('.')}
                                         <span class="text-xs text-green-500/50 font-mono tracking-tighter">(${fmtTime(first.shift_time)})</span>
                                     </div>
                                 </div>
@@ -246,7 +267,7 @@
                                 </div>
                             </div>
                             
-                            <button onclick="window.location.href='/report?date=${first.date}&unit=${encodeURIComponent(first.unit)}&route=${encodeURIComponent(routeDisplay)}'" 
+                            <button onclick="window.location.href='/report?date=${groupDate}&unit=${encodeURIComponent(first.unit)}&route=${encodeURIComponent(routeDisplay)}'"
                                     class="btn-report px-4 py-2 rounded-lg text-[10px] flex items-center gap-2">
                                 <i class="fa-solid fa-file-contract text-sm"></i> Донесення
                             </button>

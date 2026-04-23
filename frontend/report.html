@@ -426,6 +426,16 @@
             }
         }
 
+        function timeToMinutes(t) {
+            if (!t) return 0;
+            const [h, m] = t.split(':').map(Number);
+            return h * 60 + m;
+        }
+
+        function getShiftStartDate(flight) {
+            return flight.date;
+        }
+
         function applyOptions(options) {
             const unitSelect = document.getElementById('searchUnit');
             unitSelect.innerHTML = '<option value="">Оберіть підрозділ...</option>';
@@ -445,7 +455,7 @@
 
             const currentOperator = localStorage.getItem('uav_op') || '';
             const filtered = allFlights.filter(f =>
-                f.date === date &&
+                getShiftStartDate(f) === date &&
                 f.unit?.trim() === unit?.trim() &&
                 f.result !== 'Польоти не здійснювались' &&
                 (!currentOperator || f.operator?.trim().toLowerCase() === currentOperator.trim().toLowerCase())
@@ -652,7 +662,7 @@
             const routeField = document.getElementById('reportRoute');
             if (!routeField.value || routeField.value === 'Не вказано') {
                 const match = allFlights.find(f =>
-                    f.date === date &&
+                    getShiftStartDate(f) === date &&
                     f.unit?.trim() === unit?.trim() &&
                     f.route && f.route !== 'Не вказано' &&
                     (!currentOperator || f.operator?.trim().toLowerCase() === currentOperator.trim().toLowerCase())
