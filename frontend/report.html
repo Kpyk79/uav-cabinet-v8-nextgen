@@ -376,6 +376,7 @@
     <script>
         let allFlights = [];
         let saveTimeout;
+        let activeShiftFilter = '';
 
         function fmtTime(t) { return t ? t.substring(0, 5) : '--'; }
 
@@ -414,6 +415,8 @@
                 const pDate = params.get('date');
                 const pUnit = params.get('unit');
                 const pRoute = params.get('route');
+                const pShift = params.get('shift');
+                if (pShift) activeShiftFilter = pShift;
                 if (pDate) document.getElementById('searchDate').value = pDate;
                 else if (!document.getElementById('searchDate').value)
                     document.getElementById('searchDate').valueAsDate = new Date();
@@ -458,8 +461,17 @@
                 getShiftStartDate(f) === date &&
                 f.unit?.trim() === unit?.trim() &&
                 f.result !== 'Польоти не здійснювались' &&
+                (!activeShiftFilter || f.shift_time?.trim() === activeShiftFilter.trim()) &&
                 (!currentOperator || f.operator?.trim().toLowerCase() === currentOperator.trim().toLowerCase())
             );
+
+            const shiftStartForSort = (activeShiftFilter || filtered[0]?.shift_time || '').split('-')[0];
+            const shiftStartMin = timeToMinutes(shiftStartForSort);
+            filtered.sort((a, b) => {
+                const posA = (timeToMinutes(a.takeoff) - shiftStartMin + 1440) % 1440;
+                const posB = (timeToMinutes(b.takeoff) - shiftStartMin + 1440) % 1440;
+                return posA - posB;
+            });
 
             const statsMap = {};
             const uniqueDrones = new Set();
@@ -665,6 +677,7 @@
                     getShiftStartDate(f) === date &&
                     f.unit?.trim() === unit?.trim() &&
                     f.route && f.route !== 'Не вказано' &&
+                    (!activeShiftFilter || f.shift_time?.trim() === activeShiftFilter.trim()) &&
                     (!currentOperator || f.operator?.trim().toLowerCase() === currentOperator.trim().toLowerCase())
                 );
                 if (match) routeField.value = match.route;
