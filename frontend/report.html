@@ -730,7 +730,7 @@
                 operator: m.surname,
                 drone: m.aircraft_type,
                 count: m.total_flights,
-                details: m.sorties.map(s => `${s.time_start} - ${s.time_end} (${s.distance_m} м)`).join('; ')
+                sorties: m.sorties.map(s => `${s.time_start} - ${s.time_end} (${s.distance_m} м)`)
             }));
 
             const temp = r.weather.temperature_celsius;
