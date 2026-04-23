@@ -1355,50 +1355,66 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
         add_labeled("Район виконання завдань", f": {data.get('task_area_coords', '___')}")
         add_labeled("Вильоти", ":")
 
-        # 4. Таблиця польотів
-        flights = data.get('flights', [])
-        table = doc.add_table(rows=1, cols=4)
-        table.style = 'Table Grid'
-        # Налаштування ширини буде виконано нижче, після додавання всіх рядків
-        hdr_cells = table.rows[0].cells
-        hdr_cells[0].text = 'Прізвище екіпажу'
-        hdr_cells[1].text = 'К-сть'
-        hdr_cells[2].text = 'Тип БпАК'
-        hdr_cells[3].text = 'Час та дистанція вильотів'
+        # 4. Список вильотів (без таблиці)
+        import math as _math
+        import re as _re
+        from docx.oxml.ns import qn as _qn
+        from docx.oxml import OxmlElement as _OxmlElement
 
-        if not flights:
-            row_cells = table.add_row().cells
-            row_cells[0].text = 'Немає даних'
-            row_cells[1].text = '0'
-            row_cells[2].text = '-'
-            row_cells[3].text = '-'
-        else:
-            for flight in flights:
-                row_cells = table.add_row().cells
-                row_cells[0].text = flight.get('operator', '')
-                row_cells[1].text = str(flight.get('count', ''))
-                row_cells[2].text = flight.get('drone', '')
-                import re as _re
+        flights = data.get('flights', [])
+        all_sorties = []
+        for flight in flights:
+            raw = flight.get('sorties')
+            if isinstance(raw, list):
+                all_sorties.extend(raw)
+            else:
                 details_raw = flight.get('details', '')
                 details_clean = _re.sub(r'(\d{2}:\d{2}):\d{2}', r'\1', details_raw)
-                # Split sorties and put each on a new line inside the cell
-                sorties = [s.strip() for s in details_clean.split(';') if s.strip()]
-                cell = row_cells[3]
-                cell.text = ''  # clear default paragraph
-                for i, sortie in enumerate(sorties):
-                    if i == 0:
-                        cell.paragraphs[0].text = sortie
-                    else:
-                        cell.add_paragraph(sortie)
-        # Фіксуємо ширину таблиці та колонок ПІСЛЯ додавання всіх рядків:
-        table.autofit = False 
-        table.width = Cm(17)
-        widths = [Cm(4.0), Cm(2.0), Cm(6.0), Cm(5.0)]
-        for i, width in enumerate(widths):
-            table.columns[i].width = width
-        for row in table.rows:
-            for i, width in enumerate(widths):
-                row.cells[i].width = width
+                all_sorties.extend([s.strip() for s in details_clean.split(';') if s.strip()])
+
+        if not all_sorties:
+            add_plain('—')
+        elif len(all_sorties) <= 5:
+            for sortie in all_sorties:
+                p = doc.add_paragraph(sortie)
+                p.paragraph_format.space_after = Pt(0)
+                p.paragraph_format.space_before = Pt(0)
+        else:
+            n_rows = _math.ceil(len(all_sorties) / 3)
+            cols_data = [
+                all_sorties[:n_rows],
+                all_sorties[n_rows:2 * n_rows],
+                all_sorties[2 * n_rows:]
+            ]
+            tbl = doc.add_table(rows=n_rows, cols=3)
+            tbl.autofit = False
+            tbl.width = Cm(17)
+            col_w = Cm(17 / 3)
+            # Remove all table borders
+            tblPr = tbl._tbl.tblPr
+            tblBorders = _OxmlElement('w:tblBorders')
+            for side in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
+                b = _OxmlElement(f'w:{side}')
+                b.set(_qn('w:val'), 'none')
+                tblBorders.append(b)
+            tblPr.append(tblBorders)
+            for row_idx in range(n_rows):
+                for col_idx, col_data in enumerate(cols_data):
+                    cell = tbl.cell(row_idx, col_idx)
+                    cell.width = col_w
+                    text = col_data[row_idx] if row_idx < len(col_data) else ''
+                    p = cell.paragraphs[0]
+                    p.text = text
+                    p.paragraph_format.space_after = Pt(0)
+                    p.paragraph_format.space_before = Pt(0)
+                    # Remove cell borders
+                    tcPr = cell._tc.get_or_add_tcPr()
+                    tcBorders = _OxmlElement('w:tcBorders')
+                    for side in ('top', 'left', 'bottom', 'right'):
+                        b = _OxmlElement(f'w:{side}')
+                        b.set(_qn('w:val'), 'none')
+                        tcBorders.append(b)
+                    tcPr.append(tcBorders)
 
         # 5. Маршрут та екіпаж
         add_labeled("Маршрут", f": {data.get('route', '___')}")
