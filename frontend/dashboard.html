@@ -227,14 +227,18 @@
             }
 
             const grouped = flights.reduce((acc, flight) => {
-                const groupDate = getShiftStartDate(flight);
-                const key = `${groupDate}||${flight.shift_time}`;
+                const groupDate = flight.date;
+                const key = flight.mission_id
+                    ? `mid_${flight.mission_id}`
+                    : `${groupDate}||${flight.shift_time}`;
                 if (!acc[key]) acc[key] = { groupDate, flights: [] };
                 acc[key].flights.push(flight);
                 return acc;
             }, {});
 
             Object.values(grouped).forEach(group => {
+                // ensure groupDate is always set (for mission_id groups)
+                if (!group.groupDate) group.groupDate = group.flights[0].date;
                 const startMin = timeToMinutes((group.flights[0].shift_time || '').split('-')[0]);
                 group.flights.sort((a, b) => {
                     const posA = (timeToMinutes(a.takeoff) - startMin + 1440) % 1440;

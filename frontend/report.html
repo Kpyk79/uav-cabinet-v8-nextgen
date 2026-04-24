@@ -377,6 +377,7 @@
         let allFlights = [];
         let saveTimeout;
         let activeShiftFilter = '';
+        let activeMissionId = '';
 
         function fmtTime(t) { return t ? t.substring(0, 5) : '--'; }
 
@@ -416,7 +417,9 @@
                 const pUnit = params.get('unit');
                 const pRoute = params.get('route');
                 const pShift = params.get('shift');
+                const pMissionId = params.get('mission_id');
                 if (pShift) activeShiftFilter = pShift;
+                if (pMissionId) activeMissionId = pMissionId;
                 if (pDate) document.getElementById('searchDate').value = pDate;
                 else if (!document.getElementById('searchDate').value)
                     document.getElementById('searchDate').valueAsDate = new Date();
@@ -461,7 +464,7 @@
                 getShiftStartDate(f) === date &&
                 f.unit?.trim() === unit?.trim() &&
                 f.result !== 'Польоти не здійснювались' &&
-                (!activeShiftFilter || f.shift_time?.trim() === activeShiftFilter.trim()) &&
+                (!activeMissionId ? (!activeShiftFilter || f.shift_time?.trim() === activeShiftFilter.trim()) : f.mission_id === activeMissionId) &&
                 (!currentOperator || f.operator?.trim().toLowerCase() === currentOperator.trim().toLowerCase())
             );
 
@@ -677,7 +680,7 @@
                     getShiftStartDate(f) === date &&
                     f.unit?.trim() === unit?.trim() &&
                     f.route && f.route !== 'Не вказано' &&
-                    (!activeShiftFilter || f.shift_time?.trim() === activeShiftFilter.trim()) &&
+                    (!activeMissionId ? (!activeShiftFilter || f.shift_time?.trim() === activeShiftFilter.trim()) : f.mission_id === activeMissionId) &&
                     (!currentOperator || f.operator?.trim().toLowerCase() === currentOperator.trim().toLowerCase())
                 );
                 if (match) routeField.value = match.route;

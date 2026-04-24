@@ -650,6 +650,12 @@
         const API = window.location.origin + "/api";
         let draft = [];
         let editingId = null;
+
+        let currentMissionId = localStorage.getItem('current_mission_id');
+        if (!currentMissionId) {
+            currentMissionId = crypto.randomUUID();
+            localStorage.setItem('current_mission_id', currentMissionId);
+        }
         let isPublishing = false;
 
         // Offline Status Sync
@@ -670,33 +676,47 @@
         window.addEventListener('online', updateOnlineStatus);
         window.addEventListener('offline', updateOnlineStatus);
 
-        async function syncOfflineData() {
-            if (!navigator.onLine) return;
-            const queue = await dbAPI.getSyncQueue();
-            if (queue.length === 0) return;
+        let _isSyncing = false;
 
-            console.log("Syncing offline data...", queue.length);
-            let allSucceeded = true;
-            for (const item of queue) {
-                try {
-                    let success = false;
-                    if (item.type === 'flight') {
-                        success = await sendFlightData(item.payload);
-                    }
-                    if (success) {
+        async function syncOfflineData() {
+            if (!navigator.onLine || _isSyncing) return;
+            _isSyncing = true;
+
+            try {
+                const queue = await dbAPI.getSyncQueue();
+                if (queue.length === 0) return;
+
+                console.log("Syncing offline data...", queue.length);
+                let allSucceeded = true;
+
+                for (const item of queue) {
+                    try {
                         await dbAPI.removeFromSyncQueue(item.id);
-                    } else {
+
+                        let success = false;
+                        if (item.type === 'flight') {
+                            success = await sendFlightData(item.payload);
+                        }
+
+                        if (!success) {
+                            allSucceeded = false;
+                        }
+                    } catch (e) {
+                        console.error("Sync failed for item", item.id, e);
+                        await dbAPI.addToSyncQueue(item.type, item.payload);
                         allSucceeded = false;
                     }
-                } catch (e) {
-                    console.error("Sync failed for item", item.id, e);
-                    allSucceeded = false;
                 }
+
+                if (allSucceeded) {
+                    dbAPI.showNotification("Всі офлайн-дані успішно синхронізовано!", "success");
+                } else {
+                    dbAPI.showNotification("Польоти збережено в базі. Telegram-повідомлення може не надійти.", "info");
+                }
+                location.reload();
+            } finally {
+                _isSyncing = false;
             }
-            if (allSucceeded) {
-                dbAPI.showNotification("Всі офлайн-дані успішно синхронізовано!", "success");
-            }
-            location.reload();
         }
 
         function normalizeOperatorName(name) {
@@ -1035,7 +1055,8 @@
                 weather: getVal('weather', 'Нормальні'),
                 conditions: getVal('mode', 'Норма'),
                 result: getVal('result', 'Без ознак порушення'),
-                comment: document.getElementById('comment').value
+                comment: document.getElementById('comment').value,
+                mission_id: currentMissionId
             };
 
             const [h1, m1] = flightData.takeoff.split(':').map(Number);
@@ -1328,6 +1349,8 @@
             Object.keys(localStorage).forEach(key => {
                 if (key.startsWith('saved_')) localStorage.removeItem(key);
             });
+            currentMissionId = crypto.randomUUID();
+            localStorage.setItem('current_mission_id', currentMissionId);
             location.reload();
         }
 
