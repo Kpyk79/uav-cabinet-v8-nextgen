@@ -252,6 +252,8 @@ class FlightEntry(BaseModel):
     conditions: Optional[str] = "Норма"
     route: Optional[str] = "Не вказано"
     battery_id: Optional[str] = ""
+    mission_id: Optional[str] = None
+    comment: Optional[str] = ""
 
 class AnnouncementUpdate(BaseModel):
     text: str
@@ -1439,7 +1441,7 @@ async def generate_docx(report_data: str = Form(...), filename: str = Form(...))
                     f.write(photo_data)
                 pic_para = doc.add_paragraph()
                 pic_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                pic_para.add_run().add_picture(temp_photo_path, width=Cm(14))
+                pic_para.add_run().add_picture(temp_photo_path, width=Cm(11))
             except Exception as e:
                 print(f"Помилка завантаження фото: {e}")
 
