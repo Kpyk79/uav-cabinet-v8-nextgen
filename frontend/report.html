@@ -182,15 +182,20 @@
             <h3 class="text-xs font-black uppercase text-blue-400 mb-6 flex items-center tracking-widest">
                 <i class="fa-solid fa-magnifying-glass mr-2"></i> Джерело даних
             </h3>
+            <input type="hidden" id="searchUnit">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="text-[10px] uppercase font-bold text-slate-500">Підрозділ:</span>
+                <span id="unitBadge" class="text-xs font-bold text-blue-300 bg-blue-900/40 px-3 py-1 rounded-full">—</span>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="label-premium">Виберіть дату</label>
-                    <input type="date" id="searchDate" class="input-premium" onchange="generateReport()">
+                    <input type="date" id="searchDate" class="input-premium" onchange="populateShiftOptions(); generateReport()">
                 </div>
                 <div>
-                    <label class="label-premium">Виберіть підрозділ</label>
-                    <select id="searchUnit" class="input-premium" onchange="generateReport()">
-                        <option value="">Завантаження...</option>
+                    <label class="label-premium">Польотне завдання (зміна)</label>
+                    <select id="searchShift" class="input-premium" onchange="activeShiftFilter = this.value; activeMissionId = ''; cachedMission = null; generateReport()">
+                        <option value="">Всі зміни</option>
                     </select>
                 </div>
                 <div class="flex items-end">
@@ -205,11 +210,29 @@
 
             <!-- Ліва колонка: Параметри -->
             <div class="glass-card p-6 space-y-6">
-                <div class="flex justify-between items-center border-b border-white/10 pb-4">
-                    <h3 class="text-sm font-black uppercase text-slate-300 tracking-wider">Параметри звіту</h3>
-                    <div id="saveStatus"
-                        class="flex items-center gap-1.5 text-[10px] text-emerald-400 uppercase font-bold opacity-0 transition-opacity">
-                        <i class="fa-solid fa-check-circle"></i> Збережено
+                <div class="border-b border-white/10 pb-4 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-sm font-black uppercase text-slate-300 tracking-wider">Параметри звіту</h3>
+                        <div id="saveStatus"
+                            class="flex items-center gap-1.5 text-[10px] text-emerald-400 uppercase font-bold opacity-0 transition-opacity">
+                            <i class="fa-solid fa-check-circle"></i> Збережено
+                        </div>
+                    </div>
+                    <!-- Шаблони -->
+                    <div class="flex items-center gap-2">
+                        <select id="templateSelect" class="input-premium text-xs flex-1 py-1.5"
+                            onchange="loadTemplate(this.value)">
+                            <option value="">— Завантажити шаблон —</option>
+                        </select>
+                        <button onclick="saveTemplate()"
+                            class="flex-shrink-0 px-3 py-1.5 text-xs font-bold rounded-lg bg-blue-600/30 hover:bg-blue-600/60 border border-blue-500/30 text-blue-300 transition-all whitespace-nowrap">
+                            <i class="fa-solid fa-floppy-disk mr-1"></i>Зберегти шаблон
+                        </button>
+                        <button onclick="deleteTemplate()"
+                            class="flex-shrink-0 px-2 py-1.5 text-xs font-bold rounded-lg bg-red-600/20 hover:bg-red-600/40 border border-red-500/20 text-red-400 transition-all"
+                            title="Видалити шаблон">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -378,6 +401,7 @@
         let saveTimeout;
         let activeShiftFilter = '';
         let activeMissionId = '';
+        let cachedMission = null;
 
         function fmtTime(t) { return t ? t.substring(0, 5) : '--'; }
 
@@ -398,8 +422,8 @@
 
         async function loadInitData(isRefresh = false) {
             if (!isRefresh) loadLocal();
-            const unitSelect = document.getElementById('searchUnit');
-            unitSelect.innerHTML = '<option value="">Синхронізація...</option>';
+            initUnit();
+            populateTemplateList();
             const cachedMeta = await dbAPI.getMeta();
             if (cachedMeta) applyOptions(cachedMeta);
             try {
@@ -414,16 +438,26 @@
                 dbAPI.saveMeta(options);
                 const params = new URLSearchParams(window.location.search);
                 const pDate = params.get('date');
-                const pUnit = params.get('unit');
                 const pRoute = params.get('route');
                 const pShift = params.get('shift');
                 const pMissionId = params.get('mission_id');
                 if (pShift) activeShiftFilter = pShift;
-                if (pMissionId) activeMissionId = pMissionId;
+                if (pMissionId) {
+                    activeMissionId = pMissionId;
+                    try {
+                        const mRes = await fetch(`/api/get_mission/${pMissionId}`);
+                        if (mRes.ok) cachedMission = await mRes.json();
+                    } catch (e) {
+                        console.warn("get_mission failed:", e);
+                    }
+                }
+                // спочатку встановлюємо дату, потім заповнюємо зміни
                 if (pDate) document.getElementById('searchDate').value = pDate;
                 else if (!document.getElementById('searchDate').value)
                     document.getElementById('searchDate').valueAsDate = new Date();
-                if (pUnit) unitSelect.value = pUnit;
+                populateShiftOptions();
+                // якщо прийшла зміна з URL — підсвічуємо її в селекті
+                if (activeShiftFilter) document.getElementById('searchShift').value = activeShiftFilter;
                 if (pRoute) document.getElementById('reportRoute').value = pRoute;
                 generateReport();
             } catch (e) {
@@ -443,13 +477,40 @@
         }
 
         function applyOptions(options) {
-            const unitSelect = document.getElementById('searchUnit');
-            unitSelect.innerHTML = '<option value="">Оберіть підрозділ...</option>';
-            options.units.forEach(u => {
+            // підрозділ береться з localStorage, не з селекту
+        }
+
+        function initUnit() {
+            const unit = localStorage.getItem('uav_unit') || '';
+            document.getElementById('searchUnit').value = unit;
+            document.getElementById('unitBadge').textContent = unit || 'Невідомий підрозділ';
+        }
+
+        function populateShiftOptions() {
+            const date = document.getElementById('searchDate').value;
+            const unit = document.getElementById('searchUnit').value;
+            const sel = document.getElementById('searchShift');
+            const prev = sel.value;
+
+            const shifts = [...new Set(
+                allFlights
+                    .filter(f =>
+                        (!date || f.date === date) &&
+                        (!unit || f.unit?.trim() === unit?.trim()) &&
+                        f.shift_time
+                    )
+                    .map(f => f.shift_time.trim())
+            )].sort();
+
+            sel.innerHTML = '<option value="">Всі зміни</option>';
+            shifts.forEach(s => {
                 const opt = document.createElement('option');
-                opt.value = u; opt.text = u;
-                unitSelect.appendChild(opt);
+                opt.value = s; opt.text = s;
+                sel.appendChild(opt);
             });
+
+            if (prev && shifts.includes(prev)) sel.value = prev;
+            else if (activeShiftFilter && shifts.includes(activeShiftFilter)) sel.value = activeShiftFilter;
         }
 
         // ─── JSON-бланк ───────────────────────────────────────────────────────
@@ -460,27 +521,45 @@
                 || (date ? date.split('-').reverse().join('.') : '___');
 
             const currentOperator = localStorage.getItem('uav_op') || '';
-            const filtered = allFlights.filter(f =>
-                getShiftStartDate(f) === date &&
-                f.unit?.trim() === unit?.trim() &&
-                f.result !== 'Польоти не здійснювались' &&
-                (!activeMissionId ? (!activeShiftFilter || f.shift_time?.trim() === activeShiftFilter.trim()) : f.mission_id === activeMissionId) &&
-                (!currentOperator || f.operator?.trim().toLowerCase() === currentOperator.trim().toLowerCase())
-            );
 
-            const shiftStartForSort = (activeShiftFilter || filtered[0]?.shift_time || '').split('-')[0];
-            const shiftStartMin = timeToMinutes(shiftStartForSort);
-            filtered.sort((a, b) => {
-                const posA = (timeToMinutes(a.takeoff) - shiftStartMin + 1440) % 1440;
-                const posB = (timeToMinutes(b.takeoff) - shiftStartMin + 1440) % 1440;
-                return posA - posB;
-            });
+            let statsMap = {};
+            let uniqueDrones = new Set();
 
-            const statsMap = {};
-            const uniqueDrones = new Set();
-            filtered.forEach(f => {
-                const op = f.operator || 'Невідомий';
-                const dr = f.drone || 'БпЛА';
+            if (cachedMission) {
+                // Вильоти беремо з місії — точно ті ж що у Telegram, без коментарів
+                const op = cachedMission.operator || currentOperator || 'Невідомий';
+                const dr = cachedMission.drone || 'БпЛА';
+                uniqueDrones.add(dr);
+                statsMap[`${op}_${dr}`] = {
+                    operator: op,
+                    drone: dr,
+                    count: cachedMission.flights.length,
+                    sorties: cachedMission.flights.map(f => ({
+                        time_start: f.takeoff?.substring(0, 5) || '--',
+                        time_end: f.landing?.substring(0, 5) || '--',
+                        distance_m: f.distance || 0
+                    }))
+                };
+            } else {
+                const filtered = allFlights.filter(f =>
+                    getShiftStartDate(f) === date &&
+                    f.unit?.trim() === unit?.trim() &&
+                    f.result !== 'Польоти не здійснювались' &&
+                    (!activeMissionId ? (!activeShiftFilter || f.shift_time?.trim() === activeShiftFilter.trim()) : f.mission_id === activeMissionId) &&
+                    (!currentOperator || f.operator?.trim().toLowerCase() === currentOperator.trim().toLowerCase())
+                );
+
+                const shiftStartForSort = (activeShiftFilter || filtered[0]?.shift_time || '').split('-')[0];
+                const shiftStartMin = timeToMinutes(shiftStartForSort);
+                filtered.sort((a, b) => {
+                    const posA = (timeToMinutes(a.takeoff) - shiftStartMin + 1440) % 1440;
+                    const posB = (timeToMinutes(b.takeoff) - shiftStartMin + 1440) % 1440;
+                    return posA - posB;
+                });
+
+                filtered.forEach(f => {
+                    const op = f.operator || 'Невідомий';
+                    const dr = f.drone || 'БпЛА';
                 uniqueDrones.add(dr);
                 const key = `${op}_${dr}`;
                 if (!statsMap[key]) statsMap[key] = { operator: op, drone: dr, count: 0, sorties: [] };
@@ -490,7 +569,8 @@
                     time_end: fmtTime(f.landing),
                     distance_m: f.distance || 0
                 });
-            });
+                });
+            } // end else
 
             const coordsRaw = document.getElementById('taskAreaCoords').value.trim();
             const coordNums = coordsRaw
@@ -880,6 +960,69 @@
                 document.getElementById('addresseeRank').value = 'підполковнику';
             if (!document.getElementById('addresseeName').value)
                 document.getElementById('addresseeName').value = 'Армену МКРТЧЯН';
+        }
+
+        // ─── Шаблони параметрів звіту ────────────────────────────────────────────
+        const TEMPLATE_FIELDS = [
+            'addresseePosition', 'addresseeRank', 'addresseeName',
+            'sectorVips', 'sectorVps', 'taskAreaCoords', 'cmdRank', 'cmdName'
+        ];
+        const TEMPLATES_KEY = 'report_templates';
+
+        function getTemplates() {
+            try { return JSON.parse(localStorage.getItem(TEMPLATES_KEY) || '{}'); }
+            catch { return {}; }
+        }
+
+        function populateTemplateList() {
+            const sel = document.getElementById('templateSelect');
+            const prev = sel.value;
+            const templates = getTemplates();
+            sel.innerHTML = '<option value="">— Завантажити шаблон —</option>';
+            Object.keys(templates).sort().forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name; opt.textContent = name;
+                sel.appendChild(opt);
+            });
+            if (prev && templates[prev]) sel.value = prev;
+        }
+
+        function saveTemplate() {
+            const name = prompt('Назва шаблону:', '');
+            if (!name || !name.trim()) return;
+            const templates = getTemplates();
+            const data = {};
+            TEMPLATE_FIELDS.forEach(f => { data[f] = document.getElementById(f).value; });
+            templates[name.trim()] = data;
+            localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+            populateTemplateList();
+            document.getElementById('templateSelect').value = name.trim();
+            dbAPI.showNotification(`Шаблон «${name.trim()}» збережено`, 'success');
+        }
+
+        function loadTemplate(name) {
+            if (!name) return;
+            const templates = getTemplates();
+            const data = templates[name];
+            if (!data) return;
+            TEMPLATE_FIELDS.forEach(f => {
+                if (data[f] !== undefined) document.getElementById(f).value = data[f];
+            });
+            saveLocal();
+            generateReport();
+            dbAPI.showNotification(`Шаблон «${name}» завантажено`, 'success');
+        }
+
+        function deleteTemplate() {
+            const sel = document.getElementById('templateSelect');
+            const name = sel.value;
+            if (!name) return;
+            if (!confirm(`Видалити шаблон «${name}»?`)) return;
+            const templates = getTemplates();
+            delete templates[name];
+            localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
+            populateTemplateList();
+            dbAPI.showNotification(`Шаблон «${name}» видалено`, 'success');
         }
 
         window.addEventListener('online', async () => {
