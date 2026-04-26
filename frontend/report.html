@@ -118,13 +118,20 @@
         }
 
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
 
-            100% {
-                transform: rotate(360deg);
-            }
+        @keyframes report-spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #reportLoadingOverlay {
+            transition: opacity 0.3s ease;
+        }
+        #reportLoadingOverlay.hidden-overlay {
+            opacity: 0;
+            pointer-events: none;
         }
 
         ::-webkit-scrollbar {
@@ -382,9 +389,11 @@
                         </button>
                     </div>
                 </div>
-                <textarea id="finalReport"
-                    class="input-premium flex-grow !bg-transparent !border-none !shadow-none resize-none leading-relaxed text-sm scrollbar-thin overflow-y-auto"
-                    readonly></textarea>
+                <div class="relative flex-grow flex flex-col">
+                    <textarea id="finalReport"
+                        class="input-premium flex-grow !bg-transparent !border-none !shadow-none resize-none leading-relaxed text-sm scrollbar-thin overflow-y-auto"
+                        readonly></textarea>
+                </div>
                 <div
                     class="mt-6 flex justify-between items-center text-[10px] text-slate-500 font-bold uppercase tracking-widest">
                     <span>Система UAV Command</span>
@@ -410,6 +419,42 @@
             window.location.href = token ? `${path}?token=${token}` : path;
         }
 
+        let _loaderHidden = false;
+
+        function showReportLoader() {
+            _loaderHidden = false;
+            if (!document.getElementById('rl-style')) {
+                const s = document.createElement('style');
+                s.id = 'rl-style';
+                s.textContent = '@keyframes rl-spin{to{transform:rotate(360deg)}}';
+                document.head.appendChild(s);
+            }
+            let el = document.getElementById('report-loader');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'report-loader';
+                el.style.cssText = 'position:fixed;top:16px;right:16px;z-index:99999;display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:16px;background:rgba(15,23,42,0.95);backdrop-filter:blur(12px);border:1px solid rgba(99,179,237,0.35);box-shadow:0 8px 32px rgba(0,0,0,0.6);opacity:0;transition:opacity 0.25s ease;pointer-events:none';
+                el.innerHTML =
+                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="animation:rl-spin 0.85s linear infinite;flex-shrink:0">' +
+                    '<circle cx="12" cy="12" r="10" stroke="rgba(99,179,237,0.3)" stroke-width="3"/>' +
+                    '<path d="M12 2a10 10 0 0 1 10 10" stroke="#63b3ed" stroke-width="3" stroke-linecap="round"/></svg>' +
+                    '<span style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#e2e8f0;white-space:nowrap">Триває завантаження з бази даних…</span>';
+                document.body.appendChild(el);
+            }
+            // Невелика затримка щоб DOM встиг відрендеритись
+            setTimeout(() => {
+                if (!_loaderHidden) el.style.opacity = '1';
+            }, 50);
+        }
+
+        function hideReportLoader() {
+            _loaderHidden = true;
+            const el = document.getElementById('report-loader');
+            if (!el) return;
+            el.style.opacity = '0';
+            setTimeout(() => { const e = document.getElementById('report-loader'); if (e) e.remove(); }, 300);
+        }
+
         function triggerSave() {
             clearTimeout(saveTimeout);
             const status = document.getElementById('saveStatus');
@@ -424,6 +469,7 @@
             if (!isRefresh) loadLocal();
             initUnit();
             populateTemplateList();
+            showReportLoader();
             const cachedMeta = await dbAPI.getMeta();
             if (cachedMeta) applyOptions(cachedMeta);
             try {
@@ -451,17 +497,17 @@
                         console.warn("get_mission failed:", e);
                     }
                 }
-                // спочатку встановлюємо дату, потім заповнюємо зміни
                 if (pDate) document.getElementById('searchDate').value = pDate;
                 else if (!document.getElementById('searchDate').value)
                     document.getElementById('searchDate').valueAsDate = new Date();
                 populateShiftOptions();
-                // якщо прийшла зміна з URL — підсвічуємо її в селекті
                 if (activeShiftFilter) document.getElementById('searchShift').value = activeShiftFilter;
                 if (pRoute) document.getElementById('reportRoute').value = pRoute;
                 generateReport();
+                hideReportLoader();
             } catch (e) {
                 console.error("loadInitData Error:", e);
+                hideReportLoader();
                 if (!cachedMeta) dbAPI.showNotification("Помилка підключення до сервера. " + e.message, "error");
             }
         }
