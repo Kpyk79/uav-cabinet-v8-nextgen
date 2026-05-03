@@ -710,10 +710,11 @@
 
                 if (allSucceeded) {
                     dbAPI.showNotification("Всі офлайн-дані успішно синхронізовано!", "success");
+                    location.reload();
                 } else {
                     dbAPI.showNotification("Польоти збережено в базі. Telegram-повідомлення може не надійти.", "info");
+                    // Не перезавантажуємо при помилці — інакше буде нескінченний цикл
                 }
-                location.reload();
             } finally {
                 _isSyncing = false;
             }
@@ -1114,6 +1115,9 @@
                         <button onclick="editDraft(${f.id})" class="text-yellow-500/70 p-2 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-all" title="Редагувати">
                             <i class="fa-solid fa-pen text-[11px]"></i>
                         </button>
+                        <button onclick="copyDraft(${f.id})" class="text-blue-400/70 p-2 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg transition-all" title="Копіювати політ">
+                            <i class="fa-solid fa-copy text-[11px]"></i>
+                        </button>
                         <button onclick="removeFromDraft(${f.id})" class="text-red-500/70 p-2 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all" title="Видалити">
                             <i class="fa-solid fa-trash-can text-[11px]"></i>
                         </button>
@@ -1175,6 +1179,15 @@
             draft = draft.filter(f => f.id !== id);
             dbAPI.saveDrafts(draft);
             renderDraft();
+        }
+
+        function copyDraft(id) {
+            const f = draft.find(f => f.id === id);
+            if (!f) return;
+            const lines = `${f.takeoff}-${f.landing} - ${f.distance} м (${f.duration} хв)`;
+            navigator.clipboard.writeText(lines)
+                .then(() => dbAPI.showNotification("Скопійовано в буфер обміну", "success"))
+                .catch(() => dbAPI.showNotification("Помилка копіювання", "error"));
         }
 
         async function copyText(id) {
@@ -1323,6 +1336,38 @@
                 }
                 sentDraft.push(f);
                 unsentDraft.shift();
+            }
+
+            // 1.5. Save mission record (clean flights only, no comments)
+            try {
+                let dbDateFirst = first.date;
+                if (dbDateFirst && dbDateFirst.includes('.')) {
+                    const [d, m, y] = dbDateFirst.split('.');
+                    dbDateFirst = `${y}-${m}-${d}`;
+                }
+                const missionPayload = {
+                    mission_id: first.mission_id || currentMissionId,
+                    date: dbDateFirst,
+                    unit: first.unit || '',
+                    operator: first.operator || '',
+                    shift_time: first.shift_time || '',
+                    route: first.route || 'Не вказано',
+                    drone: first.drone || '',
+                    flights: draft
+                        .filter(f => f.result !== 'Польоти не здійснювались')
+                        .map(f => ({
+                            takeoff: f.takeoff,
+                            landing: f.landing,
+                            distance: Math.floor(Number(f.distance)) || 0
+                        }))
+                };
+                await fetch(API + "/save_mission", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(missionPayload)
+                });
+            } catch (e) {
+                console.warn("save_mission failed (non-critical):", e);
             }
 
             // 2. Send to Telegram
